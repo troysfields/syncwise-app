@@ -15,6 +15,9 @@ const DEMO_EVENTS = [
   { id: 1, name: 'Team Meeting — Marketing Group', start: '2026-03-11T14:00:00', end: '2026-03-11T15:00:00', source: 'outlook' },
   { id: 2, name: 'Office Hours — Prof. Jouflas', start: '2026-03-11T15:30:00', end: '2026-03-11T16:30:00', source: 'outlook' },
   { id: 3, name: 'IT Director Meeting — Mike', start: '2026-03-12T10:00:00', end: '2026-03-12T10:30:00', source: 'outlook' },
+  { id: 4, name: 'ENTR 450 Group Presentation Prep', start: '2026-03-13T11:00:00', end: '2026-03-13T12:00:00', source: 'outlook' },
+  { id: 5, name: 'Career Fair', start: '2026-03-18T10:00:00', end: '2026-03-18T14:00:00', source: 'outlook' },
+  { id: 6, name: 'Study Session — ACCT 301 Midterm', start: '2026-03-15T14:00:00', end: '2026-03-15T16:00:00', source: 'outlook' },
 ];
 
 const DEMO_SUGGESTIONS = [
@@ -34,7 +37,7 @@ const DEMO_EMAIL_SUGGESTIONS = [
     confidence: 'high',
     sourceSubject: 'Re: Group Project — Let\'s meet Thursday at 4pm',
     reason: 'Email thread discussing a group project meeting with explicit date and time',
-    status: 'pending', // pending, accepted, dismissed, snoozed
+    status: 'pending',
   },
   {
     id: 'demo-2',
@@ -120,6 +123,103 @@ function getCategoryIcon(category) {
   return icons[category] || '\u{1F4CC}';
 }
 
+// ============================================================
+// SMART NOTIFICATION — Urgency detection for <24hr events
+// ============================================================
+
+function getUrgencyInfo(suggestion) {
+  const eventDate = new Date(suggestion.date);
+  const now = new Date();
+  const hoursUntil = (eventDate - now) / (1000 * 60 * 60);
+
+  if (hoursUntil < 0) {
+    return { isUrgent: false, label: null, style: null };
+  }
+  if (hoursUntil <= 3) {
+    return {
+      isUrgent: true,
+      label: `Happening in ${Math.max(1, Math.round(hoursUntil * 60))} min — act now!`,
+      style: 'critical',
+    };
+  }
+  if (hoursUntil <= 12) {
+    return {
+      isUrgent: true,
+      label: `Today — ${Math.round(hoursUntil)}h away`,
+      style: 'urgent',
+    };
+  }
+  if (hoursUntil <= 24) {
+    return {
+      isUrgent: true,
+      label: `Less than 24 hours away`,
+      style: 'soon',
+    };
+  }
+  return { isUrgent: false, label: null, style: null };
+}
+
+// ============================================================
+// CALENDAR VIEW HELPERS
+// ============================================================
+
+function getWeekDays(referenceDate) {
+  const d = new Date(referenceDate);
+  const day = d.getDay(); // 0 = Sunday
+  const start = new Date(d);
+  start.setDate(d.getDate() - day); // go to Sunday
+  start.setHours(0, 0, 0, 0);
+
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + i);
+    days.push(date);
+  }
+  return days;
+}
+
+function getMonthDays(referenceDate) {
+  const d = new Date(referenceDate);
+  const year = d.getFullYear();
+  const month = d.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+
+  // Start from the Sunday before (or on) the first day
+  const startDate = new Date(firstDay);
+  startDate.setDate(firstDay.getDate() - firstDay.getDay());
+
+  const days = [];
+  const current = new Date(startDate);
+  // Always show 6 weeks for consistency
+  for (let i = 0; i < 42; i++) {
+    days.push(new Date(current));
+    current.setDate(current.getDate() + 1);
+  }
+  return days;
+}
+
+function isSameDay(d1, d2) {
+  return d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate();
+}
+
+function getEventsForDay(events, day) {
+  return events.filter(e => {
+    const eventDate = new Date(e.start);
+    return isSameDay(eventDate, day);
+  });
+}
+
+function getTasksForDay(tasks, day) {
+  return tasks.filter(t => {
+    const dueDate = new Date(t.dueDate);
+    return isSameDay(dueDate, day);
+  });
+}
+
 export default function StudentDashboard() {
   const [tasks, setTasks] = useState(DEMO_TASKS);
   const [events, setEvents] = useState(DEMO_EVENTS);
@@ -131,12 +231,29 @@ export default function StudentDashboard() {
   const [emailsScanned, setEmailsScanned] = useState(0);
   const [filterCategory, setFilterCategory] = useState('all');
 
+  // Calendar view state
+  const [calendarView, setCalendarView] = useState('today'); // 'today', 'week', 'month'
+  const [calendarDate, setCalendarDate] = useState(new Date());
+
   // Get unique categories from suggestions
   const activeCategories = [...new Set(emailSuggestions.filter(s => s.status === 'pending').map(s => s.category))];
 
-  // Filter suggestions by category
-  const filteredSuggestions = emailSuggestions.filter(s => {
-    if (s.status !== 'pending') return false;
+  // Filter and sort suggestions — urgent ones float to top
+  const pendingSuggestions = emailSuggestions.filter(s => s.status === 'pending');
+
+  const sortedPendingSuggestions = [...pendingSuggestions].sort((a, b) => {
+    const aUrgency = getUrgencyInfo(a);
+    const bUrgency = getUrgencyInfo(b);
+    // Urgent items first
+    if (aUrgency.isUrgent && !bUrgency.isUrgent) return -1;
+    if (!aUrgency.isUrgent && bUrgency.isUrgent) return 1;
+    // Among urgent, sooner events first
+    if (aUrgency.isUrgent && bUrgency.isUrgent) return new Date(a.date) - new Date(b.date);
+    // Non-urgent: by date
+    return new Date(a.date) - new Date(b.date);
+  });
+
+  const filteredSuggestions = sortedPendingSuggestions.filter(s => {
     if (filterCategory === 'all') return true;
     return s.category === filterCategory;
   });
@@ -147,20 +264,17 @@ export default function StudentDashboard() {
   // Handle scanning inbox
   async function handleScanInbox() {
     if (isDemo) {
-      // In demo mode, simulate a scan
       setScanning(true);
       setScanComplete(false);
       setTimeout(() => {
         setScanning(false);
         setScanComplete(true);
         setEmailsScanned(47);
-        // Reset demo suggestions to show fresh results
         setEmailSuggestions(DEMO_EMAIL_SUGGESTIONS.map(s => ({ ...s, status: 'pending' })));
       }, 2000);
       return;
     }
 
-    // Real scan — call API
     setScanning(true);
     setScanComplete(false);
     try {
@@ -168,8 +282,8 @@ export default function StudentDashboard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          accessToken: '', // TODO: get from session
-          user: '', // TODO: get from session
+          accessToken: '',
+          user: '',
           days: 7,
         }),
       });
@@ -201,7 +315,7 @@ export default function StudentDashboard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          accessToken: '', // TODO: get from session
+          accessToken: '',
           user: '',
           suggestion,
         }),
@@ -209,21 +323,18 @@ export default function StudentDashboard() {
     }
   }
 
-  // Dismiss a suggestion
   function handleDismiss(suggestionId) {
     setEmailSuggestions(prev => prev.map(s =>
       s.id === suggestionId ? { ...s, status: 'dismissed' } : s
     ));
   }
 
-  // Snooze — remind later
   function handleSnooze(suggestionId) {
     setEmailSuggestions(prev => prev.map(s =>
       s.id === suggestionId ? { ...s, status: 'snoozed' } : s
     ));
   }
 
-  // Unsnooze
   function handleUnsnooze(suggestionId) {
     setEmailSuggestions(prev => prev.map(s =>
       s.id === suggestionId ? { ...s, status: 'pending' } : s
@@ -238,6 +349,47 @@ export default function StudentDashboard() {
     if (aPriority !== bPriority) return aPriority - bPriority;
     return new Date(a.dueDate) - new Date(b.dueDate);
   });
+
+  // Calendar navigation
+  function navigateCalendar(direction) {
+    const d = new Date(calendarDate);
+    if (calendarView === 'week') {
+      d.setDate(d.getDate() + (direction * 7));
+    } else if (calendarView === 'month') {
+      d.setMonth(d.getMonth() + direction);
+    } else {
+      d.setDate(d.getDate() + direction);
+    }
+    setCalendarDate(d);
+  }
+
+  function goToToday() {
+    setCalendarDate(new Date());
+  }
+
+  // Get today's events for "today" view
+  const todayDate = calendarView === 'today' ? calendarDate : new Date();
+  const todayEvents = events.filter(e => isSameDay(new Date(e.start), todayDate));
+  const todayTasks = tasks.filter(t => isSameDay(new Date(t.dueDate), todayDate));
+
+  // Calendar header label
+  function getCalendarLabel() {
+    if (calendarView === 'today') {
+      const isActualToday = isSameDay(calendarDate, new Date());
+      const label = calendarDate.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+      return isActualToday ? `Today — ${label}` : label;
+    }
+    if (calendarView === 'week') {
+      const weekDays = getWeekDays(calendarDate);
+      const start = weekDays[0];
+      const end = weekDays[6];
+      if (start.getMonth() === end.getMonth()) {
+        return `${start.toLocaleDateString([], { month: 'long' })} ${start.getDate()} – ${end.getDate()}, ${start.getFullYear()}`;
+      }
+      return `${start.toLocaleDateString([], { month: 'short' })} ${start.getDate()} – ${end.toLocaleDateString([], { month: 'short' })} ${end.getDate()}`;
+    }
+    return calendarDate.toLocaleDateString([], { month: 'long', year: 'numeric' });
+  }
 
   return (
     <div>
@@ -286,21 +438,165 @@ export default function StudentDashboard() {
             ))}
           </div>
 
-          {/* RIGHT: Today's Calendar */}
+          {/* RIGHT: Calendar with View Toggle */}
           <div className="card">
-            <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '20px' }}>&#128197;</span> Today&apos;s Calendar
-            </h2>
-            {events.map(event => (
-              <div key={event.id} className="task-item" style={{ background: '#DBEAFE' }}>
-                <div className="task-dot outlook"></div>
-                <div className="task-info">
-                  <div className="task-name">{event.name}</div>
-                  <div className="task-meta">{formatTime(event.start)} — {formatTime(event.end)}</div>
-                </div>
-                <span className="badge badge-outlook">Outlook</span>
+            <div className="calendar-header">
+              <h2 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                <span style={{ fontSize: '20px' }}>&#128197;</span>
+                <span className="calendar-title-label">{getCalendarLabel()}</span>
+              </h2>
+
+              {/* View toggle buttons */}
+              <div className="calendar-view-toggle">
+                <button
+                  className={`cal-view-btn ${calendarView === 'today' ? 'active' : ''}`}
+                  onClick={() => { setCalendarView('today'); setCalendarDate(new Date()); }}
+                >
+                  Day
+                </button>
+                <button
+                  className={`cal-view-btn ${calendarView === 'week' ? 'active' : ''}`}
+                  onClick={() => setCalendarView('week')}
+                >
+                  Week
+                </button>
+                <button
+                  className={`cal-view-btn ${calendarView === 'month' ? 'active' : ''}`}
+                  onClick={() => setCalendarView('month')}
+                >
+                  Month
+                </button>
               </div>
-            ))}
+            </div>
+
+            {/* Calendar Navigation */}
+            <div className="calendar-nav">
+              <button className="cal-nav-btn" onClick={() => navigateCalendar(-1)}>&lsaquo;</button>
+              <button className="cal-nav-today" onClick={goToToday}>Today</button>
+              <button className="cal-nav-btn" onClick={() => navigateCalendar(1)}>&rsaquo;</button>
+            </div>
+
+            {/* === TODAY VIEW === */}
+            {calendarView === 'today' && (
+              <div>
+                {todayEvents.length === 0 && todayTasks.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '24px 16px', color: '#94A3B8', fontSize: '14px' }}>
+                    No events or assignments for this day.
+                  </div>
+                )}
+                {todayEvents.map(event => (
+                  <div key={event.id} className="task-item" style={{ background: '#DBEAFE' }}>
+                    <div className="task-dot outlook"></div>
+                    <div className="task-info">
+                      <div className="task-name">{event.name}</div>
+                      <div className="task-meta">{formatTime(event.start)} — {formatTime(event.end)}</div>
+                    </div>
+                    <span className="badge badge-outlook">Outlook</span>
+                  </div>
+                ))}
+                {todayTasks.map(task => (
+                  <div key={task.id} className="task-item">
+                    <div className="task-dot d2l"></div>
+                    <div className="task-info">
+                      <div className="task-name">{task.name}</div>
+                      <div className="task-meta">Due {formatTime(task.dueDate)} &middot; {task.points} pts</div>
+                    </div>
+                    <span className={`badge badge-${getPriorityLevel(task)}`}>
+                      {getPriorityLevel(task) === 'high' ? 'Urgent' : getPriorityLevel(task) === 'medium' ? 'Soon' : 'Upcoming'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* === WEEK VIEW === */}
+            {calendarView === 'week' && (
+              <div className="week-view">
+                {getWeekDays(calendarDate).map((day, i) => {
+                  const dayEvents = getEventsForDay(events, day);
+                  const dayTasks = getTasksForDay(tasks, day);
+                  const isToday = isSameDay(day, new Date());
+                  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+                  return (
+                    <div
+                      key={i}
+                      className={`week-day-col ${isToday ? 'today' : ''}`}
+                      onClick={() => { setCalendarView('today'); setCalendarDate(day); }}
+                    >
+                      <div className="week-day-header">
+                        <span className="week-day-name">{dayNames[i]}</span>
+                        <span className={`week-day-num ${isToday ? 'today-num' : ''}`}>
+                          {day.getDate()}
+                        </span>
+                      </div>
+                      <div className="week-day-events">
+                        {dayEvents.map(e => (
+                          <div key={e.id} className="week-event-chip outlook-chip">
+                            {formatTime(e.start)} {e.name.length > 18 ? e.name.slice(0, 18) + '...' : e.name}
+                          </div>
+                        ))}
+                        {dayTasks.map(t => (
+                          <div key={t.id} className={`week-event-chip task-chip-${getPriorityLevel(t)}`}>
+                            {t.name.length > 20 ? t.name.slice(0, 20) + '...' : t.name}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* === MONTH VIEW === */}
+            {calendarView === 'month' && (
+              <div className="month-view">
+                <div className="month-header-row">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                    <div key={d} className="month-header-cell">{d}</div>
+                  ))}
+                </div>
+                <div className="month-grid">
+                  {getMonthDays(calendarDate).map((day, i) => {
+                    const isCurrentMonth = day.getMonth() === calendarDate.getMonth();
+                    const isToday = isSameDay(day, new Date());
+                    const dayEvents = getEventsForDay(events, day);
+                    const dayTasks = getTasksForDay(tasks, day);
+                    const hasItems = dayEvents.length + dayTasks.length > 0;
+
+                    return (
+                      <div
+                        key={i}
+                        className={`month-day-cell ${isCurrentMonth ? '' : 'other-month'} ${isToday ? 'today-cell' : ''} ${hasItems ? 'has-items' : ''}`}
+                        onClick={() => { setCalendarView('today'); setCalendarDate(day); }}
+                      >
+                        <span className={`month-day-num ${isToday ? 'today-num' : ''}`}>
+                          {day.getDate()}
+                        </span>
+                        {dayEvents.length > 0 && (
+                          <div className="month-dot-row">
+                            {dayEvents.slice(0, 3).map((e, j) => (
+                              <span key={j} className="month-dot outlook-dot"></span>
+                            ))}
+                          </div>
+                        )}
+                        {dayTasks.length > 0 && (
+                          <div className="month-dot-row">
+                            {dayTasks.slice(0, 3).map((t, j) => (
+                              <span key={j} className="month-dot task-dot-indicator"></span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="month-legend">
+                  <span className="legend-item"><span className="month-dot outlook-dot"></span> Outlook Event</span>
+                  <span className="legend-item"><span className="month-dot task-dot-indicator"></span> D2L Assignment</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* FULL WIDTH: Email Suggested Events */}
@@ -367,8 +663,17 @@ export default function StudentDashboard() {
 
             {filteredSuggestions.map(suggestion => {
               const conf = getConfidenceStyle(suggestion.confidence);
+              const urgency = getUrgencyInfo(suggestion);
+
               return (
-                <div key={suggestion.id} className="email-suggestion-card">
+                <div key={suggestion.id} className={`email-suggestion-card ${urgency.isUrgent ? 'urgency-' + urgency.style : ''}`}>
+                  {/* Smart Notification — Urgency Banner */}
+                  {urgency.isUrgent && (
+                    <div className={`urgency-banner urgency-banner-${urgency.style}`}>
+                      <span className="urgency-icon">&#9888;</span> {urgency.label}
+                    </div>
+                  )}
+
                   <div className="email-suggestion-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
                       <span style={{ fontSize: '18px' }}>{getCategoryIcon(suggestion.category)}</span>

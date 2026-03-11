@@ -27,7 +27,7 @@ export const config = {
     clientId: process.env.AZURE_CLIENT_ID || 'YOUR_AZURE_CLIENT_ID',
     clientSecret: process.env.AZURE_CLIENT_SECRET || 'YOUR_AZURE_CLIENT_SECRET',
     tenantId: process.env.AZURE_TENANT_ID || 'YOUR_AZURE_TENANT_ID',
-    scopes: ['Calendars.ReadWrite', 'User.Read'],
+    scopes: ['Calendars.ReadWrite', 'Mail.Read', 'User.Read'],
   },
 
   // AI Prioritization — Claude or OpenAI

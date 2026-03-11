@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { reportError, showToast } from '../components/ToastNotifications';
 
 // Demo data — replaced with real API data once D2L/Outlook tokens are available
 const DEMO_TASKS = [
@@ -275,51 +276,88 @@ export default function StudentDashboard() {
       return;
     }
 
+    // Real scan with retry logic + error reporting
     setScanning(true);
     setScanComplete(false);
-    try {
-      const res = await fetch('/api/email/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          accessToken: '',
-          user: '',
-          days: 7,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setEmailsScanned(data.emailsScanned);
-        setEmailSuggestions(data.suggestions.map((s, i) => ({
-          ...s,
-          id: `scan-${i}`,
-          status: 'pending',
-        })));
-        setScanComplete(true);
+    let retries = 0;
+    const maxRetries = 2;
+
+    while (retries <= maxRetries) {
+      try {
+        const res = await fetch('/api/email/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accessToken: '',
+            user: '',
+            days: 7,
+          }),
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+        if (data.success) {
+          setEmailsScanned(data.emailsScanned);
+          setEmailSuggestions(data.suggestions.map((s, i) => ({
+            ...s,
+            id: `scan-${i}`,
+            status: 'pending',
+          })));
+          setScanComplete(true);
+          break;
+        } else {
+          throw new Error(data.error || 'Scan returned unsuccessful');
+        }
+      } catch (err) {
+        retries++;
+        if (retries > maxRetries) {
+          reportError({
+            errorCode: 'outlook_email_scan_failed',
+            severity: 'medium',
+            platform: 'outlook',
+            endpoint: '/api/email/scan',
+            errorMessage: err.message,
+            context: { retries: maxRetries },
+          });
+        } else {
+          await new Promise(r => setTimeout(r, 1000 * retries));
+        }
       }
-    } catch (err) {
-      console.error('Scan failed:', err);
     }
     setScanning(false);
   }
 
   // Accept a suggestion — add to calendar
-  function handleAccept(suggestionId) {
+  async function handleAccept(suggestionId) {
     setEmailSuggestions(prev => prev.map(s =>
       s.id === suggestionId ? { ...s, status: 'accepted' } : s
     ));
 
     if (!isDemo) {
       const suggestion = emailSuggestions.find(s => s.id === suggestionId);
-      fetch('/api/email/accept', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          accessToken: '',
-          user: '',
-          suggestion,
-        }),
-      });
+      try {
+        const res = await fetch('/api/email/accept', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accessToken: '',
+            user: '',
+            suggestion,
+          }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        showToast({ type: 'success', message: 'Event added to your Outlook calendar!', duration: 4000 });
+      } catch (err) {
+        reportError({
+          errorCode: 'outlook_calendar_write_failed',
+          severity: 'medium',
+          platform: 'outlook',
+          endpoint: '/api/email/accept',
+          errorMessage: err.message,
+          context: { suggestionTitle: suggestion?.title },
+        });
+      }
     }
   }
 

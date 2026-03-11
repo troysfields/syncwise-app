@@ -1,4 +1,6 @@
 import './globals.css';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { ToastContainer } from './components/ToastNotifications';
 
 export const metadata = {
   title: 'SyncWise AI — Smart Academic Calendar',
@@ -8,7 +10,12 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <ErrorBoundary>
+          {children}
+          <ToastContainer />
+        </ErrorBoundary>
+      </body>
     </html>
   );
 }

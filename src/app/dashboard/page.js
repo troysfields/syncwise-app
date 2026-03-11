@@ -2,6 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { reportError, showToast } from '../components/ToastNotifications';
+import { Sidebar } from '../components/Sidebar';
+import { ThemeToggle } from '../components/ThemeProvider';
+import { NotificationCenter } from '../components/NotificationCenter';
+import { ManualEventModal } from '../components/ManualEventModal';
+import { scheduleNotifications, cancelItemNotifications, getUnreadCount } from '../../lib/notifications';
+import { trackPageView, trackFeatureUsage, trackCalendarView, trackFocusMode, trackExport, trackManualEvent, initSession } from '../../lib/analytics';
 
 // ============================================================
 // DEMO DATA — Replaced with real API data once D2L/Outlook connected
@@ -243,8 +249,8 @@ function isSameDay(d1, d2) {
     d1.getDate() === d2.getDate();
 }
 
-function getEventsForDay(events, day) {
-  return events.filter(e => isSameDay(new Date(e.start), day));
+function getEventsForDay(eventsArray, day) {
+  return eventsArray.filter(e => isSameDay(new Date(e.start), day));
 }
 
 function getTasksForDay(tasks, day) {
@@ -322,9 +328,108 @@ export default function StudentDashboard() {
   const [calendarView, setCalendarView] = useState('today');
   const [calendarDate, setCalendarDate] = useState(new Date());
 
+  // New feature state variables
+  const [activeSection, setActiveSection] = useState('dashboard');
+  const [focusMode, setFocusMode] = useState(false);
+  const [showManualEventModal, setShowManualEventModal] = useState(false);
+  const [manualEvents, setManualEvents] = useState([]);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+
+  // Initialize analytics and notifications on mount
+  useEffect(() => {
+    trackPageView('StudentDashboard');
+    initSession();
+    // Load unread notification count
+    const unreadCount = getUnreadCount();
+    setUnreadNotificationCount(unreadCount);
+  }, []);
+
+  // ============================================================
+  // EXPORT WEEK FUNCTION
+  // ============================================================
+
+  function generateWeekExport() {
+    const weekDays = getWeekDays(new Date());
+    const startDate = weekDays[0];
+    const endDate = weekDays[6];
+
+    let text = `SYNCWISE AI — WEEKLY SUMMARY\n`;
+    text += `${startDate.toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${endDate.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}\n`;
+    text += `\n${'='.repeat(50)}\n\n`;
+
+    // This week's tasks
+    text += `UPCOMING ASSIGNMENTS & DEADLINES:\n`;
+    const weekTasks = visibleTasks.filter(t => {
+      const d = t.manualDate || t.dueDate;
+      if (!d) return false;
+      const taskDate = new Date(d);
+      return taskDate >= startDate && taskDate <= endDate;
+    }).sort((a, b) => new Date(a.manualDate || a.dueDate) - new Date(b.manualDate || b.dueDate));
+
+    if (weekTasks.length === 0) {
+      text += `  • No assignments this week\n`;
+    } else {
+      weekTasks.forEach(t => {
+        const dateStr = new Date(t.manualDate || t.dueDate).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+        text += `  • [${dateStr}] ${t.name} (${t.courseName}) — ${t.points || 0} pts\n`;
+      });
+    }
+
+    // This week's events
+    text += `\nCALENDAR EVENTS:\n`;
+    const weekEvents = allEvents.filter(e => {
+      const eventDate = new Date(e.start);
+      return eventDate >= startDate && eventDate <= endDate;
+    }).sort((a, b) => new Date(a.start) - new Date(b.start));
+
+    if (weekEvents.length === 0) {
+      text += `  • No events scheduled\n`;
+    } else {
+      weekEvents.forEach(e => {
+        const dateStr = new Date(e.start).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+        const timeStr = formatTime(e.start);
+        text += `  • [${dateStr} ${timeStr}] ${e.name}\n`;
+      });
+    }
+
+    // Summary stats
+    text += `\n${'='.repeat(50)}\n`;
+    text += `STATS:\n`;
+    text += `  • Total assignments: ${weekTasks.length}\n`;
+    text += `  • Total points: ${weekTasks.reduce((sum, t) => sum + (t.points || 0), 0)}\n`;
+    text += `  • Scheduled events: ${weekEvents.length}\n`;
+
+    return text;
+  }
+
+  function handleExportWeek() {
+    const weekExport = generateWeekExport();
+    navigator.clipboard.writeText(weekExport).then(() => {
+      showToast({ type: 'success', message: 'Week summary copied to clipboard', duration: 3000 });
+      trackExport('week');
+    }).catch(() => {
+      showToast({ type: 'error', message: 'Failed to copy to clipboard', duration: 3000 });
+    });
+  }
+
+  function handleAddManualEvent(eventData) {
+    const newEvent = {
+      id: 'manual-' + Date.now(),
+      ...eventData,
+      source: 'manual',
+    };
+    setManualEvents(prev => [...prev, newEvent]);
+    setShowManualEventModal(false);
+    showToast({ type: 'success', message: 'Event added to calendar', duration: 3000 });
+    trackManualEvent('event_created');
+  }
+
   // ============================================================
   // COMPUTED VALUES
   // ============================================================
+
+  // Merge manual events with demo events
+  const allEvents = [...events, ...manualEvents];
 
   // Active tasks (visible on calendar and assignment list)
   const visibleTasks = tasks.filter(t => {
@@ -339,6 +444,15 @@ export default function StudentDashboard() {
 
   // Needs attention list
   const attentionItems = getNeedsAttention(visibleTasks, gradeAlerts.filter(g => !dismissedGrades.includes(g.id)));
+
+  // Focus mode filtering
+  const today = new Date();
+  const todayTodayTasks = visibleTasks.filter(t => {
+    const d = t.manualDate || t.dueDate;
+    return d && isSameDay(new Date(d), today);
+  });
+  const focusModeAttentionItems = focusMode ? attentionItems : null;
+  const focusModeTasks = focusMode ? todayTodayTasks : null;
 
   // Get unique categories from email suggestions
   const activeCategories = [...new Set(emailSuggestions.filter(s => s.status === 'pending').map(s => s.category))];
@@ -384,10 +498,15 @@ export default function StudentDashboard() {
   // ============================================================
 
   function handleMarkComplete(taskId) {
+    const task = tasks.find(t => t.id === taskId);
     setTasks(prev => prev.map(t =>
       t.id === taskId ? { ...t, status: 'completed', submitted: true } : t
     ));
+    if (!isDemo && task) {
+      cancelItemNotifications(taskId);
+    }
     showToast({ type: 'success', message: 'Marked as completed', duration: 3000 });
+    trackFeatureUsage('mark_complete');
   }
 
   function handleRemoveItem(taskId) {
@@ -399,12 +518,17 @@ export default function StudentDashboard() {
 
   function handleSetDate(taskId) {
     if (!editDateValue) return;
+    const task = tasks.find(t => t.id === taskId);
     setTasks(prev => prev.map(t =>
       t.id === taskId ? { ...t, manualDate: editDateValue, confirmedNoDate: true } : t
     ));
     setEditingDateId(null);
     setEditDateValue('');
+    if (!isDemo && task) {
+      scheduleNotifications(taskId, editDateValue);
+    }
     showToast({ type: 'success', message: 'Date updated', duration: 3000 });
+    trackFeatureUsage('set_manual_date');
   }
 
   function handleConfirmNoDate(taskId) {
@@ -533,14 +657,15 @@ export default function StudentDashboard() {
     else if (calendarView === 'month') d.setMonth(d.getMonth() + direction);
     else d.setDate(d.getDate() + direction);
     setCalendarDate(d);
+    trackCalendarView(calendarView);
   }
 
   function goToToday() { setCalendarDate(new Date()); }
 
   // Calendar data
   const todayDate = calendarView === 'today' ? calendarDate : new Date();
-  const todayEvents = events.filter(e => isSameDay(new Date(e.start), todayDate));
-  const todayTasks = visibleTasks.filter(t => {
+  const todayEvents = allEvents.filter(e => isSameDay(new Date(e.start), todayDate));
+  const todayTasksForCalendar = visibleTasks.filter(t => {
     const d = t.manualDate || t.dueDate;
     return d && isSameDay(new Date(d), todayDate);
   });
@@ -568,35 +693,180 @@ export default function StudentDashboard() {
   // ============================================================
 
   return (
-    <div>
-      {/* Top Nav */}
-      <nav className="topnav">
-        <a className="topnav-logo" href="/dashboard">
-          <span className="topnav-logo-icon">S</span>
-          SyncWise AI
-        </a>
-        <div className="topnav-user">
-          {isDemo && <span className="badge badge-medium">Demo Mode</span>}
-          <span>Troy Fields</span>
-          <a href="/login" style={{ color: '#64748B', textDecoration: 'none', fontSize: '13px' }}>Sign out</a>
-        </div>
-      </nav>
+    <div className="layout-with-sidebar">
+      {/* Sidebar */}
+      <Sidebar
+        role="student"
+        activeSection={activeSection}
+        onNavigate={setActiveSection}
+        unreadCount={unreadNotificationCount}
+      />
 
-      <div className="container">
-        {/* Demo Banner */}
-        {isDemo && (
-          <div style={{
-            background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '10px',
-            padding: '12px 20px', margin: '20px 0 0', fontSize: '14px', color: '#92400E',
-          }}>
-            <strong>Demo Mode</strong> — Showing sample data. Connect your CMU accounts to see real assignments and events.
+      <main className="main-content">
+        {/* Top Nav */}
+        <nav className="topnav">
+          <a className="topnav-logo" href="/dashboard">
+            <span className="topnav-logo-icon">S</span>
+            SyncWise AI
+          </a>
+          <div className="topnav-user">
+            <ThemeToggle />
+            <NotificationCenter />
+            {isDemo && <span className="badge badge-medium">Demo Mode</span>}
+            <span>Troy Fields</span>
+            <a href="/instructor" style={{ color: '#64748B', textDecoration: 'none', fontSize: '13px' }}>Instructor View</a>
           </div>
-        )}
+        </nav>
+
+        <div className="container">
+          {/* Demo Banner */}
+          {isDemo && (
+            <div style={{
+              background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '10px',
+              padding: '12px 20px', margin: '20px 0 0', fontSize: '14px', color: '#92400E',
+            }}>
+              <strong>Demo Mode</strong> — Showing sample data. Connect your CMU accounts to see real assignments and events.
+            </div>
+          )}
+
+          {/* Focus Mode Toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '20px 0', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <button
+                onClick={() => {
+                  setFocusMode(!focusMode);
+                  trackFocusMode(focusMode ? 'disabled' : 'enabled');
+                }}
+                style={{
+                  padding: '8px 16px',
+                  background: focusMode ? '#4F46E5' : '#E2E8F0',
+                  color: focusMode ? '#FFFFFF' : '#1E293B',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontWeight: '600',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                className={focusMode ? 'focus-mode-active' : ''}
+              >
+                {focusMode ? '🎯 Focus Mode ON' : '🎯 Focus Mode'}
+              </button>
+              {focusMode && (
+                <span style={{ fontSize: '12px', color: '#4F46E5', fontWeight: '500' }}>
+                  Showing today's tasks only
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => setShowManualEventModal(true)}
+                style={{
+                  padding: '8px 16px',
+                  background: '#059669',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontWeight: '600',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                + Add Event
+              </button>
+              {calendarView === 'week' && (
+                <button
+                  onClick={handleExportWeek}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#7C3AED',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontWeight: '600',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  📋 Export Week
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Manual Event Modal */}
+          {showManualEventModal && (
+            <ManualEventModal
+              onSave={handleAddManualEvent}
+              onCancel={() => setShowManualEventModal(false)}
+            />
+          )}
+
+          {/* Focus Mode View */}
+          {focusMode && (
+            <div className="card" style={{ margin: '16px 0 0', borderLeft: '4px solid #4F46E5' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '20px' }}>🎯</span> Today's Focus
+              </h2>
+              {focusModeTasks && focusModeTasks.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '24px', color: '#94A3B8' }}>
+                  <p style={{ fontSize: '14px' }}>No tasks due today. Great work!</p>
+                </div>
+              ) : (
+                <>
+                  <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: '#64748B' }}>Due Today</h3>
+                  {focusModeTasks && focusModeTasks.map(task => (
+                    <div key={task.id} className="task-item" style={{ borderLeft: `3px solid ${task.courseColor}` }}>
+                      {task.unread && <span className="unread-dot"></span>}
+                      <span style={{ fontSize: '16px', flexShrink: 0 }}>{getItemTypeIcon(task.type)}</span>
+                      <div className="task-info">
+                        <div className="task-name">{task.name}</div>
+                        <div className="task-meta">
+                          <span style={{ color: task.courseColor, fontWeight: '600' }}>{task.courseName}</span>
+                          {task.points && ` · ${task.points} pts`}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
+                        {task.submitted && <span className="badge badge-submitted">Submitted</span>}
+                        {!task.submitted && <span className="badge badge-high">Urgent</span>}
+                      </div>
+                      <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                        {!task.submitted && (
+                          <button className="item-action-btn complete" onClick={() => handleMarkComplete(task.id)}
+                            title="Mark as completed">✓</button>
+                        )}
+                        <button className="item-action-btn remove" onClick={() => handleRemoveItem(task.id)}
+                          title="Hide from view">✕</button>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+              {focuseModeAttentionItems && focuseModeAttentionItems.length > 0 && (
+                <>
+                  <h3 style={{ fontSize: '14px', fontWeight: '600', marginTop: '16px', marginBottom: '8px', color: '#EF4444' }}>Needs Attention</h3>
+                  {focuseModeAttentionItems.map((item, i) => (
+                    <div key={item.id + '-focus-' + i} className="task-item needs-attention-item" style={{ borderLeft: `3px solid ${item.courseColor || '#EF4444'}` }}>
+                      {item.unread && <span className="unread-dot"></span>}
+                      <span style={{ fontSize: '16px', flexShrink: 0 }}>{getItemTypeIcon(item.type)}</span>
+                      <div className="task-info">
+                        <div className="task-name">{item.name}</div>
+                        <div className="task-meta">
+                          <span style={{ color: item.courseColor, fontWeight: '600' }}>{item.courseName}</span>
+                          {' · '}{item.attentionReason}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
 
         {/* ============================================================ */}
-        {/* NEEDS ATTENTION SECTION */}
+        {/* NEEDS ATTENTION SECTION — Hidden in focus mode */}
         {/* ============================================================ */}
-        {attentionItems.length > 0 && (
+        {!focusMode && attentionItems.length > 0 && (
           <div className="card" style={{ margin: '20px 0 0', borderLeft: '4px solid #EF4444' }}>
             <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '20px' }}>&#128680;</span> Needs Attention
@@ -688,9 +958,9 @@ export default function StudentDashboard() {
         )}
 
         {/* ============================================================ */}
-        {/* GRADE ALERTS */}
+        {/* GRADE ALERTS — Hidden in focus mode */}
         {/* ============================================================ */}
-        {gradeAlerts.filter(g => !dismissedGrades.includes(g.id)).length > 0 && (
+        {!focusMode && gradeAlerts.filter(g => !dismissedGrades.includes(g.id)).length > 0 && (
           <div className="card" style={{ margin: '16px 0 0', borderLeft: '4px solid #059669' }}>
             <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '18px' }}>&#127942;</span> New Grades
@@ -717,8 +987,9 @@ export default function StudentDashboard() {
         )}
 
         {/* ============================================================ */}
-        {/* MAIN GRID */}
+        {/* MAIN GRID — Hidden in focus mode */}
         {/* ============================================================ */}
+        {!focusMode && (
         <div className="dash-grid" style={{ marginTop: '4px' }}>
           {/* LEFT: AI Suggestions */}
           <div className="card">
@@ -782,7 +1053,7 @@ export default function StudentDashboard() {
             {/* TODAY VIEW */}
             {calendarView === 'today' && (
               <div>
-                {todayEvents.length === 0 && todayTasks.length === 0 && (
+                {todayEvents.length === 0 && todayTasksForCalendar.length === 0 && (
                   <div style={{ textAlign: 'center', padding: '24px 16px', color: '#94A3B8', fontSize: '14px' }}>
                     No events or assignments for this day.
                   </div>
@@ -794,10 +1065,10 @@ export default function StudentDashboard() {
                       <div className="task-name">{event.name}</div>
                       <div className="task-meta">{formatTime(event.start)} — {formatTime(event.end)}</div>
                     </div>
-                    <span className="badge badge-outlook">Outlook</span>
+                    <span className="badge badge-outlook">{event.source === 'manual' ? 'Added' : 'Outlook'}</span>
                   </div>
                 ))}
-                {todayTasks.map(task => (
+                {todayTasksForCalendar.map(task => (
                   <div key={task.id} className="task-item" style={{ borderLeft: `3px solid ${task.courseColor}` }}>
                     {task.unread && <span className="unread-dot"></span>}
                     <span style={{ fontSize: '14px', flexShrink: 0 }}>{getItemTypeIcon(task.type)}</span>
@@ -825,7 +1096,7 @@ export default function StudentDashboard() {
             {calendarView === 'week' && (
               <div className="week-view">
                 {getWeekDays(calendarDate).map((day, i) => {
-                  const dayEvents = getEventsForDay(events, day);
+                  const dayEvents = getEventsForDay(allEvents, day);
                   const dayTasks = getTasksForDay(visibleTasks, day);
                   const isToday = isSameDay(day, new Date());
                   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -866,7 +1137,7 @@ export default function StudentDashboard() {
                   {getMonthDays(calendarDate).map((day, i) => {
                     const isCurrentMonth = day.getMonth() === calendarDate.getMonth();
                     const isToday = isSameDay(day, new Date());
-                    const dayEvents = getEventsForDay(events, day);
+                    const dayEvents = getEventsForDay(allEvents, day);
                     const dayTasks = getTasksForDay(visibleTasks, day);
                     const hasItems = dayEvents.length + dayTasks.length > 0;
                     return (
@@ -1108,7 +1379,9 @@ export default function StudentDashboard() {
             })}
           </div>
         </div>
+        )}
       </div>
+      </main>
     </div>
   );
 }

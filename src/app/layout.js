@@ -2,6 +2,7 @@ import './globals.css';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastContainer } from './components/ToastNotifications';
 import { FeedbackPanel } from './components/FeedbackPanel';
+import { ThemeProvider } from './components/ThemeProvider';
 
 export const metadata = {
   title: 'SyncWise AI — Smart Academic Calendar',
@@ -10,13 +11,15 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
-        <ErrorBoundary>
-          {children}
-          <ToastContainer />
-          <FeedbackPanel />
-        </ErrorBoundary>
+        <ThemeProvider>
+          <ErrorBoundary>
+            {children}
+            <ToastContainer />
+            <FeedbackPanel />
+          </ErrorBoundary>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -3,6 +3,7 @@
 // Uses Claude API (Anthropic) or OpenAI — configurable
 
 import { config } from './config';
+import { getModelForRequest, recordRequest } from './rate-limiter';
 
 // Score tasks based on due date proximity, point value, and estimated effort
 // This runs locally first as a fast heuristic, then AI refines it
@@ -43,15 +44,21 @@ export function quickPrioritize(tasks) {
 }
 
 // AI-powered prioritization — sends context to Claude/OpenAI for smart suggestions
-export async function aiPrioritize(tasks, calendarEvents) {
+// Supports rate limiting with automatic Sonnet → Haiku downgrade
+export async function aiPrioritize(tasks, calendarEvents, studentId = 'anonymous') {
   const apiKey = config.ai.apiKey;
   if (!apiKey || apiKey.startsWith('YOUR_')) {
     // Fallback to quick prioritize if no AI key configured
     return {
       tasks: quickPrioritize(tasks),
       suggestions: generateFallbackSuggestions(quickPrioritize(tasks)),
+      isLiteMode: false,
+      liteModeReason: null,
     };
   }
+
+  // Check rate limits and get the appropriate model
+  const { model, isLiteMode, reason } = getModelForRequest(studentId, 'prioritization');
 
   const taskSummary = tasks.map(t => {
     const due = new Date(t.dueDate);
@@ -90,16 +97,22 @@ Respond in JSON format:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
+          model, // Uses Sonnet or Haiku based on rate limiter
           max_tokens: 1024,
           messages: [{ role: 'user', content: prompt }],
         }),
       });
       const data = await res.json();
       const text = data.content?.[0]?.text || '';
+
+      // Track token usage
+      const tokensUsed = (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0);
+      recordRequest(studentId, 'prioritization', tokensUsed);
+
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+        const result = JSON.parse(jsonMatch[0]);
+        return { ...result, isLiteMode, liteModeReason: reason };
       }
     } else {
       // OpenAI fallback
@@ -126,6 +139,8 @@ Respond in JSON format:
   return {
     tasks: quickPrioritize(tasks),
     suggestions: generateFallbackSuggestions(quickPrioritize(tasks)),
+    isLiteMode: false,
+    liteModeReason: null,
   };
 }
 

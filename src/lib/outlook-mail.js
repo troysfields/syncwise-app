@@ -5,6 +5,7 @@
 
 import { logApiCall } from './logger';
 import { config } from './config';
+import { getModelForRequest, recordRequest } from './rate-limiter';
 
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 
@@ -79,8 +80,9 @@ const EVENT_CATEGORIES = [
 ];
 
 // Parse emails with AI to find suggested calendar events
-export async function parseEmailsForEvents(emails, existingEvents = []) {
-  if (!emails || emails.length === 0) return [];
+// Supports rate limiting with automatic Sonnet → Haiku downgrade
+export async function parseEmailsForEvents(emails, existingEvents = [], studentId = 'anonymous') {
+  if (!emails || emails.length === 0) return { suggestions: [], isLiteMode: false, liteModeReason: null };
 
   const apiKey = config.ai.apiKey;
 
@@ -139,6 +141,9 @@ Respond in JSON:
 
 If no calendar-worthy events are found, return { "suggestions": [] }`;
 
+  // Check rate limits and get the appropriate model
+  const { model, isLiteMode, reason } = getModelForRequest(studentId, 'emailScan');
+
   // Try AI parsing
   if (apiKey && !apiKey.startsWith('YOUR_')) {
     try {
@@ -151,17 +156,22 @@ If no calendar-worthy events are found, return { "suggestions": [] }`;
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'claude-sonnet-4-6',
+            model, // Uses Sonnet or Haiku based on rate limiter
             max_tokens: 2048,
             messages: [{ role: 'user', content: prompt }],
           }),
         });
         const data = await res.json();
         const text = data.content?.[0]?.text || '';
+
+        // Track token usage
+        const tokensUsed = (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0);
+        recordRequest(studentId, 'emailScan', tokensUsed);
+
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
-          return parsed.suggestions || [];
+          return { suggestions: parsed.suggestions || [], isLiteMode, liteModeReason: reason };
         }
       } else {
         const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -186,7 +196,7 @@ If no calendar-worthy events are found, return { "suggestions": [] }`;
   }
 
   // Fallback: basic keyword matching when AI is unavailable
-  return fallbackEmailParser(emailSummaries);
+  return { suggestions: fallbackEmailParser(emailSummaries), isLiteMode: false, liteModeReason: null };
 }
 
 // ============================================================

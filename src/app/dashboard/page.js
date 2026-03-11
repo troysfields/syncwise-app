@@ -3,13 +3,43 @@
 import { useState, useEffect } from 'react';
 import { reportError, showToast } from '../components/ToastNotifications';
 
-// Demo data — replaced with real API data once D2L/Outlook tokens are available
+// ============================================================
+// DEMO DATA — Replaced with real API data once D2L/Outlook connected
+// ============================================================
+
+const COURSE_COLORS = {
+  'ENTR 450': '#4F46E5',
+  'ACCT 301': '#059669',
+  'ENTR 343': '#D97706',
+  'BUS 201': '#DC2626',
+  'CSCI 110': '#7C3AED',
+};
+
 const DEMO_TASKS = [
-  { id: 1, name: 'ENTR 450 — Section IV-A Market Analysis', courseName: 'ENTR 450', dueDate: '2026-03-11T23:59:00', points: 50, source: 'd2l' },
-  { id: 2, name: 'ACCT 301 — Chapter 8 Quiz', courseName: 'ACCT 301', dueDate: '2026-03-11T17:00:00', points: 10, source: 'd2l' },
-  { id: 3, name: 'ENTR 343 — Idea Journal #3', courseName: 'ENTR 343', dueDate: '2026-03-13T23:59:00', points: 25, source: 'd2l' },
-  { id: 4, name: 'BUS 201 — Case Study Write-up', courseName: 'BUS 201', dueDate: '2026-03-14T23:59:00', points: 40, source: 'd2l' },
-  { id: 5, name: 'ENTR 450 — Discussion 5 Reply', courseName: 'ENTR 450', dueDate: '2026-03-12T23:59:00', points: 15, source: 'd2l' },
+  { id: 'd2l-asgn-1', type: 'assignment', name: 'Section IV-A Market Analysis', courseName: 'ENTR 450', courseColor: '#4F46E5', dueDate: '2026-03-11T23:59:00', points: 50, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-quiz-1', type: 'quiz', name: 'Chapter 8 Quiz', courseName: 'ACCT 301', courseColor: '#059669', dueDate: '2026-03-11T17:00:00', points: 10, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-asgn-2', type: 'assignment', name: 'Idea Journal #3', courseName: 'ENTR 343', courseColor: '#D97706', dueDate: '2026-03-13T23:59:00', points: 25, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-asgn-3', type: 'assignment', name: 'Case Study Write-up', courseName: 'BUS 201', courseColor: '#DC2626', dueDate: '2026-03-14T23:59:00', points: 40, source: 'd2l', hasDueDate: true, submitted: true, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-disc-1', type: 'discussion', name: 'Discussion 5 — Market Entry Strategies', courseName: 'ENTR 450', courseColor: '#4F46E5', dueDate: '2026-03-12T23:59:00', points: 15, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: true, isRecurring: true, recurringLabel: 'Weekly', status: 'active', manualDate: null },
+  { id: 'd2l-quiz-2', type: 'quiz', name: 'Accounting Ethics Quiz', courseName: 'ACCT 301', courseColor: '#059669', dueDate: '2026-03-16T23:59:00', points: 20, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-ann-1', type: 'announcement', name: 'Midterm Study Guide Posted', courseName: 'ACCT 301', courseColor: '#059669', dueDate: null, points: null, source: 'd2l', hasDueDate: false, submitted: false, graded: false, grade: null, unread: true, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-ann-2', type: 'announcement', name: 'Guest Speaker Next Week — Bring Questions', courseName: 'ENTR 343', courseColor: '#D97706', dueDate: null, points: null, source: 'd2l', hasDueDate: false, submitted: false, graded: false, grade: null, unread: true, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-check-1', type: 'checklist', name: 'Week 8 Checklist — Read Ch. 9', courseName: 'BUS 201', courseColor: '#DC2626', dueDate: '2026-03-15T23:59:00', points: null, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-content-1', type: 'content', name: 'Module 7 — Financial Projections (Lecture Slides)', courseName: 'ENTR 450', courseColor: '#4F46E5', dueDate: null, points: null, source: 'd2l', hasDueDate: false, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
+];
+
+// Demo grade alerts — newly graded items
+const DEMO_GRADE_ALERTS = [
+  { id: 'grade-1', name: 'Discussion 4 — Competitive Analysis', courseName: 'ENTR 450', courseColor: '#4F46E5', grade: { earned: 14, outOf: 15, percentage: 93 }, type: 'discussion' },
+  { id: 'grade-2', name: 'Chapter 7 Quiz', courseName: 'ACCT 301', courseColor: '#059669', grade: { earned: 9, outOf: 10, percentage: 90 }, type: 'quiz' },
+];
+
+// Demo course progress (completion %)
+const DEMO_COURSE_PROGRESS = [
+  { courseName: 'ENTR 450', courseColor: '#4F46E5', completed: 18, total: 26 },
+  { courseName: 'ACCT 301', courseColor: '#059669', completed: 14, total: 22 },
+  { courseName: 'ENTR 343', courseColor: '#D97706', completed: 10, total: 18 },
+  { courseName: 'BUS 201', courseColor: '#DC2626', completed: 12, total: 20 },
 ];
 
 const DEMO_EVENTS = [
@@ -27,7 +57,6 @@ const DEMO_SUGGESTIONS = [
   { type: 'planning', text: 'Your IT meeting with Mike is tomorrow at 10 AM. Review the Beta API Request doc tonight so you\'re ready.' },
 ];
 
-// Demo email suggestions to show the feature in demo mode
 const DEMO_EMAIL_SUGGESTIONS = [
   {
     id: 'demo-1',
@@ -75,11 +104,16 @@ const DEMO_EMAIL_SUGGESTIONS = [
   },
 ];
 
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+
 function formatTime(dateStr) {
   return new Date(dateStr).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
 function formatDate(dateStr) {
+  if (!dateStr) return 'No date';
   const d = new Date(dateStr);
   const now = new Date();
   const diffHours = (d - now) / (1000 * 60 * 60);
@@ -96,7 +130,9 @@ function formatSuggestionDate(dateStr) {
 }
 
 function getPriorityLevel(task) {
-  const hoursLeft = (new Date(task.dueDate) - new Date()) / (1000 * 60 * 60);
+  if (!task.dueDate && !task.manualDate) return 'low';
+  const dateToUse = task.manualDate || task.dueDate;
+  const hoursLeft = (new Date(dateToUse) - new Date()) / (1000 * 60 * 60);
   const points = task.points || 10;
   if (hoursLeft <= 12 || (hoursLeft <= 24 && points >= 40)) return 'high';
   if (hoursLeft <= 48) return 'medium';
@@ -124,6 +160,26 @@ function getCategoryIcon(category) {
   return icons[category] || '\u{1F4CC}';
 }
 
+function getItemTypeIcon(type) {
+  const icons = {
+    assignment: '\u{1F4DD}',
+    quiz: '\u{1F9EA}',
+    discussion: '\u{1F4AC}',
+    announcement: '\u{1F4E2}',
+    content: '\u{1F4D6}',
+    checklist: '\u{2705}',
+  };
+  return icons[type] || '\u{1F4CC}';
+}
+
+function getItemTypeBadgeClass(type) {
+  return `badge badge-${type}`;
+}
+
+function getItemTypeLabel(type) {
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
+
 // ============================================================
 // SMART NOTIFICATION — Urgency detection for <24hr events
 // ============================================================
@@ -133,29 +189,15 @@ function getUrgencyInfo(suggestion) {
   const now = new Date();
   const hoursUntil = (eventDate - now) / (1000 * 60 * 60);
 
-  if (hoursUntil < 0) {
-    return { isUrgent: false, label: null, style: null };
-  }
+  if (hoursUntil < 0) return { isUrgent: false, label: null, style: null };
   if (hoursUntil <= 3) {
-    return {
-      isUrgent: true,
-      label: `Happening in ${Math.max(1, Math.round(hoursUntil * 60))} min — act now!`,
-      style: 'critical',
-    };
+    return { isUrgent: true, label: `Happening in ${Math.max(1, Math.round(hoursUntil * 60))} min — act now!`, style: 'critical' };
   }
   if (hoursUntil <= 12) {
-    return {
-      isUrgent: true,
-      label: `Today — ${Math.round(hoursUntil)}h away`,
-      style: 'urgent',
-    };
+    return { isUrgent: true, label: `Today — ${Math.round(hoursUntil)}h away`, style: 'urgent' };
   }
   if (hoursUntil <= 24) {
-    return {
-      isUrgent: true,
-      label: `Less than 24 hours away`,
-      style: 'soon',
-    };
+    return { isUrgent: true, label: `Less than 24 hours away`, style: 'soon' };
   }
   return { isUrgent: false, label: null, style: null };
 }
@@ -166,11 +208,10 @@ function getUrgencyInfo(suggestion) {
 
 function getWeekDays(referenceDate) {
   const d = new Date(referenceDate);
-  const day = d.getDay(); // 0 = Sunday
+  const day = d.getDay();
   const start = new Date(d);
-  start.setDate(d.getDate() - day); // go to Sunday
+  start.setDate(d.getDate() - day);
   start.setHours(0, 0, 0, 0);
-
   const days = [];
   for (let i = 0; i < 7; i++) {
     const date = new Date(start);
@@ -185,15 +226,10 @@ function getMonthDays(referenceDate) {
   const year = d.getFullYear();
   const month = d.getMonth();
   const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-
-  // Start from the Sunday before (or on) the first day
   const startDate = new Date(firstDay);
   startDate.setDate(firstDay.getDate() - firstDay.getDay());
-
   const days = [];
   const current = new Date(startDate);
-  // Always show 6 weeks for consistency
   for (let i = 0; i < 42; i++) {
     days.push(new Date(current));
     current.setDate(current.getDate() + 1);
@@ -208,61 +244,189 @@ function isSameDay(d1, d2) {
 }
 
 function getEventsForDay(events, day) {
-  return events.filter(e => {
-    const eventDate = new Date(e.start);
-    return isSameDay(eventDate, day);
-  });
+  return events.filter(e => isSameDay(new Date(e.start), day));
 }
 
 function getTasksForDay(tasks, day) {
   return tasks.filter(t => {
-    const dueDate = new Date(t.dueDate);
-    return isSameDay(dueDate, day);
+    const d = t.manualDate || t.dueDate;
+    return d && isSameDay(new Date(d), day);
   });
 }
+
+// ============================================================
+// NEEDS ATTENTION — Smart list of items that need action
+// ============================================================
+
+function getNeedsAttention(tasks, gradeAlerts) {
+  const now = new Date();
+  const items = [];
+
+  // Unsubmitted items due within 48 hours
+  for (const t of tasks) {
+    if (t.status !== 'active') continue;
+    if (t.submitted) continue;
+    if (!t.hasDueDate && !t.manualDate) continue;
+    const dateToUse = t.manualDate || t.dueDate;
+    const hoursLeft = (new Date(dateToUse) - now) / (1000 * 60 * 60);
+    if (hoursLeft > 0 && hoursLeft <= 48 && (t.type === 'assignment' || t.type === 'quiz' || t.type === 'discussion')) {
+      items.push({ ...t, attentionReason: `Due in ${hoursLeft < 24 ? Math.round(hoursLeft) + 'h' : 'tomorrow'} — not submitted` });
+    }
+  }
+
+  // Unread announcements
+  for (const t of tasks) {
+    if (t.status !== 'active' || t.type !== 'announcement' || !t.unread) continue;
+    items.push({ ...t, attentionReason: 'New announcement — unread' });
+  }
+
+  // Unread discussions
+  for (const t of tasks) {
+    if (t.status !== 'active' || t.type !== 'discussion' || !t.unread || t.submitted) continue;
+    if (!items.find(i => i.id === t.id)) {
+      items.push({ ...t, attentionReason: 'New replies — unread' });
+    }
+  }
+
+  // New grades
+  for (const g of gradeAlerts) {
+    items.push({ ...g, attentionReason: `New grade: ${g.grade.earned}/${g.grade.outOf} (${g.grade.percentage}%)` });
+  }
+
+  return items;
+}
+
+// ============================================================
+// MAIN COMPONENT
+// ============================================================
 
 export default function StudentDashboard() {
   const [tasks, setTasks] = useState(DEMO_TASKS);
   const [events, setEvents] = useState(DEMO_EVENTS);
   const [suggestions, setSuggestions] = useState(DEMO_SUGGESTIONS);
   const [emailSuggestions, setEmailSuggestions] = useState(DEMO_EMAIL_SUGGESTIONS);
+  const [gradeAlerts, setGradeAlerts] = useState(DEMO_GRADE_ALERTS);
+  const [courseProgress, setCourseProgress] = useState(DEMO_COURSE_PROGRESS);
   const [isDemo, setIsDemo] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [scanComplete, setScanComplete] = useState(false);
   const [emailsScanned, setEmailsScanned] = useState(0);
   const [filterCategory, setFilterCategory] = useState('all');
+  const [itemFilter, setItemFilter] = useState('active'); // 'active', 'completed', 'all-types'
+  const [typeFilter, setTypeFilter] = useState('all'); // 'all', 'assignment', 'quiz', etc.
+  const [editingDateId, setEditingDateId] = useState(null);
+  const [editDateValue, setEditDateValue] = useState('');
+  const [dismissedGrades, setDismissedGrades] = useState([]);
 
   // Calendar view state
-  const [calendarView, setCalendarView] = useState('today'); // 'today', 'week', 'month'
+  const [calendarView, setCalendarView] = useState('today');
   const [calendarDate, setCalendarDate] = useState(new Date());
 
-  // Get unique categories from suggestions
+  // ============================================================
+  // COMPUTED VALUES
+  // ============================================================
+
+  // Active tasks (visible on calendar and assignment list)
+  const visibleTasks = tasks.filter(t => {
+    if (t.status === 'hidden' || t.status === 'completed' || t.status === 'denied') return false;
+    return true;
+  });
+
+  // Items needing date confirmation (no due date, not yet confirmed or denied)
+  const needsConfirmation = tasks.filter(t =>
+    t.status === 'active' && !t.hasDueDate && !t.confirmedNoDate && !t.manualDate
+  );
+
+  // Needs attention list
+  const attentionItems = getNeedsAttention(visibleTasks, gradeAlerts.filter(g => !dismissedGrades.includes(g.id)));
+
+  // Get unique categories from email suggestions
   const activeCategories = [...new Set(emailSuggestions.filter(s => s.status === 'pending').map(s => s.category))];
 
-  // Filter and sort suggestions — urgent ones float to top
+  // Filter and sort email suggestions — urgent ones float to top
   const pendingSuggestions = emailSuggestions.filter(s => s.status === 'pending');
-
   const sortedPendingSuggestions = [...pendingSuggestions].sort((a, b) => {
     const aUrgency = getUrgencyInfo(a);
     const bUrgency = getUrgencyInfo(b);
-    // Urgent items first
     if (aUrgency.isUrgent && !bUrgency.isUrgent) return -1;
     if (!aUrgency.isUrgent && bUrgency.isUrgent) return 1;
-    // Among urgent, sooner events first
     if (aUrgency.isUrgent && bUrgency.isUrgent) return new Date(a.date) - new Date(b.date);
-    // Non-urgent: by date
     return new Date(a.date) - new Date(b.date);
   });
-
   const filteredSuggestions = sortedPendingSuggestions.filter(s => {
     if (filterCategory === 'all') return true;
     return s.category === filterCategory;
   });
-
-  // Snoozed suggestions
   const snoozedSuggestions = emailSuggestions.filter(s => s.status === 'snoozed');
 
-  // Handle scanning inbox
+  // Filter assignment list
+  const filteredTasks = visibleTasks.filter(t => {
+    if (itemFilter === 'completed') return t.submitted || t.status === 'completed';
+    if (itemFilter === 'active') return t.status === 'active' && !t.submitted;
+    return true;
+  }).filter(t => {
+    if (typeFilter === 'all') return true;
+    return t.type === typeFilter;
+  });
+
+  // Sort tasks by priority
+  const sortedTasks = [...filteredTasks].sort((a, b) => {
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+    return (priorityOrder[getPriorityLevel(a)] - priorityOrder[getPriorityLevel(b)]) ||
+      (new Date(a.manualDate || a.dueDate || '2099-01-01') - new Date(b.manualDate || b.dueDate || '2099-01-01'));
+  });
+
+  // Unique item types for filter
+  const uniqueTypes = [...new Set(tasks.map(t => t.type))];
+
+  // ============================================================
+  // HANDLERS — Item actions
+  // ============================================================
+
+  function handleMarkComplete(taskId) {
+    setTasks(prev => prev.map(t =>
+      t.id === taskId ? { ...t, status: 'completed', submitted: true } : t
+    ));
+    showToast({ type: 'success', message: 'Marked as completed', duration: 3000 });
+  }
+
+  function handleRemoveItem(taskId) {
+    setTasks(prev => prev.map(t =>
+      t.id === taskId ? { ...t, status: 'hidden' } : t
+    ));
+    showToast({ type: 'info', message: 'Item hidden from calendar', duration: 3000 });
+  }
+
+  function handleSetDate(taskId) {
+    if (!editDateValue) return;
+    setTasks(prev => prev.map(t =>
+      t.id === taskId ? { ...t, manualDate: editDateValue, confirmedNoDate: true } : t
+    ));
+    setEditingDateId(null);
+    setEditDateValue('');
+    showToast({ type: 'success', message: 'Date updated', duration: 3000 });
+  }
+
+  function handleConfirmNoDate(taskId) {
+    setTasks(prev => prev.map(t =>
+      t.id === taskId ? { ...t, confirmedNoDate: true, status: 'active' } : t
+    ));
+  }
+
+  function handleDenyNoDate(taskId) {
+    setTasks(prev => prev.map(t =>
+      t.id === taskId ? { ...t, status: 'denied' } : t
+    ));
+  }
+
+  function handleDismissGrade(gradeId) {
+    setDismissedGrades(prev => [...prev, gradeId]);
+  }
+
+  // ============================================================
+  // HANDLERS — Email scan
+  // ============================================================
+
   async function handleScanInbox() {
     if (isDemo) {
       setScanning(true);
@@ -276,7 +440,6 @@ export default function StudentDashboard() {
       return;
     }
 
-    // Real scan with retry logic + error reporting
     setScanning(true);
     setScanComplete(false);
     let retries = 0;
@@ -287,23 +450,13 @@ export default function StudentDashboard() {
         const res = await fetch('/api/email/scan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            accessToken: '',
-            user: '',
-            days: 7,
-          }),
+          body: JSON.stringify({ accessToken: '', user: '', days: 7 }),
         });
-
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
         const data = await res.json();
         if (data.success) {
           setEmailsScanned(data.emailsScanned);
-          setEmailSuggestions(data.suggestions.map((s, i) => ({
-            ...s,
-            id: `scan-${i}`,
-            status: 'pending',
-          })));
+          setEmailSuggestions(data.suggestions.map((s, i) => ({ ...s, id: `scan-${i}`, status: 'pending' })));
           setScanComplete(true);
           break;
         } else {
@@ -328,23 +481,17 @@ export default function StudentDashboard() {
     setScanning(false);
   }
 
-  // Accept a suggestion — add to calendar
   async function handleAccept(suggestionId) {
     setEmailSuggestions(prev => prev.map(s =>
       s.id === suggestionId ? { ...s, status: 'accepted' } : s
     ));
-
     if (!isDemo) {
       const suggestion = emailSuggestions.find(s => s.id === suggestionId);
       try {
         const res = await fetch('/api/email/accept', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            accessToken: '',
-            user: '',
-            suggestion,
-          }),
+          body: JSON.stringify({ accessToken: '', user: '', suggestion }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         showToast({ type: 'success', message: 'Event added to your Outlook calendar!', duration: 4000 });
@@ -379,38 +526,25 @@ export default function StudentDashboard() {
     ));
   }
 
-  // Sort tasks by priority
-  const sortedTasks = [...tasks].sort((a, b) => {
-    const priorityOrder = { high: 0, medium: 1, low: 2 };
-    const aPriority = priorityOrder[getPriorityLevel(a)];
-    const bPriority = priorityOrder[getPriorityLevel(b)];
-    if (aPriority !== bPriority) return aPriority - bPriority;
-    return new Date(a.dueDate) - new Date(b.dueDate);
-  });
-
   // Calendar navigation
   function navigateCalendar(direction) {
     const d = new Date(calendarDate);
-    if (calendarView === 'week') {
-      d.setDate(d.getDate() + (direction * 7));
-    } else if (calendarView === 'month') {
-      d.setMonth(d.getMonth() + direction);
-    } else {
-      d.setDate(d.getDate() + direction);
-    }
+    if (calendarView === 'week') d.setDate(d.getDate() + (direction * 7));
+    else if (calendarView === 'month') d.setMonth(d.getMonth() + direction);
+    else d.setDate(d.getDate() + direction);
     setCalendarDate(d);
   }
 
-  function goToToday() {
-    setCalendarDate(new Date());
-  }
+  function goToToday() { setCalendarDate(new Date()); }
 
-  // Get today's events for "today" view
+  // Calendar data
   const todayDate = calendarView === 'today' ? calendarDate : new Date();
   const todayEvents = events.filter(e => isSameDay(new Date(e.start), todayDate));
-  const todayTasks = tasks.filter(t => isSameDay(new Date(t.dueDate), todayDate));
+  const todayTasks = visibleTasks.filter(t => {
+    const d = t.manualDate || t.dueDate;
+    return d && isSameDay(new Date(d), todayDate);
+  });
 
-  // Calendar header label
   function getCalendarLabel() {
     if (calendarView === 'today') {
       const isActualToday = isSameDay(calendarDate, new Date());
@@ -428,6 +562,10 @@ export default function StudentDashboard() {
     }
     return calendarDate.toLocaleDateString([], { month: 'long', year: 'numeric' });
   }
+
+  // ============================================================
+  // RENDER
+  // ============================================================
 
   return (
     <div>
@@ -448,18 +586,139 @@ export default function StudentDashboard() {
         {/* Demo Banner */}
         {isDemo && (
           <div style={{
-            background: '#FEF3C7',
-            border: '1px solid #FDE68A',
-            borderRadius: '10px',
-            padding: '12px 20px',
-            margin: '20px 0 0',
-            fontSize: '14px',
-            color: '#92400E',
+            background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '10px',
+            padding: '12px 20px', margin: '20px 0 0', fontSize: '14px', color: '#92400E',
           }}>
             <strong>Demo Mode</strong> — Showing sample data. Connect your CMU accounts to see real assignments and events.
           </div>
         )}
 
+        {/* ============================================================ */}
+        {/* NEEDS ATTENTION SECTION */}
+        {/* ============================================================ */}
+        {attentionItems.length > 0 && (
+          <div className="card" style={{ margin: '20px 0 0', borderLeft: '4px solid #EF4444' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '20px' }}>&#128680;</span> Needs Attention
+              <span style={{ fontSize: '12px', fontWeight: '500', color: '#EF4444', background: '#FEF2F2', padding: '2px 8px', borderRadius: '10px' }}>
+                {attentionItems.length}
+              </span>
+            </h2>
+            {attentionItems.map((item, i) => (
+              <div key={item.id + '-attn-' + i} className="task-item needs-attention-item" style={{ borderLeft: `3px solid ${item.courseColor || '#EF4444'}` }}>
+                {item.unread && <span className="unread-dot"></span>}
+                <span style={{ fontSize: '16px', flexShrink: 0 }}>{getItemTypeIcon(item.type)}</span>
+                <div className="task-info">
+                  <div className="task-name">
+                    {item.name}
+                    {item.isRecurring && <span className="badge badge-recurring" style={{ marginLeft: '6px' }}>{item.recurringLabel}</span>}
+                  </div>
+                  <div className="task-meta">
+                    <span style={{ color: item.courseColor, fontWeight: '600' }}>{item.courseName}</span>
+                    {' · '}{item.attentionReason}
+                  </div>
+                </div>
+                {item.grade && (
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: '18px', fontWeight: '700', color: item.grade.percentage >= 80 ? '#059669' : item.grade.percentage >= 60 ? '#D97706' : '#DC2626' }}>
+                      {item.grade.percentage}%
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#94A3B8' }}>{item.grade.earned}/{item.grade.outOf}</div>
+                    <button className="item-action-btn" onClick={() => handleDismissGrade(item.id)} style={{ fontSize: '11px', marginTop: '4px' }}>Dismiss</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* ITEMS WITHOUT DUE DATES — Confirm/Deny */}
+        {/* ============================================================ */}
+        {needsConfirmation.length > 0 && (
+          <div className="card" style={{ margin: '16px 0 0', borderLeft: '4px solid #F59E0B' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '18px' }}>&#128197;</span> Add to Calendar?
+              <span style={{ fontSize: '12px', fontWeight: '500', color: '#92400E', background: '#FEF3C7', padding: '2px 8px', borderRadius: '10px' }}>
+                {needsConfirmation.length} items without due dates
+              </span>
+            </h2>
+            <p style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '12px' }}>
+              These items don&apos;t have a due date in D2L. Add a date to track them, or dismiss.
+            </p>
+            {needsConfirmation.map(item => (
+              <div key={item.id} className="task-item" style={{ borderLeft: `3px solid ${item.courseColor}` }}>
+                <span style={{ fontSize: '16px', flexShrink: 0 }}>{getItemTypeIcon(item.type)}</span>
+                <div className="task-info">
+                  <div className="task-name">{item.name}</div>
+                  <div className="task-meta">
+                    <span style={{ color: item.courseColor, fontWeight: '600' }}>{item.courseName}</span>
+                    {' · '}<span className={getItemTypeBadgeClass(item.type)} style={{ fontSize: '11px', padding: '1px 6px' }}>{getItemTypeLabel(item.type)}</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
+                  {editingDateId === item.id ? (
+                    <>
+                      <input
+                        type="datetime-local"
+                        value={editDateValue}
+                        onChange={e => setEditDateValue(e.target.value)}
+                        style={{ fontSize: '12px', padding: '4px 8px', border: '1px solid #CBD5E1', borderRadius: '6px' }}
+                      />
+                      <button className="item-action-btn complete" onClick={() => handleSetDate(item.id)}>Save</button>
+                      <button className="item-action-btn" onClick={() => setEditingDateId(null)}>Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="item-action-btn complete" onClick={() => { setEditingDateId(item.id); setEditDateValue(''); }}>
+                        Set Date
+                      </button>
+                      <button className="item-action-btn" onClick={() => handleConfirmNoDate(item.id)}>
+                        Keep (no date)
+                      </button>
+                      <button className="item-action-btn remove" onClick={() => handleDenyNoDate(item.id)}>
+                        Dismiss
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* GRADE ALERTS */}
+        {/* ============================================================ */}
+        {gradeAlerts.filter(g => !dismissedGrades.includes(g.id)).length > 0 && (
+          <div className="card" style={{ margin: '16px 0 0', borderLeft: '4px solid #059669' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '18px' }}>&#127942;</span> New Grades
+            </h2>
+            {gradeAlerts.filter(g => !dismissedGrades.includes(g.id)).map(g => (
+              <div key={g.id} className="task-item" style={{ borderLeft: `3px solid ${g.courseColor}` }}>
+                <span style={{ fontSize: '16px', flexShrink: 0 }}>{getItemTypeIcon(g.type)}</span>
+                <div className="task-info">
+                  <div className="task-name">{g.name}</div>
+                  <div className="task-meta"><span style={{ color: g.courseColor, fontWeight: '600' }}>{g.courseName}</span></div>
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: '22px', fontWeight: '800', color: g.grade.percentage >= 80 ? '#059669' : g.grade.percentage >= 60 ? '#D97706' : '#DC2626' }}>
+                    {g.grade.percentage}%
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#94A3B8' }}>{g.grade.earned}/{g.grade.outOf} pts</div>
+                </div>
+                <button className="item-action-btn" onClick={() => handleDismissGrade(g.id)} style={{ flexShrink: 0, fontSize: '11px' }}>
+                  Dismiss
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* MAIN GRID */}
+        {/* ============================================================ */}
         <div className="dash-grid" style={{ marginTop: '4px' }}>
           {/* LEFT: AI Suggestions */}
           <div className="card">
@@ -474,6 +733,27 @@ export default function StudentDashboard() {
                 <div className="ai-suggestion-text">{s.text}</div>
               </div>
             ))}
+
+            {/* Course Progress */}
+            <div style={{ marginTop: '20px', borderTop: '1px solid #E2E8F0', paddingTop: '16px' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '16px' }}>&#128200;</span> Course Progress
+              </h3>
+              {courseProgress.map(cp => {
+                const pct = Math.round((cp.completed / cp.total) * 100);
+                return (
+                  <div key={cp.courseName} className="course-progress" style={{ marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+                      <span style={{ fontWeight: '600', color: cp.courseColor }}>{cp.courseName}</span>
+                      <span style={{ color: '#64748B' }}>{cp.completed}/{cp.total} ({pct}%)</span>
+                    </div>
+                    <div className="course-progress-bar">
+                      <div className="course-progress-fill" style={{ width: `${pct}%`, background: cp.courseColor }}></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* RIGHT: Calendar with View Toggle */}
@@ -483,38 +763,23 @@ export default function StudentDashboard() {
                 <span style={{ fontSize: '20px' }}>&#128197;</span>
                 <span className="calendar-title-label">{getCalendarLabel()}</span>
               </h2>
-
-              {/* View toggle buttons */}
               <div className="calendar-view-toggle">
-                <button
-                  className={`cal-view-btn ${calendarView === 'today' ? 'active' : ''}`}
-                  onClick={() => { setCalendarView('today'); setCalendarDate(new Date()); }}
-                >
-                  Day
-                </button>
-                <button
-                  className={`cal-view-btn ${calendarView === 'week' ? 'active' : ''}`}
-                  onClick={() => setCalendarView('week')}
-                >
-                  Week
-                </button>
-                <button
-                  className={`cal-view-btn ${calendarView === 'month' ? 'active' : ''}`}
-                  onClick={() => setCalendarView('month')}
-                >
-                  Month
-                </button>
+                <button className={`cal-view-btn ${calendarView === 'today' ? 'active' : ''}`}
+                  onClick={() => { setCalendarView('today'); setCalendarDate(new Date()); }}>Day</button>
+                <button className={`cal-view-btn ${calendarView === 'week' ? 'active' : ''}`}
+                  onClick={() => setCalendarView('week')}>Week</button>
+                <button className={`cal-view-btn ${calendarView === 'month' ? 'active' : ''}`}
+                  onClick={() => setCalendarView('month')}>Month</button>
               </div>
             </div>
 
-            {/* Calendar Navigation */}
             <div className="calendar-nav">
               <button className="cal-nav-btn" onClick={() => navigateCalendar(-1)}>&lsaquo;</button>
               <button className="cal-nav-today" onClick={goToToday}>Today</button>
               <button className="cal-nav-btn" onClick={() => navigateCalendar(1)}>&rsaquo;</button>
             </div>
 
-            {/* === TODAY VIEW === */}
+            {/* TODAY VIEW */}
             {calendarView === 'today' && (
               <div>
                 {todayEvents.length === 0 && todayTasks.length === 0 && (
@@ -533,40 +798,43 @@ export default function StudentDashboard() {
                   </div>
                 ))}
                 {todayTasks.map(task => (
-                  <div key={task.id} className="task-item">
-                    <div className="task-dot d2l"></div>
+                  <div key={task.id} className="task-item" style={{ borderLeft: `3px solid ${task.courseColor}` }}>
+                    {task.unread && <span className="unread-dot"></span>}
+                    <span style={{ fontSize: '14px', flexShrink: 0 }}>{getItemTypeIcon(task.type)}</span>
                     <div className="task-info">
                       <div className="task-name">{task.name}</div>
-                      <div className="task-meta">Due {formatTime(task.dueDate)} &middot; {task.points} pts</div>
+                      <div className="task-meta">
+                        <span style={{ color: task.courseColor, fontWeight: '600' }}>{task.courseName}</span>
+                        {task.dueDate && ` · Due ${formatTime(task.manualDate || task.dueDate)}`}
+                        {task.points && ` · ${task.points} pts`}
+                      </div>
                     </div>
-                    <span className={`badge badge-${getPriorityLevel(task)}`}>
-                      {getPriorityLevel(task) === 'high' ? 'Urgent' : getPriorityLevel(task) === 'medium' ? 'Soon' : 'Upcoming'}
-                    </span>
+                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
+                      {task.submitted && <span className="badge badge-submitted">Submitted</span>}
+                      {task.graded && <span className="badge badge-graded">Graded</span>}
+                      {!task.submitted && <span className={`badge badge-${getPriorityLevel(task)}`}>
+                        {getPriorityLevel(task) === 'high' ? 'Urgent' : getPriorityLevel(task) === 'medium' ? 'Soon' : 'Upcoming'}
+                      </span>}
+                    </div>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* === WEEK VIEW === */}
+            {/* WEEK VIEW */}
             {calendarView === 'week' && (
               <div className="week-view">
                 {getWeekDays(calendarDate).map((day, i) => {
                   const dayEvents = getEventsForDay(events, day);
-                  const dayTasks = getTasksForDay(tasks, day);
+                  const dayTasks = getTasksForDay(visibleTasks, day);
                   const isToday = isSameDay(day, new Date());
                   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
                   return (
-                    <div
-                      key={i}
-                      className={`week-day-col ${isToday ? 'today' : ''}`}
-                      onClick={() => { setCalendarView('today'); setCalendarDate(day); }}
-                    >
+                    <div key={i} className={`week-day-col ${isToday ? 'today' : ''}`}
+                      onClick={() => { setCalendarView('today'); setCalendarDate(day); }}>
                       <div className="week-day-header">
                         <span className="week-day-name">{dayNames[i]}</span>
-                        <span className={`week-day-num ${isToday ? 'today-num' : ''}`}>
-                          {day.getDate()}
-                        </span>
+                        <span className={`week-day-num ${isToday ? 'today-num' : ''}`}>{day.getDate()}</span>
                       </div>
                       <div className="week-day-events">
                         {dayEvents.map(e => (
@@ -575,8 +843,8 @@ export default function StudentDashboard() {
                           </div>
                         ))}
                         {dayTasks.map(t => (
-                          <div key={t.id} className={`week-event-chip task-chip-${getPriorityLevel(t)}`}>
-                            {t.name.length > 20 ? t.name.slice(0, 20) + '...' : t.name}
+                          <div key={t.id} className="week-event-chip" style={{ background: t.courseColor + '22', borderLeft: `3px solid ${t.courseColor}`, color: '#1E293B' }}>
+                            {getItemTypeIcon(t.type)} {t.name.length > 16 ? t.name.slice(0, 16) + '...' : t.name}
                           </div>
                         ))}
                       </div>
@@ -586,7 +854,7 @@ export default function StudentDashboard() {
               </div>
             )}
 
-            {/* === MONTH VIEW === */}
+            {/* MONTH VIEW */}
             {calendarView === 'month' && (
               <div className="month-view">
                 <div className="month-header-row">
@@ -599,18 +867,13 @@ export default function StudentDashboard() {
                     const isCurrentMonth = day.getMonth() === calendarDate.getMonth();
                     const isToday = isSameDay(day, new Date());
                     const dayEvents = getEventsForDay(events, day);
-                    const dayTasks = getTasksForDay(tasks, day);
+                    const dayTasks = getTasksForDay(visibleTasks, day);
                     const hasItems = dayEvents.length + dayTasks.length > 0;
-
                     return (
-                      <div
-                        key={i}
+                      <div key={i}
                         className={`month-day-cell ${isCurrentMonth ? '' : 'other-month'} ${isToday ? 'today-cell' : ''} ${hasItems ? 'has-items' : ''}`}
-                        onClick={() => { setCalendarView('today'); setCalendarDate(day); }}
-                      >
-                        <span className={`month-day-num ${isToday ? 'today-num' : ''}`}>
-                          {day.getDate()}
-                        </span>
+                        onClick={() => { setCalendarView('today'); setCalendarDate(day); }}>
+                        <span className={`month-day-num ${isToday ? 'today-num' : ''}`}>{day.getDate()}</span>
                         {dayEvents.length > 0 && (
                           <div className="month-dot-row">
                             {dayEvents.slice(0, 3).map((e, j) => (
@@ -621,7 +884,7 @@ export default function StudentDashboard() {
                         {dayTasks.length > 0 && (
                           <div className="month-dot-row">
                             {dayTasks.slice(0, 3).map((t, j) => (
-                              <span key={j} className="month-dot task-dot-indicator"></span>
+                              <span key={j} className="month-dot" style={{ background: t.courseColor }}></span>
                             ))}
                           </div>
                         )}
@@ -630,14 +893,18 @@ export default function StudentDashboard() {
                   })}
                 </div>
                 <div className="month-legend">
-                  <span className="legend-item"><span className="month-dot outlook-dot"></span> Outlook Event</span>
-                  <span className="legend-item"><span className="month-dot task-dot-indicator"></span> D2L Assignment</span>
+                  <span className="legend-item"><span className="month-dot outlook-dot"></span> Outlook</span>
+                  {Object.entries(COURSE_COLORS).map(([name, color]) => (
+                    <span key={name} className="legend-item"><span className="month-dot" style={{ background: color }}></span> {name}</span>
+                  ))}
                 </div>
               </div>
             )}
           </div>
 
+          {/* ============================================================ */}
           {/* FULL WIDTH: Email Suggested Events */}
+          {/* ============================================================ */}
           <div className="card dash-full">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
@@ -648,43 +915,26 @@ export default function StudentDashboard() {
               </h2>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 {scanComplete && (
-                  <span style={{ fontSize: '12px', color: '#059669' }}>
-                    &#10003; Scanned {emailsScanned} emails
-                  </span>
+                  <span style={{ fontSize: '12px', color: '#059669' }}>&#10003; Scanned {emailsScanned} emails</span>
                 )}
-                <button
-                  className="btn btn-primary"
-                  onClick={handleScanInbox}
-                  disabled={scanning}
-                  style={{ fontSize: '13px', padding: '8px 16px', opacity: scanning ? 0.7 : 1 }}
-                >
+                <button className="btn btn-primary" onClick={handleScanInbox} disabled={scanning}
+                  style={{ fontSize: '13px', padding: '8px 16px', opacity: scanning ? 0.7 : 1 }}>
                   {scanning ? 'Scanning...' : 'Scan My Inbox'}
                 </button>
               </div>
             </div>
 
-            {/* Category Filter */}
             {activeCategories.length > 1 && (
               <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                <button
-                  className={`email-filter-btn ${filterCategory === 'all' ? 'active' : ''}`}
-                  onClick={() => setFilterCategory('all')}
-                >
-                  All
-                </button>
+                <button className={`email-filter-btn ${filterCategory === 'all' ? 'active' : ''}`}
+                  onClick={() => setFilterCategory('all')}>All</button>
                 {activeCategories.map(cat => (
-                  <button
-                    key={cat}
-                    className={`email-filter-btn ${filterCategory === cat ? 'active' : ''}`}
-                    onClick={() => setFilterCategory(cat)}
-                  >
-                    {getCategoryIcon(cat)} {cat}
-                  </button>
+                  <button key={cat} className={`email-filter-btn ${filterCategory === cat ? 'active' : ''}`}
+                    onClick={() => setFilterCategory(cat)}>{getCategoryIcon(cat)} {cat}</button>
                 ))}
               </div>
             )}
 
-            {/* Suggestion Cards */}
             {filteredSuggestions.length === 0 && !scanning && (
               <div style={{ textAlign: 'center', padding: '32px 16px', color: '#94A3B8' }}>
                 <div style={{ fontSize: '32px', marginBottom: '8px' }}>&#128233;</div>
@@ -702,67 +952,37 @@ export default function StudentDashboard() {
             {filteredSuggestions.map(suggestion => {
               const conf = getConfidenceStyle(suggestion.confidence);
               const urgency = getUrgencyInfo(suggestion);
-
               return (
                 <div key={suggestion.id} className={`email-suggestion-card ${urgency.isUrgent ? 'urgency-' + urgency.style : ''}`}>
-                  {/* Smart Notification — Urgency Banner */}
                   {urgency.isUrgent && (
                     <div className={`urgency-banner urgency-banner-${urgency.style}`}>
                       <span className="urgency-icon">&#9888;</span> {urgency.label}
                     </div>
                   )}
-
                   <div className="email-suggestion-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
                       <span style={{ fontSize: '18px' }}>{getCategoryIcon(suggestion.category)}</span>
                       <div>
                         <div className="email-suggestion-title">{suggestion.title}</div>
-                        <div className="email-suggestion-meta">
-                          {formatSuggestionDate(suggestion.date)} &middot; {suggestion.category}
-                        </div>
+                        <div className="email-suggestion-meta">{formatSuggestionDate(suggestion.date)} &middot; {suggestion.category}</div>
                       </div>
                     </div>
-                    <span className="email-confidence-badge" style={{ background: conf.bg, color: conf.color }}>
-                      {conf.label}
-                    </span>
+                    <span className="email-confidence-badge" style={{ background: conf.bg, color: conf.color }}>{conf.label}</span>
                   </div>
-
-                  <div className="email-suggestion-source">
-                    From email: &quot;{suggestion.sourceSubject}&quot;
-                  </div>
-
-                  <div className="email-suggestion-reason">
-                    {suggestion.reason}
-                  </div>
-
+                  <div className="email-suggestion-source">From email: &quot;{suggestion.sourceSubject}&quot;</div>
+                  <div className="email-suggestion-reason">{suggestion.reason}</div>
                   <div className="email-suggestion-actions">
-                    <button
-                      className="btn btn-primary"
-                      style={{ fontSize: '13px', padding: '7px 16px' }}
-                      onClick={() => handleAccept(suggestion.id)}
-                    >
-                      &#10003; Add to Calendar
-                    </button>
-                    <button
-                      className="btn btn-outline"
-                      style={{ fontSize: '13px', padding: '7px 16px' }}
-                      onClick={() => handleSnooze(suggestion.id)}
-                    >
-                      &#128340; Remind Later
-                    </button>
-                    <button
-                      className="btn btn-danger"
-                      style={{ fontSize: '13px', padding: '7px 16px' }}
-                      onClick={() => handleDismiss(suggestion.id)}
-                    >
-                      &#10005; Dismiss
-                    </button>
+                    <button className="btn btn-primary" style={{ fontSize: '13px', padding: '7px 16px' }}
+                      onClick={() => handleAccept(suggestion.id)}>&#10003; Add to Calendar</button>
+                    <button className="btn btn-outline" style={{ fontSize: '13px', padding: '7px 16px' }}
+                      onClick={() => handleSnooze(suggestion.id)}>&#128340; Remind Later</button>
+                    <button className="btn btn-danger" style={{ fontSize: '13px', padding: '7px 16px' }}
+                      onClick={() => handleDismiss(suggestion.id)}>&#10005; Dismiss</button>
                   </div>
                 </div>
               );
             })}
 
-            {/* Snoozed Section */}
             {snoozedSuggestions.length > 0 && (
               <div style={{ marginTop: '20px' }}>
                 <div style={{ fontSize: '13px', fontWeight: '600', color: '#94A3B8', marginBottom: '8px' }}>
@@ -776,13 +996,8 @@ export default function StudentDashboard() {
                         <span style={{ fontSize: '14px', fontWeight: '600', color: '#94A3B8' }}>{suggestion.title}</span>
                         <span style={{ fontSize: '12px', color: '#CBD5E1' }}>{formatSuggestionDate(suggestion.date)}</span>
                       </div>
-                      <button
-                        className="btn btn-outline"
-                        style={{ fontSize: '12px', padding: '4px 12px' }}
-                        onClick={() => handleUnsnooze(suggestion.id)}
-                      >
-                        Review
-                      </button>
+                      <button className="btn btn-outline" style={{ fontSize: '12px', padding: '4px 12px' }}
+                        onClick={() => handleUnsnooze(suggestion.id)}>Review</button>
                     </div>
                   </div>
                 ))}
@@ -790,27 +1005,104 @@ export default function StudentDashboard() {
             )}
           </div>
 
-          {/* FULL WIDTH: Assignment Queue */}
+          {/* ============================================================ */}
+          {/* FULL WIDTH: All Items (Assignment Queue) */}
+          {/* ============================================================ */}
           <div className="card dash-full">
-            <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '20px' }}>&#128218;</span> Upcoming Assignments
-              <span style={{ fontSize: '13px', fontWeight: '500', color: '#64748B', marginLeft: 'auto' }}>
-                {sortedTasks.length} assignments
-              </span>
-            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                <span style={{ fontSize: '20px' }}>&#128218;</span> All Items
+                <span style={{ fontSize: '13px', fontWeight: '500', color: '#64748B' }}>
+                  {sortedTasks.length} showing
+                </span>
+              </h2>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {/* Status filter */}
+                <button className={`email-filter-btn ${itemFilter === 'active' ? 'active' : ''}`}
+                  onClick={() => setItemFilter('active')}>Active</button>
+                <button className={`email-filter-btn ${itemFilter === 'completed' ? 'active' : ''}`}
+                  onClick={() => setItemFilter('completed')}>Completed</button>
+                <button className={`email-filter-btn ${itemFilter === 'all-types' ? 'active' : ''}`}
+                  onClick={() => setItemFilter('all-types')}>All</button>
+                <span style={{ borderLeft: '1px solid #E2E8F0', margin: '0 4px' }}></span>
+                {/* Type filter */}
+                <button className={`email-filter-btn ${typeFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => setTypeFilter('all')}>All Types</button>
+                {uniqueTypes.map(type => (
+                  <button key={type} className={`email-filter-btn ${typeFilter === type ? 'active' : ''}`}
+                    onClick={() => setTypeFilter(type)}>
+                    {getItemTypeIcon(type)} {getItemTypeLabel(type)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {sortedTasks.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '24px', color: '#94A3B8', fontSize: '14px' }}>
+                No items match this filter.
+              </div>
+            )}
+
             {sortedTasks.map(task => {
               const priority = getPriorityLevel(task);
+              const dateToShow = task.manualDate || task.dueDate;
               return (
-                <div key={task.id} className="task-item">
-                  <div className="task-dot d2l"></div>
+                <div key={task.id} className="task-item" style={{ borderLeft: `3px solid ${task.courseColor}` }}>
+                  {task.unread && <span className="unread-dot"></span>}
+                  <span style={{ fontSize: '16px', flexShrink: 0 }}>{getItemTypeIcon(task.type)}</span>
                   <div className="task-info">
-                    <div className="task-name">{task.name}</div>
-                    <div className="task-meta">{task.points} pts &middot; {task.courseName}</div>
+                    <div className="task-name">
+                      {task.name}
+                      {task.isRecurring && <span className="badge badge-recurring" style={{ marginLeft: '6px' }}>{task.recurringLabel}</span>}
+                    </div>
+                    <div className="task-meta">
+                      <span style={{ color: task.courseColor, fontWeight: '600' }}>{task.courseName}</span>
+                      {task.points && ` · ${task.points} pts`}
+                      {task.manualDate && ' · ✏️ Custom date'}
+                    </div>
                   </div>
-                  <span className={`badge badge-${priority}`}>
-                    {priority === 'high' ? 'Urgent' : priority === 'medium' ? 'Soon' : 'Upcoming'}
-                  </span>
-                  <div className="task-time">{formatDate(task.dueDate)}</div>
+
+                  {/* Badges */}
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
+                    <span className={getItemTypeBadgeClass(task.type)} style={{ fontSize: '11px', padding: '2px 7px' }}>
+                      {getItemTypeLabel(task.type)}
+                    </span>
+                    {task.submitted && <span className="badge badge-submitted">Submitted</span>}
+                    {task.graded && <span className="badge badge-graded">Graded</span>}
+                    {!task.submitted && dateToShow && (
+                      <span className={`badge badge-${priority}`}>
+                        {priority === 'high' ? 'Urgent' : priority === 'medium' ? 'Soon' : 'Upcoming'}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Date */}
+                  <div className="task-time" style={{ minWidth: '80px', textAlign: 'right' }}>
+                    {dateToShow ? formatDate(dateToShow) : 'No date'}
+                  </div>
+
+                  {/* Action buttons */}
+                  <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                    {!task.submitted && (
+                      <button className="item-action-btn complete" onClick={() => handleMarkComplete(task.id)}
+                        title="Mark as completed">&#10003;</button>
+                    )}
+                    {editingDateId === task.id ? (
+                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        <input type="datetime-local" value={editDateValue}
+                          onChange={e => setEditDateValue(e.target.value)}
+                          style={{ fontSize: '11px', padding: '3px 6px', border: '1px solid #CBD5E1', borderRadius: '4px', width: '160px' }}
+                        />
+                        <button className="item-action-btn complete" onClick={() => handleSetDate(task.id)}>&#10003;</button>
+                        <button className="item-action-btn" onClick={() => setEditingDateId(null)}>&#10005;</button>
+                      </div>
+                    ) : (
+                      <button className="item-action-btn" onClick={() => { setEditingDateId(task.id); setEditDateValue(dateToShow || ''); }}
+                        title="Change date">&#128197;</button>
+                    )}
+                    <button className="item-action-btn remove" onClick={() => handleRemoveItem(task.id)}
+                      title="Hide from calendar">&#10005;</button>
+                  </div>
                 </div>
               );
             })}

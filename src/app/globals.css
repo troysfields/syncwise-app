@@ -615,6 +615,218 @@ body {
   gap: 4px;
 }
 
+/* ============================================================
+   FEEDBACK PANEL
+   ============================================================ */
+.feedback-tab {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  transform-origin: bottom right;
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 8px 8px 0 0;
+  z-index: 90;
+  letter-spacing: 0.02em;
+  transition: background 0.2s;
+  box-shadow: -2px 0 8px rgba(0,0,0,0.1);
+}
+.feedback-tab:hover { background: var(--primary-dark); }
+
+.feedback-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.3);
+  z-index: 95;
+}
+
+.feedback-panel {
+  position: fixed;
+  top: 0;
+  right: -420px;
+  width: 400px;
+  max-width: 90vw;
+  height: 100vh;
+  background: white;
+  box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+  z-index: 100;
+  transition: right 0.3s ease;
+  overflow-y: auto;
+}
+.feedback-panel.open { right: 0; }
+
+.feedback-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--gray-100);
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 1;
+}
+
+.feedback-form { padding: 0 24px 24px; }
+
+.feedback-intro {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--gray-100);
+  margin-bottom: 16px;
+}
+.feedback-intro p {
+  font-size: 14px;
+  color: var(--gray-700);
+  line-height: 1.6;
+}
+
+.feedback-section { margin-bottom: 18px; }
+.feedback-section-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dark);
+  margin-bottom: 8px;
+}
+
+.feedback-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-bottom: 4px;
+}
+.feedback-checkbox:hover { background: var(--gray-100); }
+.feedback-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.feedback-checkbox span { font-size: 14px; color: var(--gray-700); }
+.feedback-checkbox.negative span { color: var(--warning); }
+.feedback-checkbox.positive span { color: var(--success); font-weight: 600; }
+
+.feedback-radio-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.feedback-radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 13px;
+  color: var(--gray-700);
+}
+.feedback-radio:hover { border-color: var(--primary); }
+.feedback-radio input[type="radio"] { accent-color: var(--primary); cursor: pointer; }
+
+.feedback-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid var(--gray-300);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.feedback-input:focus { border-color: var(--primary); }
+
+.feedback-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid var(--gray-300);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.2s;
+}
+.feedback-textarea:focus { border-color: var(--primary); }
+
+.feedback-submit { width: 100%; margin-top: 8px; padding: 12px; font-size: 15px; }
+
+/* ============================================================
+   NEEDS ATTENTION / ITEM ACTIONS / BADGES
+   ============================================================ */
+.attention-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+.attention-item:hover { background: var(--gray-100); }
+
+.badge-assignment { background: #FEF3C7; color: #B45309; }
+.badge-quiz { background: #E0E7FF; color: #4338CA; }
+.badge-discussion { background: #ECFDF5; color: #059669; }
+.badge-announcement { background: #FEE2E2; color: #DC2626; }
+.badge-checklist { background: #F3E8FF; color: #7C3AED; }
+.badge-content { background: #E0F2FE; color: #0369A1; }
+.badge-submitted { background: #ECFDF5; color: var(--success); }
+.badge-graded { background: #E0E7FF; color: #4338CA; }
+.badge-recurring { background: #F3E8FF; color: #7C3AED; }
+
+.course-progress { margin-bottom: 12px; }
+.course-progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.course-progress-name { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.course-color-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.course-progress-pct { font-size: 12px; color: var(--gray-500); }
+.course-progress-bar { height: 6px; background: var(--gray-100); border-radius: 100px; overflow: hidden; }
+.course-progress-fill { height: 100%; border-radius: 100px; transition: width 0.5s ease; }
+
+.item-actions { display: flex; gap: 4px; margin-left: auto; }
+.item-action-btn {
+  width: 28px; height: 28px;
+  border: none; border-radius: 6px;
+  cursor: pointer; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; color: var(--gray-500);
+  transition: all 0.15s;
+}
+.item-action-btn:hover { background: var(--gray-100); color: var(--dark); }
+.item-action-btn.complete:hover { background: #ECFDF5; color: var(--success); }
+.item-action-btn.remove:hover { background: #FEE2E2; color: var(--danger); }
+
+.unread-dot {
+  width: 8px; height: 8px;
+  background: var(--primary);
+  border-radius: 50%;
+  display: inline-block;
+  margin-left: 4px;
+  animation: unread-pulse 2s ease-in-out infinite;
+}
+@keyframes unread-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
 /* RESPONSIVE */
 @media (max-width: 768px) {
   .dash-grid { grid-template-columns: 1fr; padding: 16px; }
@@ -625,4 +837,6 @@ body {
   .week-view { grid-template-columns: repeat(7, 1fr); gap: 2px; }
   .week-event-chip { font-size: 8px; padding: 2px 3px; }
   .week-day-col { padding: 4px 2px; min-height: 70px; }
+  .feedback-panel { width: 100%; right: -100%; }
+  .feedback-tab { font-size: 11px; padding: 6px 14px; }
 }

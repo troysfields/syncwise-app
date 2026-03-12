@@ -1,5 +1,7 @@
 // API Route: /api/chat
-// SyncWise AI Chatbot — Tier 1: Platform guidance and navigation
+// CMU AI Calendar Chatbot — Beta
+// Capabilities: platform guidance, issue reporting, workload check,
+// email drafts, feedback collection, study planning
 // AUTH: Requires valid session
 // Uses Haiku for cost efficiency (~$0.001 per conversation turn)
 
@@ -7,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth, sanitizeString } from '@/lib/auth';
 import { SYNCWISE_SYSTEM_PROMPT, CHATBOT_CONFIG } from '@/lib/chatbot-prompt';
 import { getModelForRequest } from '@/lib/rate-limiter';
+import { saveFeedback } from '@/lib/db';
 
 export async function POST(request) {
   // Auth check
@@ -15,7 +18,7 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { message, history = [] } = body;
+    const { message, history = [], context = {} } = body;
 
     // Validate input
     if (!message || typeof message !== 'string') {
@@ -45,13 +48,23 @@ export async function POST(request) {
     // Check for API key
     const apiKey = process.env.AI_API_KEY;
     if (!apiKey || apiKey === 'your_anthropic_api_key' || apiKey === 'YOUR_AI_API_KEY') {
-      // Return a helpful canned response when no API key
       return NextResponse.json({
         success: true,
         response: getFallbackResponse(sanitizedMessage),
         model: 'fallback',
         isLiteMode: false,
       });
+    }
+
+    // Build context string from task data (for workload checks)
+    let contextStr = '';
+    if (context.tasks && Array.isArray(context.tasks) && context.tasks.length > 0) {
+      contextStr = '\n\n[STUDENT CONTEXT — Current assignments:\n';
+      context.tasks.forEach(t => {
+        const due = t.due || t.dueDate || 'unknown';
+        contextStr += `- ${t.title || t.name} (${t.course || t.courseName || '?'}) — due ${due}${t.points ? `, ${t.points}pts` : ''}\n`;
+      });
+      contextStr += ']';
     }
 
     // Build conversation history for Claude
@@ -68,8 +81,8 @@ export async function POST(request) {
       }
     }
 
-    // Add current message
-    messages.push({ role: 'user', content: sanitizedMessage });
+    // Add current message with context
+    messages.push({ role: 'user', content: sanitizedMessage + contextStr });
 
     // Call Claude API
     const model = isLiteMode ? 'claude-haiku-4-5-20251001' : CHATBOT_CONFIG.model;
@@ -94,7 +107,6 @@ export async function POST(request) {
       const errorData = await response.json().catch(() => ({}));
       console.error('Claude API error:', response.status, errorData);
 
-      // Fallback to canned responses on API error
       return NextResponse.json({
         success: true,
         response: getFallbackResponse(sanitizedMessage),
@@ -104,13 +116,20 @@ export async function POST(request) {
     }
 
     const data = await response.json();
-    const assistantMessage = data.content?.[0]?.text || 'Sorry, I couldn\'t generate a response. Try again?';
+    let assistantMessage = data.content?.[0]?.text || 'Sorry, I couldn\'t generate a response. Try again?';
+
+    // Check for action tags and process them
+    const actionResult = await processActions(assistantMessage, session, sanitizedMessage, history);
+    if (actionResult.processed) {
+      assistantMessage = actionResult.cleanMessage;
+    }
 
     return NextResponse.json({
       success: true,
       response: assistantMessage,
       model,
       isLiteMode,
+      action: actionResult.action || null,
       usage: {
         inputTokens: data.usage?.input_tokens,
         outputTokens: data.usage?.output_tokens,
@@ -125,23 +144,105 @@ export async function POST(request) {
   }
 }
 
+// Process action tags from chatbot responses
+async function processActions(message, session, userMessage, history) {
+  const result = { processed: false, cleanMessage: message, action: null };
+
+  // Check for issue report
+  if (message.includes('[ACTION:REPORT_ISSUE]')) {
+    try {
+      // Extract conversation context for the issue
+      const recentMessages = history.slice(-6).map(m => `${m.role}: ${m.content}`).join('\n');
+
+      await saveFeedback({
+        type: 'issue',
+        userEmail: session.email || session.sub || 'anonymous',
+        userRole: session.role || 'unknown',
+        description: userMessage,
+        conversationContext: recentMessages,
+        page: 'chatbot',
+        status: 'open',
+      });
+
+      result.action = 'issue_reported';
+      console.log('[CHAT] Issue reported by', session.email || session.sub);
+    } catch (err) {
+      console.error('[CHAT] Failed to save issue:', err.message);
+    }
+    result.processed = true;
+    result.cleanMessage = message.replace('[ACTION:REPORT_ISSUE]', '').trim();
+  }
+
+  // Check for feedback/suggestion
+  if (message.includes('[ACTION:SAVE_FEEDBACK]')) {
+    try {
+      const recentMessages = history.slice(-6).map(m => `${m.role}: ${m.content}`).join('\n');
+
+      await saveFeedback({
+        type: 'suggestion',
+        userEmail: session.email || session.sub || 'anonymous',
+        userRole: session.role || 'unknown',
+        description: userMessage,
+        conversationContext: recentMessages,
+        page: 'chatbot',
+        status: 'new',
+      });
+
+      result.action = 'feedback_saved';
+      console.log('[CHAT] Feedback saved from', session.email || session.sub);
+    } catch (err) {
+      console.error('[CHAT] Failed to save feedback:', err.message);
+    }
+    result.processed = true;
+    result.cleanMessage = message.replace('[ACTION:SAVE_FEEDBACK]', '').trim();
+  }
+
+  return result;
+}
+
 // GET endpoint for info
 export async function GET() {
   return NextResponse.json({
     endpoint: '/api/chat',
     method: 'POST',
-    description: 'CMU AI Calendar chatbot — platform guidance and navigation help',
+    description: 'CMU AI Calendar chatbot — platform guidance, issue reporting, workload check, email drafts, feedback',
     requires: 'Authentication (session cookie)',
     body: {
       message: '(required) User message, max 2000 chars',
       history: '(optional) Array of { role, content } for conversation context',
+      context: '(optional) { tasks: [...] } for workload analysis',
     },
+    capabilities: ['platform_help', 'issue_reporting', 'workload_check', 'email_drafts', 'feedback', 'study_planning'],
   });
 }
 
 // ─── Fallback responses when API key isn't configured ───
 function getFallbackResponse(message) {
   const lower = message.toLowerCase();
+
+  if (lower.includes('what can you') || lower.includes('capabilities') || lower.includes('help me with')) {
+    return 'I can help you with:\n• Setting up your D2L calendar connection\n• Reporting bugs or issues (I\'ll log them for the dev team)\n• Checking your workload ("how\'s my week looking?")\n• Drafting emails to professors\n• Giving feedback or suggesting features\n• Study planning and time management tips\n• Navigating dashboard features\n\nJust ask me anything!';
+  }
+
+  if (lower.includes('report') && (lower.includes('issue') || lower.includes('bug') || lower.includes('problem'))) {
+    return 'I can help you report that! Tell me:\n1. What happened? (what you expected vs what you saw)\n2. What page or feature were you using?\n\nI\'ll log it for the dev team.';
+  }
+
+  if (lower.includes('email') && (lower.includes('professor') || lower.includes('draft') || lower.includes('write'))) {
+    return 'I can help you draft an email! Tell me:\n1. Who is the professor?\n2. What\'s the email about? (extension request, question about an assignment, office hours, etc.)\n\nI\'ll write a draft you can copy and send.';
+  }
+
+  if (lower.includes('workload') || lower.includes('how') && lower.includes('week') || lower.includes('busy')) {
+    return 'I can check your workload! To give you the best analysis, make sure you\'re on the dashboard so I can see your upcoming assignments. Then ask me "how\'s my week looking?" and I\'ll break it down for you.';
+  }
+
+  if (lower.includes('feedback') || lower.includes('suggest') || lower.includes('feature') || lower.includes('wish')) {
+    return 'I\'d love to hear your feedback! Tell me your suggestion or what you\'d like to see improved, and I\'ll log it for the dev team.';
+  }
+
+  if (lower.includes('study') || lower.includes('plan') || lower.includes('schedule') || lower.includes('time')) {
+    return 'For study planning, I recommend the pomodoro technique: 25 min focused work, 5 min break, repeat. Tackle your highest-point assignments first during your peak focus hours. Want me to look at your upcoming deadlines and suggest a study schedule?';
+  }
 
   if (lower.includes('connect') || lower.includes('d2l') || lower.includes('calendar') || lower.includes('setup') || lower.includes('ical')) {
     return 'To connect your D2L calendar:\n1. Log into D2L at d2l.coloradomesa.edu\n2. Go to Calendar → Settings (gear icon)\n3. Enable Calendar Feeds and click Save\n4. Click Subscribe to see your feed URL\n5. Copy the .ics URL\n6. Go to /setup and paste it in Step 2\n7. Click Test Connection\n\nNeed more help? Email troysfields@gmail.com';
@@ -167,9 +268,5 @@ function getFallbackResponse(message) {
     return 'Your data is protected with HTTPS encryption, signed session cookies, and FERPA-compliant audit logging. Calendar data is processed in real-time and never permanently stored. See our full privacy policy at /privacy.';
   }
 
-  if (lower.includes('help') || lower.includes('what can you')) {
-    return 'I can help you with:\n• Setting up your D2L calendar connection\n• Navigating the dashboard features\n• Understanding notifications and settings\n• Explaining how features work\n• Troubleshooting common issues\n\nJust ask me anything!';
-  }
-
-  return 'I\'m the CMU AI Calendar assistant! I can help you navigate the platform, set up your D2L calendar, configure notifications, and explain any feature. What would you like to know?';
+  return 'I\'m the CMU AI Calendar assistant! I can help you navigate the platform, set up your D2L calendar, report issues, check your workload, draft emails to professors, or suggest study plans. Ask me "what can you do?" for the full list!';
 }

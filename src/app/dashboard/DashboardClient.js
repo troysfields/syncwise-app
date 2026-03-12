@@ -461,6 +461,16 @@ export default function StudentDashboard() {
         setTasks(liveTasks);
         setIsDemo(false);
 
+        // Cache tasks for chatbot workload checks
+        try {
+          localStorage.setItem('syncwise_dashboard_data', JSON.stringify({
+            tasks: liveTasks.slice(0, 30).map(t => ({
+              title: t.name, course: t.courseName, dueDate: t.dueDate, points: t.points,
+            })),
+            updatedAt: new Date().toISOString(),
+          }));
+        } catch { /* ignore storage errors */ }
+
         // Set course progress from stats
         if (data.courses) {
           const progress = Object.entries(data.courses).map(([name, info]) => ({

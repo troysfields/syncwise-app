@@ -11,7 +11,7 @@ export default function ChatWidget() {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: 'Hey! I\'m the CMU AI Calendar assistant. I can help you set up your D2L calendar, navigate the dashboard, or explain any feature. What do you need?',
+      content: 'Hey! I\'m the CMU AI Calendar assistant. I can help with D2L setup, check your workload, draft emails to professors, report issues, and more. Ask me "what can you do?" to see everything!',
     },
   ]);
   const [input, setInput] = useState('');
@@ -31,6 +31,28 @@ export default function ChatWidget() {
     }
   }, [isOpen]);
 
+  // Pull task context from localStorage for workload checks
+  const getTaskContext = () => {
+    try {
+      const cached = localStorage.getItem('syncwise_dashboard_data');
+      if (cached) {
+        const data = JSON.parse(cached);
+        if (data.tasks && Array.isArray(data.tasks)) {
+          return { tasks: data.tasks.slice(0, 20) }; // Limit to 20 tasks
+        }
+      }
+      // Also try assignments key
+      const assignments = localStorage.getItem('syncwise_assignments');
+      if (assignments) {
+        const parsed = JSON.parse(assignments);
+        if (Array.isArray(parsed)) {
+          return { tasks: parsed.slice(0, 20) };
+        }
+      }
+    } catch { /* ignore */ }
+    return {};
+  };
+
   const sendMessage = async () => {
     const trimmed = input.trim();
     if (!trimmed || isLoading) return;
@@ -40,13 +62,17 @@ export default function ChatWidget() {
     setInput('');
     setIsLoading(true);
 
+    // Include task context for workload-related queries
+    const context = getTaskContext();
+
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: trimmed,
-          history: messages.slice(-10), // Send recent context
+          history: messages.slice(-10),
+          context,
         }),
       });
 
@@ -94,9 +120,9 @@ export default function ChatWidget() {
 
   // Quick action buttons for common tasks
   const quickActions = [
+    { label: 'My Capabilities', message: 'What can you do?' },
     { label: 'Setup D2L', message: 'How do I connect my D2L calendar?' },
-    { label: 'Features', message: 'What features does CMU AI Calendar have?' },
-    { label: 'Privacy', message: 'Is my data safe?' },
+    { label: 'Report Issue', message: 'I want to report an issue' },
   ];
 
   return (
@@ -122,7 +148,7 @@ export default function ChatWidget() {
           <div style={styles.header}>
             <div>
               <strong style={styles.headerTitle}>CMU AI Calendar</strong>
-              <span style={styles.headerSubtitle}>Platform Guide</span>
+              <span style={styles.headerSubtitle}>Your AI Assistant</span>
             </div>
             <button onClick={() => setIsOpen(false)} style={styles.closeBtn}>✕</button>
           </div>
@@ -179,7 +205,7 @@ export default function ChatWidget() {
                     fetch('/api/chat', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ message: action.message, history: messages }),
+                      body: JSON.stringify({ message: action.message, history: messages, context: getTaskContext() }),
                     })
                       .then(r => r.json())
                       .then(data => {

@@ -557,6 +557,8 @@ export default function InstructorDashboard() {
     return classes[type] || 'badge';
   };
 
+  const isSubmittableType = (type) => ['assignment', 'quiz', 'discussion', 'checklist'].includes(type);
+
   // Unique course names for calendar course filter
   const uniqueCourses = [...new Set(items.map(t => t.courseName).filter(Boolean))].sort();
 
@@ -748,12 +750,15 @@ export default function InstructorDashboard() {
                             {evt.title}
                           </div>
                         ))}
-                        {items.map(item => (
-                          <div key={item.id} className="week-event-chip" style={{ background: (item.courseColor || '#6B7280') + '22', borderLeft: `3px solid ${item.courseColor || '#6B7280'}`, color: '#1E293B' }} title={item.courseName}>
-                            <div style={{ fontSize: '9px', fontWeight: '700', color: item.courseColor || '#6B7280', marginBottom: '1px' }}>{item.courseName}</div>
+                        {items.map(item => {
+                          const sub = isSubmittableType(item.type);
+                          return (
+                          <div key={item.id} className="week-event-chip" style={{ background: (item.courseColor || '#6B7280') + (sub ? '22' : '11'), borderLeft: `3px solid ${item.courseColor || '#6B7280'}`, color: '#1E293B', opacity: sub ? 1 : 0.7 }} title={`${item.courseName}${sub && item.dueDate ? ' · Due ' + new Date(item.dueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}`}>
+                            <div style={{ fontSize: '9px', fontWeight: '700', color: item.courseColor || '#6B7280', marginBottom: '1px' }}>{item.courseName}{sub && item.dueDate ? <span style={{ color: '#64748B', fontWeight: '600' }}> · {new Date(item.dueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span> : !sub ? <span style={{ color: '#94A3B8' }}> · Info</span> : ''}</div>
                             {typeIcon(item.type)} {item.name.substring(0, 15)}...
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -867,7 +872,9 @@ export default function InstructorDashboard() {
                   </div>
                 </div>
 
-                {filteredItems.map(item => (
+                {filteredItems.map(item => {
+                  const submittable = isSubmittableType(item.type);
+                  return (
                   <div key={item.id} style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -878,6 +885,7 @@ export default function InstructorDashboard() {
                     borderLeft: '3px solid ' + item.courseColor,
                     background: '#FAFAFA',
                     transition: 'all 0.2s',
+                    opacity: submittable ? 1 : 0.75,
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.background = '#F1F5F9'}
                   onMouseLeave={(e) => e.currentTarget.style.background = '#FAFAFA'}>
@@ -885,7 +893,7 @@ export default function InstructorDashboard() {
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: '13px', fontWeight: '600' }}>{item.name}</div>
                       <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '4px' }}>
-                        {item.courseName} • {item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit' }) : 'No due date'}
+                        {item.courseName} • {submittable && item.dueDate ? <span style={{ fontWeight: '600' }}>Due {new Date(item.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span> : !submittable ? <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>No submission required</span> : 'No due date'}
                       </div>
                       {item.points && (
                         <div style={{ fontSize: '12px', color: '#64748B' }}>
@@ -896,6 +904,7 @@ export default function InstructorDashboard() {
 
                     {/* Badges and Controls */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {!submittable && <span className="badge" style={{ background: '#F1F5F9', color: '#64748B', fontSize: '10px' }}>Info</span>}
                       <span className={`badge ${typeBadgeClass(item.type)}`}>{item.type}</span>
 
                       {/* Action Buttons */}
@@ -915,7 +924,8 @@ export default function InstructorDashboard() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

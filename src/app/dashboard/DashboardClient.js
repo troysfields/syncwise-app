@@ -117,6 +117,11 @@ function getItemTypeLabel(type) {
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
+// Items that require submission vs. informational-only
+function isSubmittableType(type) {
+  return ['assignment', 'quiz', 'discussion', 'checklist'].includes(type);
+}
+
 // ============================================================
 // CALENDAR VIEW HELPERS
 // ============================================================
@@ -1157,27 +1162,32 @@ export default function StudentDashboard() {
                     <span className="badge badge-outlook">{event.source === 'manual' ? 'Added' : 'Outlook'}</span>
                   </div>
                 ))}
-                {todayTasksForCalendar.map(task => (
-                  <div key={task.id} className="task-item" style={{ borderLeft: `3px solid ${task.courseColor}` }}>
+                {todayTasksForCalendar.map(task => {
+                  const submittable = isSubmittableType(task.type);
+                  return (
+                  <div key={task.id} className="task-item" style={{ borderLeft: `3px solid ${task.courseColor}`, opacity: submittable ? 1 : 0.75 }}>
                     {task.unread && <span className="unread-dot"></span>}
                     <span style={{ fontSize: '14px', flexShrink: 0 }}>{getItemTypeIcon(task.type)}</span>
                     <div className="task-info">
                       <div className="task-name">{task.name}</div>
                       <div className="task-meta">
                         <span style={{ color: task.courseColor, fontWeight: '600' }}>{task.courseName}</span>
-                        {task.dueDate && ` · Due ${formatTime(task.manualDate || task.dueDate)}`}
+                        {submittable && task.dueDate && <> · <span style={{ fontWeight: '600' }}>Due {formatTime(task.manualDate || task.dueDate)}</span></>}
+                        {!submittable && <> · <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>No submission required</span></>}
                         {task.points && ` · ${task.points} pts`}
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
                       {task.submitted && <span className="badge badge-submitted">Submitted</span>}
                       {task.graded && <span className="badge badge-graded">Graded</span>}
-                      {!task.submitted && <span className={`badge badge-${getPriorityLevel(task)}`}>
+                      {!submittable && <span className="badge" style={{ background: '#F1F5F9', color: '#64748B', fontSize: '10px' }}>Info</span>}
+                      {submittable && !task.submitted && <span className={`badge badge-${getPriorityLevel(task)}`}>
                         {getPriorityLevel(task) === 'high' ? 'Urgent' : getPriorityLevel(task) === 'medium' ? 'Soon' : 'Upcoming'}
                       </span>}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -1203,12 +1213,15 @@ export default function StudentDashboard() {
                             {formatTime(e.start)} {e.name.length > 18 ? e.name.slice(0, 18) + '...' : e.name}
                           </div>
                         ))}
-                        {dayTasks.map(t => (
-                          <div key={t.id} className="week-event-chip" style={{ background: t.courseColor + '22', borderLeft: `3px solid ${t.courseColor}`, color: '#1E293B' }} title={t.courseName}>
-                            <div style={{ fontSize: '9px', fontWeight: '700', color: t.courseColor, marginBottom: '1px' }}>{t.courseName}</div>
+                        {dayTasks.map(t => {
+                          const sub = isSubmittableType(t.type);
+                          return (
+                          <div key={t.id} className="week-event-chip" style={{ background: t.courseColor + (sub ? '22' : '11'), borderLeft: `3px solid ${t.courseColor}`, color: '#1E293B', opacity: sub ? 1 : 0.7 }} title={`${t.courseName}${sub && t.dueDate ? ' · Due ' + formatTime(t.manualDate || t.dueDate) : ''}`}>
+                            <div style={{ fontSize: '9px', fontWeight: '700', color: t.courseColor, marginBottom: '1px' }}>{t.courseName}{sub && t.dueDate ? <span style={{ color: '#64748B', fontWeight: '600' }}> · {formatTime(t.manualDate || t.dueDate)}</span> : !sub ? <span style={{ color: '#94A3B8' }}> · Info</span> : ''}</div>
                             {getItemTypeIcon(t.type)} {t.name.length > 16 ? t.name.slice(0, 16) + '...' : t.name}
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -1305,8 +1318,9 @@ export default function StudentDashboard() {
             {sortedTasks.map(task => {
               const priority = getPriorityLevel(task);
               const dateToShow = task.manualDate || task.dueDate;
+              const submittable = isSubmittableType(task.type);
               return (
-                <div key={task.id} className="task-item" style={{ borderLeft: `3px solid ${task.courseColor}` }}>
+                <div key={task.id} className="task-item" style={{ borderLeft: `3px solid ${task.courseColor}`, opacity: submittable ? 1 : 0.75 }}>
                   {task.unread && <span className="unread-dot"></span>}
                   <span style={{ fontSize: '16px', flexShrink: 0 }}>{getItemTypeIcon(task.type)}</span>
                   <div className="task-info">
@@ -1318,6 +1332,7 @@ export default function StudentDashboard() {
                       <span style={{ color: task.courseColor, fontWeight: '600' }}>{task.courseName}</span>
                       {task.points && ` · ${task.points} pts`}
                       {task.manualDate && ' · ✏️ Custom date'}
+                      {!submittable && <span style={{ color: '#94A3B8', fontStyle: 'italic' }}> · No submission required</span>}
                     </div>
                   </div>
 
@@ -1328,16 +1343,17 @@ export default function StudentDashboard() {
                     </span>
                     {task.submitted && <span className="badge badge-submitted">Submitted</span>}
                     {task.graded && <span className="badge badge-graded">Graded</span>}
-                    {!task.submitted && dateToShow && (
+                    {submittable && !task.submitted && dateToShow && (
                       <span className={`badge badge-${priority}`}>
                         {priority === 'high' ? 'Urgent' : priority === 'medium' ? 'Soon' : 'Upcoming'}
                       </span>
                     )}
+                    {!submittable && <span className="badge" style={{ background: '#F1F5F9', color: '#64748B', fontSize: '10px' }}>Info</span>}
                   </div>
 
                   {/* Date */}
                   <div className="task-time" style={{ minWidth: '80px', textAlign: 'right' }}>
-                    {dateToShow ? formatDate(dateToShow) : 'No date'}
+                    {submittable && dateToShow ? <span style={{ fontWeight: '600' }}>Due {formatDate(dateToShow)}</span> : dateToShow ? formatDate(dateToShow) : <span style={{ color: '#94A3B8' }}>No date</span>}
                   </div>
 
                   {/* Action buttons */}

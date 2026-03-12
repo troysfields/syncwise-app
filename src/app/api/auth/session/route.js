@@ -1,30 +1,108 @@
 // API Route: /api/auth/session
-// Creates or destroys a session for the consent-based beta.
-// POST: Create session + save user to database
+// Creates or destroys a session for the beta.
+// POST: Create session (from setup) or login with email+password
 // DELETE: Destroy session (logout)
 // GET: Check current session status + load profile from DB
 
 import { NextResponse } from 'next/server';
 import { createSession, getSession, sessionCookieHeader, clearSessionCookieHeader, sanitizeString, sanitizeEmail } from '@/lib/auth';
-import { saveUser, getUser } from '@/lib/db';
+import { saveUser, getUser, saveUserPassword, verifyUserPassword, hasPassword } from '@/lib/db';
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { name, email, role, icalUrl, courses } = body;
+    const { action } = body;
+
+    // ─── LOGIN: email + password ───
+    if (action === 'login') {
+      const { email, password } = body;
+      const cleanEmail = sanitizeEmail(email || '');
+
+      if (!cleanEmail) {
+        return NextResponse.json({ error: 'Please enter a valid email address.' }, { status: 400 });
+      }
+      if (!password) {
+        return NextResponse.json({ error: 'Please enter your password.' }, { status: 400 });
+      }
+
+      // Check if user exists
+      const user = await getUser(cleanEmail);
+      if (!user) {
+        return NextResponse.json({ error: 'No account found with that email. Please sign up first.' }, { status: 404 });
+      }
+
+      // Verify password
+      const valid = await verifyUserPassword(cleanEmail, password);
+      if (!valid) {
+        return NextResponse.json({ error: 'Incorrect password. Please try again.' }, { status: 401 });
+      }
+
+      // Create session
+      const token = createSession({
+        name: user.name,
+        email: cleanEmail,
+        role: user.role || 'student',
+      });
+
+      if (!token) {
+        return NextResponse.json({ error: 'Session creation failed. Server configuration issue.' }, { status: 500 });
+      }
+
+      const response = NextResponse.json({
+        success: true,
+        message: 'Logged in successfully.',
+        user: {
+          name: user.name,
+          email: cleanEmail,
+          role: user.role,
+          setupCompleted: user.setupCompleted,
+        },
+      });
+
+      response.headers.set('Set-Cookie', sessionCookieHeader(token));
+      return response;
+    }
+
+    // ─── SIGNUP: create new account from setup ───
+    const { name, email, role, icalUrl, courses, password } = body;
 
     if (!name || typeof name !== 'string' || !name.trim()) {
-      return NextResponse.json(
-        { error: 'Name is required to create a session.' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Name is required.' }, { status: 400 });
     }
 
     const cleanEmail = sanitizeEmail(email || '');
+    if (!cleanEmail) {
+      return NextResponse.json({ error: 'A valid email is required.' }, { status: 400 });
+    }
+
     const cleanName = sanitizeString(name, 100);
     const userRole = role === 'instructor' ? 'instructor' : 'student';
 
-    // Create signed session token (cookie)
+    // Instructor email verification — must be @coloradomesa.edu
+    if (userRole === 'instructor') {
+      if (!cleanEmail.endsWith('@coloradomesa.edu')) {
+        return NextResponse.json(
+          { error: 'Instructor accounts require a @coloradomesa.edu email address.' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Check if account already exists
+    const existingUser = await getUser(cleanEmail);
+    if (existingUser && await hasPassword(cleanEmail)) {
+      return NextResponse.json(
+        { error: 'An account with this email already exists. Please log in instead.' },
+        { status: 409 }
+      );
+    }
+
+    // Save password if provided
+    if (password) {
+      await saveUserPassword(cleanEmail, password);
+    }
+
+    // Create signed session token
     const token = createSession({
       name: cleanName,
       email: cleanEmail,
@@ -32,16 +110,13 @@ export async function POST(request) {
     });
 
     if (!token) {
-      return NextResponse.json(
-        { error: 'Session creation failed. Server configuration issue (missing secret).' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Session creation failed. Server configuration issue.' }, { status: 500 });
     }
 
-    // Save user profile to database (persistent across sessions/devices)
+    // Save user profile to database
     let userProfile = null;
     try {
-      userProfile = await saveUser(cleanEmail || `anon_${Date.now()}`, {
+      userProfile = await saveUser(cleanEmail, {
         name: cleanName,
         email: cleanEmail,
         role: userRole,
@@ -56,7 +131,7 @@ export async function POST(request) {
 
     const response = NextResponse.json({
       success: true,
-      message: 'Session created.',
+      message: 'Account created.',
       user: {
         name: cleanName,
         email: cleanEmail,
@@ -68,11 +143,8 @@ export async function POST(request) {
     response.headers.set('Set-Cookie', sessionCookieHeader(token));
     return response;
   } catch (error) {
-    console.error('Session creation error:', error);
-    return NextResponse.json(
-      { error: 'Failed to create session.' },
-      { status: 500 }
-    );
+    console.error('Session error:', error);
+    return NextResponse.json({ error: 'Failed to process request.' }, { status: 500 });
   }
 }
 

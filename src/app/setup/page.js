@@ -1,28 +1,47 @@
 'use client';
 
-// Student Setup / Onboarding Page
-// Guides students through connecting their data sources:
-// 1. D2L Calendar Feed (iCal URL) — required
-// 2. Microsoft Outlook — optional, coming soon
-// 3. Preferences — notification settings, etc.
+// Setup / Onboarding Page
+// Guides new users through account creation:
+// 1. Role selection (student/instructor)
+// 2. Basic info + password
+// 3. D2L Calendar Feed (iCal URL)
+// 4. Review & complete
 
 import { useState } from 'react';
 
 export default function SetupPage() {
   const [step, setStep] = useState(1);
+  const [role, setRole] = useState(''); // 'student' or 'instructor'
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [icalUrl, setIcalUrl] = useState('');
-  const [icalStatus, setIcalStatus] = useState(null); // null, 'loading', 'success', 'error'
+  const [icalStatus, setIcalStatus] = useState(null);
   const [icalData, setIcalData] = useState(null);
   const [error, setError] = useState('');
-  const [studentName, setStudentName] = useState('');
-  const [studentEmail, setStudentEmail] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // Validate and test the iCal feed URL
+  // ─── Validation helpers ───
+  const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+  const validateStep2 = () => {
+    if (!name.trim()) { setError('Please enter your name.'); return false; }
+    if (!email.trim() || !isValidEmail(email)) { setError('Please enter a valid email address.'); return false; }
+    if (role === 'instructor' && !email.trim().toLowerCase().endsWith('@coloradomesa.edu')) {
+      setError('Instructor accounts require a @coloradomesa.edu email address.');
+      return false;
+    }
+    if (password.length < 4) { setError('Password must be at least 4 characters.'); return false; }
+    if (password !== confirmPassword) { setError('Passwords don\'t match.'); return false; }
+    return true;
+  };
+
+  // ─── Test iCal feed ───
   const testICalFeed = async () => {
     setIcalStatus('loading');
     setError('');
 
-    // Basic validation
     if (!icalUrl.trim()) {
       setError('Please paste your D2L calendar feed URL.');
       setIcalStatus('error');
@@ -39,12 +58,8 @@ export default function SetupPage() {
       const res = await fetch('/api/feeds/ical', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          feedUrl: icalUrl.trim(),
-          user: studentEmail || 'setup',
-        }),
+        body: JSON.stringify({ feedUrl: icalUrl.trim(), user: email || 'setup' }),
       });
-
       const data = await res.json();
 
       if (data.success) {
@@ -60,116 +75,212 @@ export default function SetupPage() {
     }
   };
 
-  // Save setup and redirect to dashboard
+  // ─── Complete setup ───
   const completeSetup = async () => {
-    const settings = {
-      studentName,
-      studentEmail,
-      icalUrl: icalUrl.trim(),
-      courses: icalData?.courseMap || {},
-      setupCompleted: true,
-      setupDate: new Date().toISOString(),
-    };
+    setLoading(true);
+    setError('');
 
-    // Save to localStorage as fallback
-    localStorage.setItem('syncwise_settings', JSON.stringify(settings));
-
-    // Create authenticated session + save profile to database
-    // This persists the account server-side so it works across devices
     try {
-      await fetch('/api/auth/session', {
+      const res = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: studentName,
-          email: studentEmail,
-          role: 'student',
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          role,
+          password,
           icalUrl: icalUrl.trim(),
           courses: icalData?.courseMap || {},
         }),
       });
-    } catch (err) {
-      console.warn('Session creation failed — continuing with local data:', err);
-    }
 
-    // Redirect to welcome/onboarding page (shows features + chatbot intro)
-    window.location.href = '/welcome';
+      const data = await res.json();
+
+      if (data.success) {
+        // Save to localStorage as fallback
+        localStorage.setItem('syncwise_settings', JSON.stringify({
+          studentName: name.trim(),
+          studentEmail: email.trim(),
+          role,
+          icalUrl: icalUrl.trim(),
+          courses: icalData?.courseMap || {},
+          setupCompleted: true,
+          setupDate: new Date().toISOString(),
+        }));
+
+        // Redirect based on role
+        if (role === 'instructor') {
+          window.location.href = '/instructor';
+        } else {
+          window.location.href = '/welcome';
+        }
+      } else {
+        setError(data.error || 'Account creation failed. Please try again.');
+        setLoading(false);
+      }
+    } catch (err) {
+      setError('Network error. Please check your connection.');
+      setLoading(false);
+    }
   };
+
+  const totalSteps = role === 'instructor' ? 3 : 4;
+  const stepLabels = role === 'instructor'
+    ? ['Role', 'Your Info', 'Review']
+    : ['Role', 'Your Info', 'D2L Calendar', 'Review'];
 
   return (
     <div style={styles.container}>
       <div style={styles.card}>
         {/* Header */}
         <div style={styles.header}>
-          <h1 style={styles.title}>Welcome to SyncWise AI</h1>
-          <p style={styles.subtitle}>
-            Let&apos;s connect your course data. This takes about 2 minutes.
-          </p>
+          <div style={styles.logoBox}>C</div>
+          <h1 style={styles.title}>Create Your Account</h1>
+          <p style={styles.brandSub}>CMU AI Calendar by SyncWise AI</p>
         </div>
 
         {/* Progress Steps */}
         <div style={styles.progressBar}>
-          {[1, 2, 3].map(s => (
-            <div key={s} style={styles.progressStep}>
-              <div style={{
-                ...styles.stepCircle,
-                backgroundColor: step >= s ? '#5D0022' : '#E5E7EB',
-                color: step >= s ? '#fff' : '#9CA3AF',
-              }}>
-                {step > s ? '\u2713' : s}
+          {stepLabels.map((label, i) => {
+            const s = i + 1;
+            return (
+              <div key={s} style={styles.progressStep}>
+                <div style={{
+                  ...styles.stepCircle,
+                  backgroundColor: step >= s ? '#5D0022' : '#E5E7EB',
+                  color: step >= s ? '#fff' : '#9CA3AF',
+                }}>
+                  {step > s ? '✓' : s}
+                </div>
+                <span style={{
+                  ...styles.stepLabel,
+                  color: step >= s ? '#5D0022' : '#9CA3AF',
+                }}>
+                  {label}
+                </span>
               </div>
-              <span style={{
-                ...styles.stepLabel,
-                color: step >= s ? '#5D0022' : '#9CA3AF',
-              }}>
-                {s === 1 ? 'Your Info' : s === 2 ? 'D2L Calendar' : 'Review'}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* Step 1: Basic Info */}
+        {error && <div style={styles.errorBox}>{error}</div>}
+
+        {/* Step 1: Role Selection */}
         {step === 1 && (
+          <div style={styles.stepContent}>
+            <h2 style={styles.stepTitle}>I am a...</h2>
+
+            <button
+              onClick={() => { setRole('student'); setStep(2); setError(''); }}
+              style={{
+                ...styles.roleButton,
+                borderColor: role === 'student' ? '#5D0022' : '#E5E7EB',
+              }}
+            >
+              <span style={styles.roleIcon}>🎓</span>
+              <div style={{ textAlign: 'left' }}>
+                <span style={styles.roleButtonTitle}>Student</span>
+                <span style={styles.roleButtonDesc}>Connect your D2L calendar and get AI-powered assignment tracking</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => { setRole('instructor'); setStep(2); setError(''); }}
+              style={{
+                ...styles.roleButton,
+                borderColor: role === 'instructor' ? '#FBCE04' : '#E5E7EB',
+              }}
+            >
+              <span style={styles.roleIcon}>📚</span>
+              <div style={{ textAlign: 'left' }}>
+                <span style={styles.roleButtonTitle}>Instructor</span>
+                <span style={styles.roleButtonDesc}>Upload syllabi, manage courses, and support your students</span>
+              </div>
+            </button>
+
+            <p style={styles.loginLink}>
+              Already have an account?{' '}
+              <a href="/login" style={styles.link}>Sign in</a>
+            </p>
+          </div>
+        )}
+
+        {/* Step 2: Basic Info + Password */}
+        {step === 2 && (
           <div style={styles.stepContent}>
             <h2 style={styles.stepTitle}>About You</h2>
 
             <div style={styles.field}>
-              <label style={styles.label}>Name</label>
+              <label style={styles.fieldLabel}>Full Name</label>
               <input
                 type="text"
-                value={studentName}
-                onChange={e => setStudentName(e.target.value)}
+                value={name}
+                onChange={e => { setName(e.target.value); setError(''); }}
                 placeholder="Your name"
                 style={styles.input}
+                autoComplete="name"
               />
             </div>
 
             <div style={styles.field}>
-              <label style={styles.label}>CMU Email</label>
+              <label style={styles.fieldLabel}>
+                Email
+                {role === 'instructor' && <span style={styles.required}> (must be @coloradomesa.edu)</span>}
+              </label>
               <input
                 type="email"
-                value={studentEmail}
-                onChange={e => setStudentEmail(e.target.value)}
-                placeholder="you@mavs.coloradomesa.edu"
+                value={email}
+                onChange={e => { setEmail(e.target.value); setError(''); }}
+                placeholder={role === 'instructor' ? 'you@coloradomesa.edu' : 'you@email.com'}
                 style={styles.input}
+                autoComplete="email"
               />
             </div>
 
-            <button
-              onClick={() => setStep(2)}
-              disabled={!studentName.trim()}
-              style={{
-                ...styles.button,
-                opacity: studentName.trim() ? 1 : 0.5,
-              }}
-            >
-              Continue
-            </button>
+            <div style={styles.field}>
+              <label style={styles.fieldLabel}>Create Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => { setPassword(e.target.value); setError(''); }}
+                placeholder="At least 4 characters"
+                style={styles.input}
+                autoComplete="new-password"
+              />
+            </div>
+
+            <div style={styles.field}>
+              <label style={styles.fieldLabel}>Confirm Password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={e => { setConfirmPassword(e.target.value); setError(''); }}
+                placeholder="Re-enter your password"
+                style={styles.input}
+                autoComplete="new-password"
+              />
+            </div>
+
+            <div style={styles.buttonRow}>
+              <button onClick={() => { setStep(1); setError(''); }} style={styles.backButton}>Back</button>
+              <button
+                onClick={() => {
+                  setError('');
+                  if (validateStep2()) {
+                    // Instructors skip D2L step, go straight to review
+                    setStep(role === 'instructor' ? 3 : 3);
+                  }
+                }}
+                style={styles.primaryButton}
+              >
+                Continue
+              </button>
+            </div>
           </div>
         )}
 
-        {/* Step 2: D2L Calendar Feed */}
-        {step === 2 && (
+        {/* Step 3: D2L Calendar (Students only) or Review (Instructors) */}
+        {step === 3 && role === 'student' && (
           <div style={styles.stepContent}>
             <h2 style={styles.stepTitle}>Connect D2L Calendar</h2>
 
@@ -186,7 +297,7 @@ export default function SetupPage() {
             </div>
 
             <div style={styles.field}>
-              <label style={styles.label}>D2L Calendar Feed URL</label>
+              <label style={styles.fieldLabel}>D2L Calendar Feed URL</label>
               <input
                 type="url"
                 value={icalUrl}
@@ -195,12 +306,6 @@ export default function SetupPage() {
                 style={styles.input}
               />
             </div>
-
-            {error && (
-              <div style={styles.errorBox}>
-                {error}
-              </div>
-            )}
 
             {icalStatus === 'success' && icalData && (
               <div style={styles.successBox}>
@@ -219,92 +324,116 @@ export default function SetupPage() {
             )}
 
             <div style={styles.buttonRow}>
-              <button onClick={() => setStep(1)} style={styles.backButton}>
-                Back
-              </button>
+              <button onClick={() => { setStep(2); setError(''); }} style={styles.backButton}>Back</button>
 
               {icalStatus !== 'success' ? (
                 <button
                   onClick={testICalFeed}
                   disabled={icalStatus === 'loading' || !icalUrl.trim()}
                   style={{
-                    ...styles.button,
+                    ...styles.primaryButton,
                     opacity: (icalStatus === 'loading' || !icalUrl.trim()) ? 0.5 : 1,
                   }}
                 >
                   {icalStatus === 'loading' ? 'Testing...' : 'Test Connection'}
                 </button>
               ) : (
-                <button onClick={() => setStep(3)} style={styles.button}>
+                <button onClick={() => { setStep(4); setError(''); }} style={styles.primaryButton}>
                   Continue
                 </button>
               )}
             </div>
+
+            <button
+              onClick={() => { setStep(4); setError(''); }}
+              style={styles.skipButton}
+            >
+              Skip for now — I&apos;ll add this later
+            </button>
           </div>
         )}
 
-        {/* Step 3: Review & Complete */}
-        {step === 3 && (
+        {/* Review Step (Step 3 for instructors, Step 4 for students) */}
+        {((step === 3 && role === 'instructor') || (step === 4 && role === 'student')) && (
           <div style={styles.stepContent}>
             <h2 style={styles.stepTitle}>You&apos;re All Set!</h2>
 
             <div style={styles.reviewSection}>
               <div style={styles.reviewItem}>
+                <span style={styles.reviewLabel}>Role</span>
+                <span style={styles.reviewValue}>{role === 'instructor' ? '📚 Instructor' : '🎓 Student'}</span>
+              </div>
+              <div style={styles.reviewItem}>
                 <span style={styles.reviewLabel}>Name</span>
-                <span style={styles.reviewValue}>{studentName}</span>
+                <span style={styles.reviewValue}>{name}</span>
               </div>
               <div style={styles.reviewItem}>
                 <span style={styles.reviewLabel}>Email</span>
-                <span style={styles.reviewValue}>{studentEmail || 'Not provided'}</span>
+                <span style={styles.reviewValue}>{email}</span>
               </div>
               <div style={styles.reviewItem}>
-                <span style={styles.reviewLabel}>D2L Calendar</span>
-                <span style={{ ...styles.reviewValue, color: '#059669' }}>Connected</span>
+                <span style={styles.reviewLabel}>Password</span>
+                <span style={styles.reviewValue}>••••••••</span>
               </div>
-              <div style={styles.reviewItem}>
-                <span style={styles.reviewLabel}>Courses</span>
-                <span style={styles.reviewValue}>{Object.keys(icalData?.courseMap || {}).length} courses found</span>
-              </div>
-              <div style={styles.reviewItem}>
-                <span style={styles.reviewLabel}>Upcoming Items</span>
-                <span style={styles.reviewValue}>{icalData?.upcomingCount || 0} assignments & events</span>
-              </div>
-            </div>
-
-            <div style={styles.comingSoon}>
-              <p style={styles.comingSoonTitle}>Coming Soon</p>
-              <ul style={styles.comingSoonList}>
-                <li>Microsoft Outlook calendar & email integration</li>
-                <li>D2L announcement feeds</li>
-                <li>Instructor-uploaded syllabi & schedules</li>
-              </ul>
+              {role === 'student' && (
+                <>
+                  <div style={styles.reviewItem}>
+                    <span style={styles.reviewLabel}>D2L Calendar</span>
+                    <span style={{
+                      ...styles.reviewValue,
+                      color: icalStatus === 'success' ? '#059669' : '#F59E0B',
+                    }}>
+                      {icalStatus === 'success' ? 'Connected' : 'Not connected yet'}
+                    </span>
+                  </div>
+                  {icalData && (
+                    <>
+                      <div style={styles.reviewItem}>
+                        <span style={styles.reviewLabel}>Courses</span>
+                        <span style={styles.reviewValue}>{Object.keys(icalData.courseMap).length} found</span>
+                      </div>
+                      <div style={styles.reviewItem}>
+                        <span style={styles.reviewLabel}>Upcoming Items</span>
+                        <span style={styles.reviewValue}>{icalData.upcomingCount || 0}</span>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
             </div>
 
             <div style={styles.consent}>
               <p style={styles.consentText}>
-                By continuing, you agree that SyncWise AI will access your D2L calendar feed
-                to display your assignments and due dates. Your data is stored locally and
-                never shared with third parties. You can disconnect at any time in Settings.
+                By continuing, you agree that CMU AI Calendar will access your calendar data
+                to display assignments and due dates. Your data is stored securely and
+                never shared with third parties. You can delete your account at any time.
               </p>
             </div>
 
             <div style={styles.buttonRow}>
-              <button onClick={() => setStep(2)} style={styles.backButton}>
+              <button
+                onClick={() => { setStep(role === 'instructor' ? 2 : 3); setError(''); }}
+                style={styles.backButton}
+              >
                 Back
               </button>
-              <button onClick={completeSetup} style={styles.button}>
-                Go to Dashboard
+              <button
+                onClick={completeSetup}
+                disabled={loading}
+                style={{ ...styles.primaryButton, opacity: loading ? 0.7 : 1 }}
+              >
+                {loading ? 'Creating Account...' : 'Create Account & Go'}
               </button>
             </div>
           </div>
         )}
-      </div>
 
-      {/* Privacy note */}
-      <p style={styles.footer}>
-        SyncWise AI is built by Troy Fields for CMU ENTR 450.
-        Your data stays on your device. No IT access required.
-      </p>
+        {/* Footer */}
+        <p style={styles.footer}>
+          CMU AI Calendar is built by Troy Fields for CMU ENTR 450.
+          Your data is encrypted and stored securely.
+        </p>
+      </div>
     </div>
   );
 }
@@ -321,120 +450,198 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: '2rem',
-    backgroundColor: '#F9FAFB',
+    background: 'linear-gradient(135deg, #FDF2F4 0%, #F1F5F9 100%)',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: '12px',
-    boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+    borderRadius: '20px',
+    boxShadow: '0 25px 50px -12px rgba(0,0,0,0.1)',
     padding: '2.5rem',
-    maxWidth: '600px',
+    maxWidth: '540px',
     width: '100%',
   },
   header: {
     textAlign: 'center',
-    marginBottom: '2rem',
+    marginBottom: '1.5rem',
+  },
+  logoBox: {
+    width: '48px',
+    height: '48px',
+    background: '#5D0022',
+    borderRadius: '12px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'white',
+    fontSize: '22px',
+    fontWeight: '800',
+    margin: '0 auto 12px',
   },
   title: {
-    fontSize: '1.75rem',
-    fontWeight: '700',
+    fontSize: '1.5rem',
+    fontWeight: '800',
     color: '#111827',
-    margin: '0 0 0.5rem 0',
+    margin: '0 0 2px 0',
   },
-  subtitle: {
-    fontSize: '1rem',
-    color: '#6B7280',
+  brandSub: {
+    fontSize: '13px',
+    color: '#9CA3AF',
+    fontStyle: 'italic',
     margin: 0,
   },
   progressBar: {
     display: 'flex',
     justifyContent: 'center',
-    gap: '2rem',
-    marginBottom: '2rem',
-    padding: '0 1rem',
+    gap: '1.5rem',
+    marginBottom: '1.5rem',
+    padding: '0 0.5rem',
   },
   progressStep: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: '0.5rem',
+    gap: '0.4rem',
   },
   stepCircle: {
-    width: '36px',
-    height: '36px',
+    width: '32px',
+    height: '32px',
     borderRadius: '50%',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '0.875rem',
+    fontSize: '0.8rem',
     fontWeight: '600',
     transition: 'all 0.2s',
   },
   stepLabel: {
-    fontSize: '0.75rem',
+    fontSize: '0.7rem',
     fontWeight: '500',
   },
   stepContent: {
-    marginTop: '1rem',
+    marginTop: '0.5rem',
   },
   stepTitle: {
-    fontSize: '1.25rem',
+    fontSize: '1.2rem',
     fontWeight: '600',
     color: '#111827',
-    marginBottom: '1.5rem',
+    marginBottom: '1.25rem',
+    textAlign: 'center',
+  },
+  roleButton: {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    padding: '16px 20px',
+    background: '#fff',
+    border: '2px solid #E5E7EB',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    marginBottom: '12px',
+    transition: 'border-color 0.15s, box-shadow 0.15s',
+    fontFamily: 'inherit',
+  },
+  roleIcon: {
+    fontSize: '28px',
+    flexShrink: 0,
+  },
+  roleButtonTitle: {
+    display: 'block',
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: '2px',
+  },
+  roleButtonDesc: {
+    display: 'block',
+    fontSize: '13px',
+    color: '#6B7280',
+    lineHeight: '1.4',
   },
   field: {
-    marginBottom: '1.25rem',
+    marginBottom: '1rem',
+    textAlign: 'left',
   },
-  label: {
+  fieldLabel: {
     display: 'block',
     fontSize: '0.875rem',
     fontWeight: '500',
     color: '#374151',
-    marginBottom: '0.5rem',
+    marginBottom: '0.4rem',
+  },
+  required: {
+    color: '#DC2626',
+    fontSize: '0.8rem',
+    fontWeight: '400',
   },
   input: {
     width: '100%',
-    padding: '0.75rem 1rem',
+    padding: '0.7rem 1rem',
     border: '1px solid #D1D5DB',
-    borderRadius: '8px',
+    borderRadius: '10px',
     fontSize: '0.95rem',
     outline: 'none',
     transition: 'border-color 0.15s',
     boxSizing: 'border-box',
+    fontFamily: 'inherit',
   },
-  button: {
+  primaryButton: {
     backgroundColor: '#5D0022',
     color: '#fff',
     border: 'none',
-    borderRadius: '8px',
+    borderRadius: '10px',
     padding: '0.75rem 1.5rem',
     fontSize: '0.95rem',
     fontWeight: '600',
     cursor: 'pointer',
     transition: 'opacity 0.15s',
+    fontFamily: 'inherit',
   },
   backButton: {
     backgroundColor: '#F3F4F6',
     color: '#374151',
     border: 'none',
-    borderRadius: '8px',
+    borderRadius: '10px',
     padding: '0.75rem 1.5rem',
     fontSize: '0.95rem',
     fontWeight: '500',
     cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  skipButton: {
+    display: 'block',
+    width: '100%',
+    background: 'none',
+    border: 'none',
+    color: '#9CA3AF',
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    marginTop: '12px',
+    textDecoration: 'underline',
+    fontFamily: 'inherit',
   },
   buttonRow: {
     display: 'flex',
     justifyContent: 'space-between',
-    marginTop: '1.5rem',
+    marginTop: '1.25rem',
+  },
+  link: {
+    color: '#5D0022',
+    fontWeight: '600',
+    textDecoration: 'none',
+  },
+  loginLink: {
+    fontSize: '14px',
+    color: '#6B7280',
+    marginTop: '16px',
+    textAlign: 'center',
   },
   instructions: {
     backgroundColor: '#F0F5FF',
     borderRadius: '8px',
     padding: '1.25rem',
-    marginBottom: '1.5rem',
+    marginBottom: '1.25rem',
     borderLeft: '4px solid #5D0022',
   },
   instructionTitle: {
@@ -458,6 +665,7 @@ const styles = {
     color: '#DC2626',
     fontSize: '0.875rem',
     marginBottom: '1rem',
+    textAlign: 'left',
   },
   successBox: {
     backgroundColor: '#F0FDF4',
@@ -494,9 +702,9 @@ const styles = {
   },
   reviewSection: {
     backgroundColor: '#F9FAFB',
-    borderRadius: '8px',
+    borderRadius: '10px',
     padding: '1.25rem',
-    marginBottom: '1.5rem',
+    marginBottom: '1.25rem',
   },
   reviewItem: {
     display: 'flex',
@@ -513,27 +721,8 @@ const styles = {
     color: '#111827',
     fontSize: '0.875rem',
   },
-  comingSoon: {
-    backgroundColor: '#FFFBEB',
-    borderRadius: '8px',
-    padding: '1rem 1.25rem',
-    marginBottom: '1.5rem',
-    borderLeft: '4px solid #F59E0B',
-  },
-  comingSoonTitle: {
-    fontWeight: '600',
-    color: '#92400E',
-    margin: '0 0 0.5rem 0',
-    fontSize: '0.9rem',
-  },
-  comingSoonList: {
-    margin: 0,
-    paddingLeft: '1.25rem',
-    fontSize: '0.85rem',
-    color: '#78350F',
-  },
   consent: {
-    marginBottom: '1rem',
+    marginBottom: '0.75rem',
   },
   consentText: {
     fontSize: '0.8rem',

@@ -371,6 +371,76 @@ export async function getChatHistory(email) {
   return data?.messages || [];
 }
 
+// ─── Password Management ───
+
+/**
+ * Save a hashed password for a user.
+ * Uses bcryptjs for secure hashing.
+ */
+export async function saveUserPassword(email, password) {
+  const bcrypt = (await import('bcryptjs')).default;
+  const hash = await bcrypt.hash(password, 10);
+  const db = await getKV();
+  await db.set(`password:${email.toLowerCase()}`, { hash, updatedAt: new Date().toISOString() });
+  return true;
+}
+
+/**
+ * Verify a password against the stored hash.
+ * Returns true if valid, false otherwise.
+ */
+export async function verifyUserPassword(email, password) {
+  const bcrypt = (await import('bcryptjs')).default;
+  const db = await getKV();
+  const stored = await db.get(`password:${email.toLowerCase()}`);
+  if (!stored?.hash) return false;
+  return await bcrypt.compare(password, stored.hash);
+}
+
+/**
+ * Check if a user has a password set.
+ */
+export async function hasPassword(email) {
+  const db = await getKV();
+  const stored = await db.get(`password:${email.toLowerCase()}`);
+  return !!stored?.hash;
+}
+
+/**
+ * Save a password reset token (expires in 1 hour).
+ */
+export async function savePasswordResetToken(email, token) {
+  const db = await getKV();
+  await db.set(`reset:${token}`, {
+    email: email.toLowerCase(),
+    createdAt: Date.now(),
+    expiresAt: Date.now() + (60 * 60 * 1000), // 1 hour
+  });
+  return true;
+}
+
+/**
+ * Validate a password reset token. Returns email if valid, null if invalid/expired.
+ */
+export async function validateResetToken(token) {
+  const db = await getKV();
+  const data = await db.get(`reset:${token}`);
+  if (!data) return null;
+  if (Date.now() > data.expiresAt) {
+    await db.del(`reset:${token}`);
+    return null;
+  }
+  return data.email;
+}
+
+/**
+ * Consume (delete) a password reset token after use.
+ */
+export async function consumeResetToken(token) {
+  const db = await getKV();
+  await db.del(`reset:${token}`);
+}
+
 // ─── Health Check ───
 
 /**

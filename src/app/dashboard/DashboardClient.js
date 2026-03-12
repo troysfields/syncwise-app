@@ -897,7 +897,7 @@ export default function StudentDashboard() {
                   ))}
                 </>
               )}
-              {focuseModeAttentionItems && focuseModeAttentionItems.length > 0 && (
+              {focusModeAttentionItems && focusModeAttentionItems.length > 0 && (
                 <>
                   <h3 style={{ fontSize: '14px', fontWeight: '600', marginTop: '16px', marginBottom: '8px', color: '#EF4444' }}>Needs Attention</h3>
                   {focuseModeAttentionItems.map((item, i) => (
@@ -1221,7 +1221,7 @@ export default function StudentDashboard() {
                 </div>
                 <div className="month-legend">
                   <span className="legend-item"><span className="month-dot outlook-dot"></span> Outlook</span>
-                  {Object.entries(COURSE_COLORS).map(([name, color]) => (
+                  {Object.entries(DEFAULT_COURSE_COLORS).map(([name, color]) => (
                     <span key={name} className="legend-item"><span className="month-dot" style={{ background: color }}></span> {name}</span>
                   ))}
                 </div>

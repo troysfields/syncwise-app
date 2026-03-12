@@ -1,8 +1,9 @@
 // Error Reporting API — Receives errors from the client dashboard
-// Logs them server-side and triggers admin alerts when needed
+// Logs them server-side, sends admin email alerts, and triggers spike detection
 
 import { NextResponse } from 'next/server';
 import { logError, getStudentMessage, shouldAlertAdmin, getErrorStats, SEVERITY } from '@/lib/error-logger';
+import { notifyErrorReport } from '@/lib/email';
 
 export async function POST(req) {
   try {
@@ -38,21 +39,34 @@ export async function POST(req) {
     // Get the student-facing message for this error
     const studentMessage = getStudentMessage(errorCode);
 
-    // Check if we need to alert the admin (Troy)
+    // Check if we're in a spike
     const alertAdmin = shouldAlertAdmin();
+    let stats = null;
 
-    // If spike detected, log an admin alert
     if (alertAdmin) {
-      const stats = getErrorStats(1);
-      console.error(`[SYNCWISE ALERT] Error spike detected — ${stats.recentCount} errors in last 10 min. Details:`, {
-        total_last_hour: stats.total,
-        by_severity: stats.bySeverity,
-        by_platform: stats.byPlatform,
-        latest_error: errorCode,
-      });
-      // TODO: Send email to troysfields@gmail.com via SendGrid/Resend when configured
-      // For now, logs to Vercel's function logs (visible in Vercel dashboard)
+      stats = getErrorStats(1);
+      console.error(`[SYNCWISE ALERT] Error spike detected — ${stats.recentCount} errors in last 10 min.`);
     }
+
+    // Send email notification for all errors (with built-in cooldown per error code)
+    // The notifyErrorReport function has a 30-min cooldown per errorCode to avoid spam
+    notifyErrorReport({
+      errorCode: errorCode || 'unknown_error',
+      severity: severity || 'medium',
+      platform: platform || 'client',
+      endpoint: endpoint || '',
+      httpStatus,
+      errorMessage: errorMessage || 'No message provided',
+      user: user || 'unknown',
+      userAgent: userAgent || '',
+      stackTrace: stackTrace || '',
+      context: context || {},
+      spikeDetected: alertAdmin,
+      errorStats: stats,
+    }).catch(err => {
+      // Never let email failure break error reporting
+      console.error('[EMAIL] Error notification failed:', err.message);
+    });
 
     return NextResponse.json({
       success: true,

@@ -153,12 +153,12 @@ export default function NotificationPreferencesPage() {
 
             {/* Browser Push Permission */}
             {pushPermission !== 'granted' && (
-              <div className="card" style={{ marginBottom: '20px', background: '#FDF2F4', border: '1px solid #E8B4BF' }}>
+              <div className="card" style={{ marginBottom: '20px', background: '#FDF2F4', border: '1px solid #E8B4BF', color: '#1F2937' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{ fontSize: '24px' }}>🔔</span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: '700', fontSize: '14px', marginBottom: '4px' }}>Enable Browser Notifications</div>
-                    <div style={{ fontSize: '13px', color: '#64748B' }}>
+                    <div style={{ fontWeight: '700', fontSize: '14px', marginBottom: '4px', color: '#5D0022' }}>Enable Browser Notifications</div>
+                    <div style={{ fontSize: '13px', color: '#4B5563' }}>
                       {pushPermission === 'denied'
                         ? 'Browser notifications are blocked. Enable them in your browser settings.'
                         : 'Get alerts even when you\'re not on the CMU AI Calendar tab.'}

@@ -76,19 +76,6 @@ export async function POST(request) {
   }
 }
 
-// GET endpoint for health check / info
 export async function GET() {
-  return NextResponse.json({
-    endpoint: '/api/feeds/ical',
-    method: 'POST',
-    description: 'Fetch and parse a D2L iCal calendar feed',
-    body: {
-      feedUrl: '(required) D2L calendar feed URL ending in .ics',
-      user: '(optional) User identifier for audit logging',
-      daysAhead: '(optional) Number of days to look ahead, default 90',
-    },
-    example: {
-      feedUrl: 'https://d2l.coloradomesa.edu/d2l/le/calendar/feed/user/feed.ics?token=YOUR_TOKEN',
-    },
-  });
+  return NextResponse.json({ error: 'Method not allowed. Use POST.' }, { status: 405 });
 }

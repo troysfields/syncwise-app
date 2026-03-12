@@ -84,21 +84,6 @@ export async function POST(request) {
   }
 }
 
-// GET endpoint for health check / info
 export async function GET() {
-  return NextResponse.json({
-    endpoint: '/api/feeds/rss',
-    method: 'POST',
-    description: 'Fetch and parse D2L RSS announcement feeds',
-    body: {
-      feeds: '(required) Array of { url, courseName } objects',
-      user: '(optional) User identifier for audit logging',
-      daysBack: '(optional) Number of days to look back, default 30',
-    },
-    example: {
-      feeds: [
-        { url: 'https://d2l.coloradomesa.edu/d2l/le/12904/news/rss.xml', courseName: 'ENTR 450' },
-      ],
-    },
-  });
+  return NextResponse.json({ error: 'Method not allowed. Use POST.' }, { status: 405 });
 }

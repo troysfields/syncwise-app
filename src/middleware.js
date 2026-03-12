@@ -103,29 +103,24 @@ export function middleware(request) {
     }
   }
 
-  // ─── Admin Route Protection (FAIL CLOSED) ───
-  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
-    // If no ADMIN_SECRET is configured, block ALL admin access
+  // ─── Admin API Route Protection (FAIL CLOSED) ───
+  // Only protect /api/admin/* routes in middleware.
+  // Admin page routes (/admin/*) have their own client-side password gate.
+  if (pathname.startsWith('/api/admin')) {
     if (!ADMIN_SECRET) {
-      if (pathname.startsWith('/api/')) {
-        return NextResponse.json(
-          { error: 'Admin access not configured. Set ADMIN_SECRET env var.' },
-          { status: 403 }
-        );
-      }
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+      return NextResponse.json(
+        { error: 'Admin access not configured. Set ADMIN_SECRET env var.' },
+        { status: 403 }
+      );
     }
 
     const headerSecret = request.headers.get('x-admin-secret');
 
     if (headerSecret !== ADMIN_SECRET) {
-      if (pathname.startsWith('/api/')) {
-        return NextResponse.json(
-          { error: 'Unauthorized — admin credentials required.' },
-          { status: 401 }
-        );
-      }
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+      return NextResponse.json(
+        { error: 'Unauthorized — admin credentials required.' },
+        { status: 401 }
+      );
     }
   }
 

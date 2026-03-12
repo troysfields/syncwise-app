@@ -1,25 +1,32 @@
 // API Activity Logger
 // Logs every API call SyncWise makes — available to CMU IT on demand
-// In production, swap file storage for a database (Supabase, etc.)
+// Uses /tmp on Vercel (serverless-safe), falls back to process.cwd()/logs locally.
+// Note: /tmp is ephemeral on Vercel — logs persist only for the lifetime of the
+// serverless function instance. For durable logging, use the analytics system (Redis-backed).
 
 import fs from 'fs';
 import path from 'path';
 
-const LOG_DIR = path.join(process.cwd(), 'logs');
+// Vercel serverless: process.cwd() is read-only, but /tmp is writable
+const LOG_DIR = process.env.VERCEL ? '/tmp/logs' : path.join(process.cwd(), 'logs');
 const LOG_FILE = path.join(LOG_DIR, 'api-activity.jsonl');
 
-// Ensure log directory exists
-if (!fs.existsSync(LOG_DIR)) {
-  fs.mkdirSync(LOG_DIR, { recursive: true });
+// Safely create log directory — never crash on failure
+try {
+  if (!fs.existsSync(LOG_DIR)) {
+    fs.mkdirSync(LOG_DIR, { recursive: true });
+  }
+} catch {
+  // Silently continue — logging is best-effort, not mission-critical
 }
 
 export function logApiCall({ user, userRole, platform, action, endpoint, method, details, status }) {
   const entry = {
     timestamp: new Date().toISOString(),
     user: user || 'unknown',
-    userRole: userRole || 'student', // 'student' or 'instructor'
-    platform: platform || 'unknown', // 'd2l' or 'microsoft'
-    action: action || 'unknown', // human-readable: 'read_assignments', 'create_assignment', etc.
+    userRole: userRole || 'student',
+    platform: platform || 'unknown',
+    action: action || 'unknown',
     endpoint: endpoint || '',
     method: method || 'GET',
     details: details || {},
@@ -28,8 +35,8 @@ export function logApiCall({ user, userRole, platform, action, endpoint, method,
 
   try {
     fs.appendFileSync(LOG_FILE, JSON.stringify(entry) + '\n');
-  } catch (err) {
-    console.error('Failed to write API log:', err.message);
+  } catch {
+    // Best-effort — don't crash the request if logging fails
   }
 
   return entry;
@@ -40,8 +47,7 @@ export function getRecentLogs(count = 100) {
     if (!fs.existsSync(LOG_FILE)) return [];
     const lines = fs.readFileSync(LOG_FILE, 'utf8').trim().split('\n');
     return lines.slice(-count).map(line => JSON.parse(line));
-  } catch (err) {
-    console.error('Failed to read API logs:', err.message);
+  } catch {
     return [];
   }
 }
@@ -53,7 +59,7 @@ export function getLogsByUser(email) {
     return lines
       .map(line => JSON.parse(line))
       .filter(entry => entry.user === email);
-  } catch (err) {
+  } catch {
     return [];
   }
 }
@@ -65,7 +71,7 @@ export function getLogsByPlatform(platform) {
     return lines
       .map(line => JSON.parse(line))
       .filter(entry => entry.platform === platform);
-  } catch (err) {
+  } catch {
     return [];
   }
 }

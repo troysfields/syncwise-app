@@ -32,7 +32,7 @@ export default function SetupPage() {
       setError('Instructor accounts require a @coloradomesa.edu email address.');
       return false;
     }
-    if (password.length < 4) { setError('Password must be at least 4 characters.'); return false; }
+    if (password.length < 8) { setError('Password must be at least 8 characters.'); return false; }
     if (password !== confirmPassword) { setError('Passwords don\'t match.'); return false; }
     return true;
   };
@@ -241,7 +241,7 @@ export default function SetupPage() {
                 type="password"
                 value={password}
                 onChange={e => { setPassword(e.target.value); setError(''); }}
-                placeholder="At least 4 characters"
+                placeholder="At least 8 characters"
                 style={styles.input}
                 autoComplete="new-password"
               />

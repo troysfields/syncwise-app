@@ -223,18 +223,7 @@ async function processActions(message, session, userMessage, history) {
 
 // GET endpoint for info
 export async function GET() {
-  return NextResponse.json({
-    endpoint: '/api/chat',
-    method: 'POST',
-    description: 'CMU AI Calendar chatbot — platform guidance, issue reporting, workload check, email drafts, feedback',
-    requires: 'Authentication (session cookie)',
-    body: {
-      message: '(required) User message, max 2000 chars',
-      history: '(optional) Array of { role, content } for conversation context',
-      context: '(optional) { tasks: [...] } for workload analysis',
-    },
-    capabilities: ['platform_help', 'issue_reporting', 'workload_check', 'email_drafts', 'feedback', 'study_planning'],
-  });
+  return NextResponse.json({ error: 'Method not allowed. Use POST.' }, { status: 405 });
 }
 
 // ─── Detect which chatbot capability is being used ───

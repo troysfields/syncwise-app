@@ -25,6 +25,11 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      setLoading(false);
+      return;
+    }
 
     // Instructor email check
     if (role === 'instructor' && !email.trim().toLowerCase().endsWith('@coloradomesa.edu')) {

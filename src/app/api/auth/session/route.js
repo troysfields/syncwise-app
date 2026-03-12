@@ -27,18 +27,19 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Please enter your password.' }, { status: 400 });
       }
 
-      // Check if user exists
+      // Check if user exists and verify password
+      // Use generic error messages to prevent user enumeration
       const user = await getUser(cleanEmail);
       if (!user) {
-        return NextResponse.json({ error: 'No account found with that email. Please sign up first.' }, { status: 404 });
+        trackAuth({ userEmail: cleanEmail, action: 'login_failed', success: false, method: 'password' }).catch(() => {});
+        return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 });
       }
 
-      // Verify password
       const valid = await verifyUserPassword(cleanEmail, password);
       if (!valid) {
         notifyMultipleFailedLogins(request, cleanEmail, 1).catch(() => {});
         trackAuth({ userEmail: cleanEmail, action: 'login_failed', success: false, method: 'password' }).catch(() => {});
-        return NextResponse.json({ error: 'Incorrect password. Please try again.' }, { status: 401 });
+        return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 });
       }
 
       // Create session

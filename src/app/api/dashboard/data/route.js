@@ -30,15 +30,5 @@ export async function POST(request) {
 }
 
 export async function GET() {
-  return NextResponse.json({
-    endpoint: '/api/dashboard/data',
-    method: 'POST',
-    description: 'Fetch aggregated dashboard data from all consent-based sources',
-    requires: 'Authentication (session cookie or Bearer token)',
-    body: {
-      icalUrl: '(required) D2L calendar feed URL',
-      studentEmail: '(optional) Student email for audit logging',
-      uploadedDocs: '(optional) Array of instructor-uploaded document analysis results',
-    },
-  });
+  return NextResponse.json({ error: 'Method not allowed. Use POST.' }, { status: 405 });
 }

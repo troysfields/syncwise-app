@@ -107,19 +107,6 @@ export async function POST(request) {
   }
 }
 
-// GET endpoint for info
 export async function GET() {
-  return NextResponse.json({
-    endpoint: '/api/feeds/upload',
-    method: 'POST',
-    contentType: 'multipart/form-data',
-    description: 'Upload a course document (syllabus, schedule) for AI analysis',
-    fields: {
-      file: '(required) PDF, DOCX, or TXT file — max 10MB',
-      courseName: '(optional) Course name, e.g., "ENTR 450"',
-      instructorId: '(optional) Instructor identifier for audit logging',
-    },
-    supportedFormats: ALLOWED_TYPES,
-    maxSize: '10MB',
-  });
+  return NextResponse.json({ error: 'Method not allowed. Use POST.' }, { status: 405 });
 }

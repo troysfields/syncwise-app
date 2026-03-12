@@ -5,13 +5,18 @@
 import fs from 'fs';
 import path from 'path';
 
-const LOG_DIR = path.join(process.cwd(), 'logs');
+// Vercel serverless: process.cwd() is read-only, but /tmp is writable
+const LOG_DIR = process.env.VERCEL ? '/tmp/logs' : path.join(process.cwd(), 'logs');
 const ERROR_LOG = path.join(LOG_DIR, 'errors.jsonl');
 const HEALTH_LOG = path.join(LOG_DIR, 'health-checks.jsonl');
 
-// Ensure log directory exists
-if (!fs.existsSync(LOG_DIR)) {
-  fs.mkdirSync(LOG_DIR, { recursive: true });
+// Safely create log directory — never crash on failure
+try {
+  if (!fs.existsSync(LOG_DIR)) {
+    fs.mkdirSync(LOG_DIR, { recursive: true });
+  }
+} catch {
+  // Silently continue — logging is best-effort
 }
 
 // ============================================================

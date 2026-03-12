@@ -7,11 +7,16 @@ import { requireAuth, requireAdmin } from '@/lib/auth';
 import fs from 'fs';
 import path from 'path';
 
-const LOG_DIR = path.join(process.cwd(), 'logs');
+// Vercel serverless: process.cwd() is read-only, but /tmp is writable
+const LOG_DIR = process.env.VERCEL ? '/tmp/logs' : path.join(process.cwd(), 'logs');
 const FEEDBACK_FILE = path.join(LOG_DIR, 'feedback.jsonl');
 
-if (!fs.existsSync(LOG_DIR)) {
-  fs.mkdirSync(LOG_DIR, { recursive: true });
+try {
+  if (!fs.existsSync(LOG_DIR)) {
+    fs.mkdirSync(LOG_DIR, { recursive: true });
+  }
+} catch {
+  // Silently continue — feedback storage is best-effort on serverless
 }
 
 export async function POST(req) {

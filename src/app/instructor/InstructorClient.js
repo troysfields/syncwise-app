@@ -245,6 +245,7 @@ export default function InstructorDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefreshTime, setLastRefreshTime] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [courseFilter, setCourseFilter] = useState('all');
 
   // ============================================================
   // LIVE DATA FETCH — Instructor dashboard
@@ -498,12 +499,12 @@ export default function InstructorDashboard() {
 
   function getEventsForDate(date) {
     const dateStr = date.toISOString().split('T')[0];
-    return DEMO_CALENDAR_EVENTS.filter(evt => evt.date === dateStr);
+    return calendarFilteredEvents.filter(evt => evt.date === dateStr);
   }
 
   function getItemsForDate(date) {
     const dateStr = date.toISOString().split('T')[0];
-    return items.filter(item => {
+    return calendarFilteredItems.filter(item => {
       if (!item.dueDate) return false;
       const itemDateStr = item.dueDate.split('T')[0];
       return itemDateStr === dateStr;
@@ -556,7 +557,18 @@ export default function InstructorDashboard() {
     return classes[type] || 'badge';
   };
 
-  // Filtered items
+  // Unique course names for calendar course filter
+  const uniqueCourses = [...new Set(items.map(t => t.courseName).filter(Boolean))].sort();
+
+  // Course-filtered data for calendar views
+  const calendarFilteredItems = courseFilter === 'all'
+    ? items
+    : items.filter(t => t.courseName === courseFilter);
+  const calendarFilteredEvents = courseFilter === 'all'
+    ? DEMO_CALENDAR_EVENTS
+    : DEMO_CALENDAR_EVENTS.filter(e => e.courseName === courseFilter);
+
+  // Filtered items (for item list, not calendar)
   let filteredItems = items;
   if (selectedTypeFilter !== 'all') {
     filteredItems = filteredItems.filter(item => item.type === selectedTypeFilter);
@@ -702,6 +714,18 @@ export default function InstructorDashboard() {
               </button>
             </div>
 
+            {/* Course Filter */}
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px solid #E2E8F0' }}>
+              <button className={`email-filter-btn ${courseFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setCourseFilter('all')} style={{ fontSize: '11px' }}>All Classes</button>
+              {uniqueCourses.map(course => (
+                <button key={course} className={`email-filter-btn ${courseFilter === course ? 'active' : ''}`}
+                  onClick={() => setCourseFilter(course)} style={{ fontSize: '11px', borderLeft: `3px solid ${DEFAULT_COURSE_COLORS[course] || '#6B7280'}` }}>
+                  {course}
+                </button>
+              ))}
+            </div>
+
             {/* Week View */}
             {calendarView === 'week' && (
               <div className="week-view">
@@ -719,12 +743,14 @@ export default function InstructorDashboard() {
                       </div>
                       <div className="week-day-events">
                         {events.map(evt => (
-                          <div key={evt.id} className="week-event-chip" style={{ backgroundColor: evt.courseColor, color: 'white' }}>
+                          <div key={evt.id} className="week-event-chip" style={{ backgroundColor: evt.courseColor, color: 'white' }} title={evt.courseName || 'General'}>
+                            <div style={{ fontSize: '9px', fontWeight: '700', opacity: 0.8, marginBottom: '1px' }}>{evt.courseName || 'General'}</div>
                             {evt.title}
                           </div>
                         ))}
                         {items.map(item => (
-                          <div key={item.id} className="week-event-chip task-chip-high">
+                          <div key={item.id} className="week-event-chip" style={{ background: (item.courseColor || '#6B7280') + '22', borderLeft: `3px solid ${item.courseColor || '#6B7280'}`, color: '#1E293B' }} title={item.courseName}>
+                            <div style={{ fontSize: '9px', fontWeight: '700', color: item.courseColor || '#6B7280', marginBottom: '1px' }}>{item.courseName}</div>
                             {typeIcon(item.type)} {item.name.substring(0, 15)}...
                           </div>
                         ))}

@@ -235,6 +235,7 @@ export default function StudentDashboard() {
   // Calendar view state
   const [calendarView, setCalendarView] = useState('today');
   const [calendarDate, setCalendarDate] = useState(new Date());
+  const [courseFilter, setCourseFilter] = useState('all'); // 'all' or specific course name
 
   // New feature state variables
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -575,6 +576,17 @@ export default function StudentDashboard() {
   // Unique item types for filter
   const uniqueTypes = [...new Set(tasks.map(t => t.type))];
 
+  // Unique course names for calendar course filter
+  const uniqueCourses = [...new Set(tasks.map(t => t.courseName).filter(Boolean))].sort();
+
+  // Apply course filter to calendar data
+  const calendarFilteredTasks = courseFilter === 'all'
+    ? visibleTasks
+    : visibleTasks.filter(t => t.courseName === courseFilter);
+  const calendarFilteredEvents = courseFilter === 'all'
+    ? allEvents
+    : allEvents.filter(e => e.courseName === courseFilter);
+
   // ============================================================
   // HANDLERS — Item actions
   // ============================================================
@@ -641,10 +653,10 @@ export default function StudentDashboard() {
 
   function goToToday() { setCalendarDate(new Date()); }
 
-  // Calendar data
+  // Calendar data (uses course-filtered versions)
   const todayDate = calendarView === 'today' ? calendarDate : new Date();
-  const todayEvents = allEvents.filter(e => isSameDay(new Date(e.start), todayDate));
-  const todayTasksForCalendar = visibleTasks.filter(t => {
+  const todayEvents = calendarFilteredEvents.filter(e => isSameDay(new Date(e.start), todayDate));
+  const todayTasksForCalendar = calendarFilteredTasks.filter(t => {
     const d = t.manualDate || t.dueDate;
     return d && isSameDay(new Date(d), todayDate);
   });
@@ -1111,6 +1123,18 @@ export default function StudentDashboard() {
               <button className="cal-nav-btn" onClick={() => navigateCalendar(1)}>&rsaquo;</button>
             </div>
 
+            {/* Course Filter */}
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px solid #E2E8F0' }}>
+              <button className={`email-filter-btn ${courseFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setCourseFilter('all')} style={{ fontSize: '11px' }}>All Classes</button>
+              {uniqueCourses.map(course => (
+                <button key={course} className={`email-filter-btn ${courseFilter === course ? 'active' : ''}`}
+                  onClick={() => setCourseFilter(course)} style={{ fontSize: '11px', borderLeft: `3px solid ${DEFAULT_COURSE_COLORS[course] || '#6B7280'}` }}>
+                  {course}
+                </button>
+              ))}
+            </div>
+
             {/* TODAY VIEW */}
             {calendarView === 'today' && (
               <div>
@@ -1120,11 +1144,15 @@ export default function StudentDashboard() {
                   </div>
                 )}
                 {todayEvents.map(event => (
-                  <div key={event.id} className="task-item" style={{ background: '#DBEAFE' }}>
-                    <div className="task-dot outlook"></div>
+                  <div key={event.id} className="task-item" style={{ background: event.courseName ? undefined : '#DBEAFE', borderLeft: event.courseName ? `3px solid ${event.courseColor || DEFAULT_COURSE_COLORS[event.courseName] || '#6B7280'}` : undefined }}>
+                    {!event.courseName && <div className="task-dot outlook"></div>}
                     <div className="task-info">
                       <div className="task-name">{event.name}</div>
-                      <div className="task-meta">{formatTime(event.start)} — {formatTime(event.end)}</div>
+                      <div className="task-meta">
+                        {event.courseName && <span style={{ color: event.courseColor || DEFAULT_COURSE_COLORS[event.courseName] || '#6B7280', fontWeight: '600' }}>{event.courseName} · </span>}
+                        {!event.courseName && <span style={{ color: '#64748B', fontWeight: '600' }}>General · </span>}
+                        {formatTime(event.start)} — {formatTime(event.end)}
+                      </div>
                     </div>
                     <span className="badge badge-outlook">{event.source === 'manual' ? 'Added' : 'Outlook'}</span>
                   </div>
@@ -1157,8 +1185,8 @@ export default function StudentDashboard() {
             {calendarView === 'week' && (
               <div className="week-view">
                 {getWeekDays(calendarDate).map((day, i) => {
-                  const dayEvents = getEventsForDay(allEvents, day);
-                  const dayTasks = getTasksForDay(visibleTasks, day);
+                  const dayEvents = getEventsForDay(calendarFilteredEvents, day);
+                  const dayTasks = getTasksForDay(calendarFilteredTasks, day);
                   const isToday = isSameDay(day, new Date());
                   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                   return (
@@ -1170,12 +1198,14 @@ export default function StudentDashboard() {
                       </div>
                       <div className="week-day-events">
                         {dayEvents.map(e => (
-                          <div key={e.id} className="week-event-chip outlook-chip">
+                          <div key={e.id} className="week-event-chip outlook-chip" title={e.courseName || 'General'}>
+                            <div style={{ fontSize: '9px', fontWeight: '700', opacity: 0.7, marginBottom: '1px' }}>{e.courseName || 'General'}</div>
                             {formatTime(e.start)} {e.name.length > 18 ? e.name.slice(0, 18) + '...' : e.name}
                           </div>
                         ))}
                         {dayTasks.map(t => (
-                          <div key={t.id} className="week-event-chip" style={{ background: t.courseColor + '22', borderLeft: `3px solid ${t.courseColor}`, color: '#1E293B' }}>
+                          <div key={t.id} className="week-event-chip" style={{ background: t.courseColor + '22', borderLeft: `3px solid ${t.courseColor}`, color: '#1E293B' }} title={t.courseName}>
+                            <div style={{ fontSize: '9px', fontWeight: '700', color: t.courseColor, marginBottom: '1px' }}>{t.courseName}</div>
                             {getItemTypeIcon(t.type)} {t.name.length > 16 ? t.name.slice(0, 16) + '...' : t.name}
                           </div>
                         ))}
@@ -1198,8 +1228,8 @@ export default function StudentDashboard() {
                   {getMonthDays(calendarDate).map((day, i) => {
                     const isCurrentMonth = day.getMonth() === calendarDate.getMonth();
                     const isToday = isSameDay(day, new Date());
-                    const dayEvents = getEventsForDay(allEvents, day);
-                    const dayTasks = getTasksForDay(visibleTasks, day);
+                    const dayEvents = getEventsForDay(calendarFilteredEvents, day);
+                    const dayTasks = getTasksForDay(calendarFilteredTasks, day);
                     const hasItems = dayEvents.length + dayTasks.length > 0;
                     return (
                       <div key={i}

@@ -141,9 +141,9 @@ function normalizeICalEvent(raw) {
   const dtEnd = parseICalDate(raw.DTEND);
   const dueDate = parseICalDate(raw.DUE) || dtEnd || dtStart;
 
-  // Try to extract course name from the summary or categories
-  // D2L typically formats as: "Assignment Name - Course Name" or puts course in CATEGORIES
-  const courseName = extractCourseName(summary, categories, description);
+  // Try to extract course name from location, categories, summary, or description
+  // D2L puts course info in LOCATION field: "ENTR450-001-46711 Entrepreneurship"
+  const courseName = extractCourseName(summary, categories, description, location);
   const itemName = cleanItemName(summary, courseName);
   const itemType = detectItemType(summary, description, categories);
 
@@ -190,55 +190,98 @@ function unescapeICalText(text) {
 // ============================================================
 
 // Try to extract the course name from event data
-// D2L calendar feeds often include course info in the summary or description
-function extractCourseName(summary, categories, description) {
-  // Check categories first — D2L often puts course code here
-  if (categories.length > 0) {
-    // Look for something that looks like a course code (e.g., "ENTR 450", "CS 101")
-    const coursePattern = /^[A-Z]{2,5}\s*\d{3,4}/;
-    const match = categories.find(c => coursePattern.test(c));
-    if (match) return match;
-    // If no course code pattern, use first category
-    return categories[0];
-  }
+// D2L calendar feeds include course info in LOCATION field:
+//   "ENTR450-001-46711 Entrepreneurship"
+//   "DH314 (MANG471-003-46664 Operations Management)"
+//   "ENGR353,ENTR343 Entrepreneurship Opportunities, ..."
+function extractCourseName(summary, categories, description, location = '') {
+  // D2L course code pattern: 2-5 uppercase letters followed by 3-4 digits (e.g., ENTR450, MANG491, CS101)
+  const courseCodeRegex = /([A-Z]{2,5})(\d{3,4})/g;
 
-  // Check if summary has a delimiter like " - " or " | "
-  const delimiters = [' - ', ' | ', ' — ', ': '];
-  for (const delim of delimiters) {
-    if (summary.includes(delim)) {
-      const parts = summary.split(delim);
-      // Course name is usually the last part
-      const candidate = parts[parts.length - 1].trim();
-      if (candidate.length > 3 && candidate.length < 60) {
-        return candidate;
+  // 1. Check LOCATION first — most reliable source for D2L feeds
+  //    Format: "ENTR450-001-46711 Entrepreneurship" or "DH314 (MANG471-003-46664 ...)"
+  if (location) {
+    const locMatches = [...location.matchAll(courseCodeRegex)];
+    if (locMatches.length > 0) {
+      // Format as "ENTR 450" (with space) and return first real course code
+      // Skip room numbers by checking if it looks like a course dept (>= 3 letters or known pattern)
+      for (const m of locMatches) {
+        const dept = m[1];
+        const num = m[2];
+        // Room numbers are usually short (2-3 chars) like "DH314" — skip those
+        // Course depts are usually 3-5 chars like "ENTR", "MANG", "ENGR", "ACCT", "BUS", "CS"
+        if (dept.length >= 3 || /^(CS|IS|IT|ME|CE|EE|PE)$/.test(dept)) {
+          return `${dept} ${num}`;
+        }
       }
+      // Fallback: use first match anyway
+      return `${locMatches[0][1]} ${locMatches[0][2]}`;
     }
   }
 
-  // Check description for course references
-  const courseRegex = /(?:Course|Class|Section):\s*(.+?)(?:\n|$)/i;
-  const descMatch = description.match(courseRegex);
+  // 2. Check categories for course codes
+  if (categories.length > 0) {
+    const coursePattern = /^[A-Z]{2,5}\s*\d{3,4}/;
+    const match = categories.find(c => coursePattern.test(c));
+    if (match) return match;
+  }
+
+  // 3. Check summary for course codes (e.g., "MANG 491 Final Exam Review")
+  const summaryMatches = [...summary.matchAll(courseCodeRegex)];
+  if (summaryMatches.length > 0) {
+    return `${summaryMatches[0][1]} ${summaryMatches[0][2]}`;
+  }
+
+  // 4. Check description for course references or course codes
+  const descMatches = [...description.matchAll(courseCodeRegex)];
+  if (descMatches.length > 0) {
+    return `${descMatches[0][1]} ${descMatches[0][2]}`;
+  }
+
+  const courseRefRegex = /(?:Course|Class|Section):\s*(.+?)(?:\n|$)/i;
+  const descMatch = description.match(courseRefRegex);
   if (descMatch) return descMatch[1].trim();
 
   return 'Unknown Course';
 }
 
-// Remove the course name from the item name if it was embedded in the summary
+// Clean the item name — remove course code if embedded, and strip D2L status suffixes
 function cleanItemName(summary, courseName) {
-  if (courseName === 'Unknown Course') return summary;
+  let name = summary;
 
-  // Remove course name and delimiter from summary
-  const delimiters = [' - ', ' | ', ' — ', ': '];
-  for (const delim of delimiters) {
-    if (summary.includes(delim + courseName)) {
-      return summary.replace(delim + courseName, '').trim();
-    }
-    if (summary.includes(courseName + delim)) {
-      return summary.replace(courseName + delim, '').trim();
+  // Remove D2L status suffixes: " - Due", " - Available", " - Availability Ends"
+  const statusSuffixes = [' - Due', ' - Available', ' - Availability Ends', ' - Overdue', ' - Ended'];
+  for (const suffix of statusSuffixes) {
+    if (name.endsWith(suffix)) {
+      name = name.slice(0, -suffix.length).trim();
+      break;
     }
   }
 
-  return summary;
+  // Remove course code if embedded in the name
+  if (courseName && courseName !== 'Unknown Course') {
+    const delimiters = [' - ', ' | ', ' — ', ': '];
+    for (const delim of delimiters) {
+      if (name.includes(delim + courseName)) {
+        name = name.replace(delim + courseName, '').trim();
+      }
+      if (name.includes(courseName + delim)) {
+        name = name.replace(courseName + delim, '').trim();
+      }
+    }
+    // Also remove the compact form (e.g., "ENTR450" without space)
+    const compact = courseName.replace(/\s+/g, '');
+    for (const delim of delimiters) {
+      if (name.includes(delim + compact)) {
+        name = name.replace(delim + compact, '').trim();
+      }
+      if (name.includes(compact + delim)) {
+        name = name.replace(compact + delim, '').trim();
+      }
+    }
+  }
+
+  return name || summary;
 }
 
 // Detect item type from event content

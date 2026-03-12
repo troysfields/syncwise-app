@@ -520,12 +520,7 @@ export default function StudentDashboard() {
   }
 
   function handleAddManualEvent(eventData) {
-    const newEvent = {
-      id: 'manual-' + Date.now(),
-      ...eventData,
-      source: 'manual',
-    };
-    setManualEvents(prev => [...prev, newEvent]);
+    setManualEvents(prev => [...prev, eventData]);
     setShowManualEventModal(false);
     showToast({ type: 'success', message: 'Event added to calendar', duration: 3000 });
     trackManualEvent('event_created');
@@ -873,12 +868,11 @@ export default function StudentDashboard() {
           </div>
 
           {/* Manual Event Modal */}
-          {showManualEventModal && (
-            <ManualEventModal
-              onSave={handleAddManualEvent}
-              onCancel={() => setShowManualEventModal(false)}
-            />
-          )}
+          <ManualEventModal
+            isOpen={showManualEventModal}
+            onSave={handleAddManualEvent}
+            onClose={() => setShowManualEventModal(false)}
+          />
 
           {/* Focus Mode View */}
           {focusMode && (

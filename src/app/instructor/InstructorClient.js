@@ -1002,16 +1002,14 @@ export default function InstructorDashboard() {
       </div>
 
       {/* Manual Event Modal */}
-      {showManualEventModal && (
-        <ManualEventModal
-          isOpen={showManualEventModal}
-          onClose={() => setShowManualEventModal(false)}
-          onSubmit={(eventData) => {
-            logAction(`Added manual event: ${eventData.title}`);
-            setShowManualEventModal(false);
-          }}
-        />
-      )}
+      <ManualEventModal
+        isOpen={showManualEventModal}
+        onClose={() => setShowManualEventModal(false)}
+        onSave={(eventData) => {
+          logAction(`Added manual event: ${eventData.name}`);
+          setShowManualEventModal(false);
+        }}
+      />
     </div>
   );
 }

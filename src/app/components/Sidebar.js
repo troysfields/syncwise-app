@@ -122,19 +122,21 @@ export function Sidebar({ role = 'student', activeSection = 'dashboard', onNavig
           ))}
         </ul>
 
-        {/* Role switch link */}
-        <div className="sidebar-footer">
-          <a
-            href={role === 'instructor' ? '/dashboard' : '/instructor'}
-            className="sidebar-switch-role"
-            title={role === 'instructor' ? 'Switch to Student View' : 'Switch to Instructor View'}
-          >
-            <span aria-hidden="true">{role === 'instructor' ? '🎒' : '🎓'}</span>
-            {!collapsed && (
-              <span>{role === 'instructor' ? 'Student View' : 'Instructor View'}</span>
-            )}
-          </a>
-        </div>
+        {/* Role switch link — only visible to instructors */}
+        {role === 'instructor' && (
+          <div className="sidebar-footer">
+            <a
+              href="/dashboard"
+              className="sidebar-switch-role"
+              title="Switch to Student View"
+            >
+              <span aria-hidden="true">🎒</span>
+              {!collapsed && (
+                <span>Student View</span>
+              )}
+            </a>
+          </div>
+        )}
       </nav>
     </>
   );

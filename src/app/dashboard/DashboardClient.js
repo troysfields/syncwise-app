@@ -704,7 +704,7 @@ export default function StudentDashboard() {
               </span>
             )}
             <span>{(() => { try { const s = typeof window !== 'undefined' && localStorage.getItem('syncwise_settings'); return s ? JSON.parse(s).studentName || 'Student' : 'Student'; } catch(e) { return 'Student'; }})()}</span>
-            <a href="/instructor" style={{ color: '#64748B', textDecoration: 'none', fontSize: '13px' }}>Instructor View</a>
+            {(() => { try { const s = typeof window !== 'undefined' && localStorage.getItem('syncwise_settings'); const r = s ? JSON.parse(s).role : null; return r === 'instructor' ? <a href="/instructor" style={{ color: '#64748B', textDecoration: 'none', fontSize: '13px' }}>Instructor View</a> : null; } catch(e) { return null; }})()}
           </div>
         </nav>
 

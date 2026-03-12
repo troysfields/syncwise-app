@@ -6,12 +6,16 @@
 import { NextResponse } from 'next/server';
 import { extractTextFromFile, analyzeDocument, convertToCalendarItems } from '@/lib/doc-parser';
 import { logApiCall } from '@/lib/logger';
+import { requireAuth } from '@/lib/auth';
 
 // Max file size: 10MB
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = ['pdf', 'docx', 'doc', 'txt', 'md'];
 
 export async function POST(request) {
+  const session = requireAuth(request);
+  if (session instanceof NextResponse) return session;
+
   try {
     const formData = await request.formData();
     const file = formData.get('file');

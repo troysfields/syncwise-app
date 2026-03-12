@@ -1,15 +1,19 @@
 // SyncWise AI — Route Protection Middleware
-// Protects API routes and admin pages from unauthorized access
-// For the consent-based beta, this provides basic rate limiting and
-// request validation. Full OAuth-based auth is wired for when
-// D2L/Outlook API access is obtained.
+// Security layer for all API and admin routes.
+// Features: rate limiting, CSP, HSTS, CORS, admin auth (fail-closed),
+// content-type validation, security headers.
 
 import { NextResponse } from 'next/server';
 
-// Admin routes require a simple secret (set via env var)
+// ─── Configuration ───
 const ADMIN_SECRET = process.env.ADMIN_SECRET || null;
+const ALLOWED_ORIGINS = [
+  'https://syncwise-app.vercel.app',
+  'https://syncwise-landing.vercel.app',
+  process.env.NEXTAUTH_URL || 'http://localhost:3000',
+].filter(Boolean);
 
-// Rate limiting — simple in-memory tracker (swap for Redis in production)
+// ─── Rate Limiting ───
 const requestCounts = new Map();
 const RATE_WINDOW_MS = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_MINUTE = 60;
@@ -25,13 +29,10 @@ function checkRateLimit(ip) {
   }
 
   entry.count++;
-  if (entry.count > MAX_REQUESTS_PER_MINUTE) {
-    return false;
-  }
-  return true;
+  return entry.count <= MAX_REQUESTS_PER_MINUTE;
 }
 
-// Clean up stale entries every 5 minutes
+// Clean up stale rate limit entries every 5 minutes
 if (typeof setInterval !== 'undefined') {
   setInterval(() => {
     const now = Date.now();
@@ -43,11 +44,36 @@ if (typeof setInterval !== 'undefined') {
   }, 5 * 60 * 1000);
 }
 
+// ─── Routes that don't require auth ───
+// These are public endpoints or handle their own auth
+const PUBLIC_ROUTES = [
+  '/api/auth/',         // NextAuth and session endpoints handle their own auth
+  '/api/errors/report', // Error reporting should always work (client may not be authenticated)
+];
+
+function isPublicRoute(pathname) {
+  return PUBLIC_ROUTES.some(route => pathname.startsWith(route));
+}
+
+// ─── Main Middleware ───
 export function middleware(request) {
   const { pathname } = request.nextUrl;
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
              request.headers.get('x-real-ip') ||
              'unknown';
+  const origin = request.headers.get('origin');
+
+  // ─── CORS Preflight ───
+  if (request.method === 'OPTIONS' && pathname.startsWith('/api/')) {
+    const response = new NextResponse(null, { status: 204 });
+    if (origin && ALLOWED_ORIGINS.includes(origin)) {
+      response.headers.set('Access-Control-Allow-Origin', origin);
+    }
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Admin-Secret');
+    response.headers.set('Access-Control-Max-Age', '86400');
+    return response;
+  }
 
   // ─── Rate Limiting (all API routes) ───
   if (pathname.startsWith('/api/')) {
@@ -59,30 +85,36 @@ export function middleware(request) {
     }
   }
 
-  // ─── Admin Route Protection ───
+  // ─── Admin Route Protection (FAIL CLOSED) ───
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
-    // If ADMIN_SECRET is set, require it via query param or header
-    if (ADMIN_SECRET) {
-      const url = new URL(request.url);
-      const querySecret = url.searchParams.get('secret');
-      const headerSecret = request.headers.get('x-admin-secret');
-
-      if (querySecret !== ADMIN_SECRET && headerSecret !== ADMIN_SECRET) {
-        if (pathname.startsWith('/api/')) {
-          return NextResponse.json(
-            { error: 'Unauthorized — admin access required' },
-            { status: 401 }
-          );
-        }
-        // For page routes, redirect to dashboard
-        return NextResponse.redirect(new URL('/dashboard', request.url));
+    // If no ADMIN_SECRET is configured, block ALL admin access
+    if (!ADMIN_SECRET) {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json(
+          { error: 'Admin access not configured. Set ADMIN_SECRET env var.' },
+          { status: 403 }
+        );
       }
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+    const url = new URL(request.url);
+    const querySecret = url.searchParams.get('secret');
+    const headerSecret = request.headers.get('x-admin-secret');
+
+    if (querySecret !== ADMIN_SECRET && headerSecret !== ADMIN_SECRET) {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json(
+          { error: 'Unauthorized — admin credentials required.' },
+          { status: 401 }
+        );
+      }
+      return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }
 
   // ─── API Input Validation ───
-  if (pathname.startsWith('/api/feeds/') || pathname.startsWith('/api/dashboard/')) {
-    // Ensure POST requests have content-type
+  if (pathname.startsWith('/api/feeds/') || pathname.startsWith('/api/dashboard/') || pathname.startsWith('/api/chat')) {
     if (request.method === 'POST') {
       const contentType = request.headers.get('content-type');
       if (!contentType?.includes('application/json') && !contentType?.includes('multipart/form-data')) {
@@ -94,17 +126,48 @@ export function middleware(request) {
     }
   }
 
-  // ─── CORS Headers for API routes ───
-  if (pathname.startsWith('/api/')) {
-    const response = NextResponse.next();
-    response.headers.set('X-Content-Type-Options', 'nosniff');
-    response.headers.set('X-Frame-Options', 'DENY');
-    response.headers.set('X-XSS-Protection', '1; mode=block');
-    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-    return response;
+  // ─── Security Headers (all responses) ───
+  const response = NextResponse.next();
+
+  // Content Security Policy — strict, prevents XSS
+  response.headers.set('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",  // Next.js requires unsafe-inline/eval
+    "style-src 'self' 'unsafe-inline'",                   // Inline styles for React
+    "img-src 'self' data: blob: https:",                   // Allow images from HTTPS sources
+    "font-src 'self' https://fonts.gstatic.com",
+    "connect-src 'self' https://d2l.coloradomesa.edu https://api.anthropic.com https://*.vercel.app",
+    "frame-ancestors 'none'",                               // Prevent clickjacking (like X-Frame-Options)
+    "base-uri 'self'",
+    "form-action 'self'",
+    "upgrade-insecure-requests",
+  ].join('; '));
+
+  // HTTP Strict Transport Security — force HTTPS
+  response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+
+  // Prevent MIME type sniffing
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+
+  // Prevent clickjacking
+  response.headers.set('X-Frame-Options', 'DENY');
+
+  // XSS Protection (legacy browsers)
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+
+  // Referrer policy — don't leak full URL to external sites
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+  // Permissions policy — disable unused browser features
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+
+  // CORS headers for API routes
+  if (pathname.startsWith('/api/') && origin && ALLOWED_ORIGINS.includes(origin)) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 // Only run middleware on relevant paths
@@ -112,5 +175,6 @@ export const config = {
   matcher: [
     '/api/:path*',
     '/admin/:path*',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

@@ -3,9 +3,13 @@
 // POST body: { feeds: [{ url: "...", courseName: "ENTR 450" }] }
 
 import { NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth';
 import { fetchAndParseRSSFeed, getRecentAnnouncements } from '@/lib/rss-parser';
 
 export async function POST(request) {
+  const session = requireAuth(request);
+  if (session instanceof NextResponse) return session;
+
   try {
     const body = await request.json();
     const { feeds, user = 'anonymous', daysBack = 30 } = body;

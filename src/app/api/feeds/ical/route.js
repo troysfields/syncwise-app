@@ -4,8 +4,12 @@
 
 import { NextResponse } from 'next/server';
 import { fetchAndParseICalFeed, getUpcomingEvents, assignCourseColors } from '@/lib/ical-parser';
+import { requireAuth, sanitizeUrl } from '@/lib/auth';
 
 export async function POST(request) {
+  const session = requireAuth(request);
+  if (session instanceof NextResponse) return session;
+
   try {
     const body = await request.json();
     const { feedUrl, user = 'anonymous', daysAhead = 90 } = body;

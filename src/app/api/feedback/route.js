@@ -3,6 +3,7 @@
 // POST: submits new feedback
 
 import { NextResponse } from 'next/server';
+import { requireAuth, requireAdmin } from '@/lib/auth';
 import fs from 'fs';
 import path from 'path';
 
@@ -14,6 +15,9 @@ if (!fs.existsSync(LOG_DIR)) {
 }
 
 export async function POST(req) {
+  const session = requireAuth(req);
+  if (session instanceof NextResponse) return session;
+
   try {
     const body = await req.json();
 
@@ -48,7 +52,11 @@ export async function POST(req) {
   }
 }
 
-export async function GET() {
+export async function GET(request) {
+  // Admin only — feedback data contains user info
+  const adminCheck = requireAdmin(request);
+  if (adminCheck instanceof NextResponse) return adminCheck;
+
   try {
     if (!fs.existsSync(FEEDBACK_FILE)) {
       return NextResponse.json({ feedback: [], stats: {} });

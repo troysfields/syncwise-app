@@ -1,11 +1,17 @@
 // API Route: /api/dashboard/data
 // Main dashboard data endpoint — aggregates all consent-based data sources
 // POST body: { icalUrl, studentEmail, uploadedDocs }
+// AUTH: Requires valid session
 
 import { NextResponse } from 'next/server';
 import { handleDashboardDataRequest } from '@/lib/consent-data';
+import { requireAuth } from '@/lib/auth';
 
 export async function POST(request) {
+  // Auth check
+  const session = requireAuth(request);
+  if (session instanceof NextResponse) return session;
+
   try {
     const result = await handleDashboardDataRequest(request);
 
@@ -28,6 +34,7 @@ export async function GET() {
     endpoint: '/api/dashboard/data',
     method: 'POST',
     description: 'Fetch aggregated dashboard data from all consent-based sources',
+    requires: 'Authentication (session cookie or Bearer token)',
     body: {
       icalUrl: '(required) D2L calendar feed URL',
       studentEmail: '(optional) Student email for audit logging',

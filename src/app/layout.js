@@ -3,6 +3,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastContainer } from './components/ToastNotifications';
 import { FeedbackPanel } from './components/FeedbackPanel';
 import { ThemeProvider } from './components/ThemeProvider';
+import ChatWidget from './components/ChatWidget';
 
 export const metadata = {
   title: 'SyncWise AI — Smart Academic Calendar',
@@ -18,6 +19,7 @@ export default function RootLayout({ children }) {
             {children}
             <ToastContainer />
             <FeedbackPanel />
+            <ChatWidget />
           </ErrorBoundary>
         </ThemeProvider>
       </body>

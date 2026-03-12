@@ -74,8 +74,23 @@ export default function SetupPage() {
 
     localStorage.setItem('syncwise_settings', JSON.stringify(settings));
 
-    // Redirect to dashboard
-    window.location.href = '/dashboard';
+    // Create authenticated session (sets httpOnly cookie)
+    try {
+      await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: studentName,
+          email: studentEmail,
+          role: 'student',
+        }),
+      });
+    } catch (err) {
+      console.warn('Session creation failed — continuing in demo mode:', err);
+    }
+
+    // Redirect to welcome/onboarding page (shows features + chatbot intro)
+    window.location.href = '/welcome';
   };
 
   return (

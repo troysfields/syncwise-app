@@ -1,6 +1,8 @@
 // API Route: /api/student/notifications
 // Returns date change notifications for a student
 // These are generated when an instructor resolves a conflict or overrides a date
+import { requireAuth } from '@/lib/auth';
+import { NextResponse as NR } from 'next/server';
 //
 // GET: Fetch notifications (optionally filter by course)
 // POST: Mark as read or dismiss
@@ -13,6 +15,9 @@ import {
 } from '@/lib/dedup-engine';
 
 export async function GET(request) {
+  const session = requireAuth(request);
+  if (session instanceof NR) return session;
+
   const { searchParams } = new URL(request.url);
   const coursesParam = searchParams.get('courses'); // comma-separated course names
   const unreadOnly = searchParams.get('unreadOnly') === 'true';
@@ -39,6 +44,9 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  const session2 = requireAuth(request);
+  if (session2 instanceof NR) return session2;
+
   try {
     const body = await request.json();
     const { action, notificationId, notificationIds } = body;

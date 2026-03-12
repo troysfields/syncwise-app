@@ -18,11 +18,15 @@ import {
   getOverridesForCourse,
 } from '@/lib/dedup-engine';
 import { logApiCall } from '@/lib/logger';
+import { requireAuth } from '@/lib/auth';
 
 // In-memory conflict store (swap for DB in production)
 const conflictStore = new Map();
 
 export async function GET(request) {
+  const session = requireAuth(request);
+  if (session instanceof NextResponse) return session;
+
   const { searchParams } = new URL(request.url);
   const course = searchParams.get('course');
   const includeResolved = searchParams.get('includeResolved') === 'true';
@@ -64,6 +68,9 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  const session = requireAuth(request);
+  if (session instanceof NextResponse) return session;
+
   try {
     const body = await request.json();
     const { action, instructorId = 'instructor' } = body;

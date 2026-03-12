@@ -3,9 +3,13 @@
 // Body: { tasks: [...], calendarEvents: [...] }
 
 import { NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth';
 import { aiPrioritize } from '../../../../lib/ai-prioritize';
 
 export async function POST(request) {
+  const session = requireAuth(request);
+  if (session instanceof NextResponse) return session;
+
   try {
     const { tasks, calendarEvents } = await request.json();
 

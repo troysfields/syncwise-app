@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { createSession, getSession, sessionCookieHeader, clearSessionCookieHeader, sanitizeString, sanitizeEmail } from '@/lib/auth';
 import { saveUser, getUser, saveUserPassword, verifyUserPassword, hasPassword } from '@/lib/db';
 import { notifyNewUserSignup, notifyInstructorSignup, notifyMultipleFailedLogins } from '@/lib/email';
+import { trackAuth, trackError } from '@/lib/analytics';
 
 export async function POST(request) {
   try {
@@ -35,8 +36,8 @@ export async function POST(request) {
       // Verify password
       const valid = await verifyUserPassword(cleanEmail, password);
       if (!valid) {
-        // Fire-and-forget security notification for failed login
         notifyMultipleFailedLogins(request, cleanEmail, 1).catch(() => {});
+        trackAuth({ userEmail: cleanEmail, action: 'login_failed', success: false, method: 'password' }).catch(() => {});
         return NextResponse.json({ error: 'Incorrect password. Please try again.' }, { status: 401 });
       }
 
@@ -63,6 +64,7 @@ export async function POST(request) {
       });
 
       response.headers.set('Set-Cookie', sessionCookieHeader(token));
+      trackAuth({ userEmail: cleanEmail, action: 'login', success: true, method: 'password', userRole: user.role }).catch(() => {});
       return response;
     }
 
@@ -150,9 +152,11 @@ export async function POST(request) {
     });
 
     response.headers.set('Set-Cookie', sessionCookieHeader(token));
+    trackAuth({ userEmail: cleanEmail, action: 'signup', success: true, method: 'password', userRole: userRole }).catch(() => {});
     return response;
   } catch (error) {
     console.error('Session error:', error);
+    trackError({ endpoint: '/api/auth/session', errorType: 'session_error', errorMessage: error.message, statusCode: 500 }).catch(() => {});
     return NextResponse.json({ error: 'Failed to process request.' }, { status: 500 });
   }
 }

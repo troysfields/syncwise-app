@@ -10,8 +10,11 @@ import { requireAuth, sanitizeString } from '@/lib/auth';
 import { SYNCWISE_SYSTEM_PROMPT, CHATBOT_CONFIG } from '@/lib/chatbot-prompt';
 import { getModelForRequest } from '@/lib/rate-limiter';
 import { saveFeedback } from '@/lib/db';
+import { trackChatMessage, trackError } from '@/lib/analytics';
 
 export async function POST(request) {
+  const startTime = Date.now();
+
   // Auth check
   const session = requireAuth(request);
   if (session instanceof NextResponse) return session;
@@ -124,6 +127,23 @@ export async function POST(request) {
       assistantMessage = actionResult.cleanMessage;
     }
 
+    // Detect which capability was used
+    const capability = detectCapability(sanitizedMessage, actionResult.action);
+
+    // Track analytics (fire-and-forget)
+    trackChatMessage({
+      userEmail: session.email || session.sub,
+      userRole: session.role,
+      message: sanitizedMessage,
+      model,
+      inputTokens: data.usage?.input_tokens || 0,
+      outputTokens: data.usage?.output_tokens || 0,
+      isLiteMode,
+      capability,
+      action: actionResult.action,
+      responseTimeMs: Date.now() - startTime,
+    }).catch(() => {});
+
     return NextResponse.json({
       success: true,
       response: assistantMessage,
@@ -137,6 +157,7 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error('Chat API error:', error);
+    trackError({ endpoint: '/api/chat', userEmail: session?.email, errorType: 'chat_error', errorMessage: error.message, statusCode: 500 }).catch(() => {});
     return NextResponse.json(
       { error: 'Something went wrong. Please try again.' },
       { status: 500 }
@@ -214,6 +235,21 @@ export async function GET() {
     },
     capabilities: ['platform_help', 'issue_reporting', 'workload_check', 'email_drafts', 'feedback', 'study_planning'],
   });
+}
+
+// ─── Detect which chatbot capability is being used ───
+function detectCapability(message, action) {
+  if (action === 'issue_reported') return 'issue_report';
+  if (action === 'feedback_saved') return 'feedback';
+  const lower = message.toLowerCase();
+  if (lower.includes('report') && (lower.includes('issue') || lower.includes('bug'))) return 'issue_report';
+  if (lower.includes('email') && (lower.includes('professor') || lower.includes('draft'))) return 'email_draft';
+  if (lower.includes('workload') || (lower.includes('how') && lower.includes('week')) || lower.includes('busy')) return 'workload_check';
+  if (lower.includes('feedback') || lower.includes('suggest') || lower.includes('feature')) return 'feedback';
+  if (lower.includes('study') || lower.includes('plan') || lower.includes('pomodoro') || lower.includes('schedule')) return 'study_planning';
+  if (lower.includes('setup') || lower.includes('d2l') || lower.includes('connect') || lower.includes('ical')) return 'setup_help';
+  if (lower.includes('what can you') || lower.includes('capabilities') || lower.includes('help')) return 'capabilities';
+  return 'general';
 }
 
 // ─── Fallback responses when API key isn't configured ───

@@ -12,6 +12,8 @@ export default function AdminHealthDashboard() {
   const [lastRefresh, setLastRefresh] = useState(null);
   const [lookupCode, setLookupCode] = useState('');
   const [lookupResult, setLookupResult] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   // ─── Authenticate and fetch data ───
   const authenticate = async () => {
@@ -44,6 +46,22 @@ export default function AdminHealthDashboard() {
       const data = await res.json();
       if (data.events) setSecurityLogs(data.events);
     } catch {}
+  };
+
+  const fetchAnalytics = async () => {
+    setAnalyticsLoading(true);
+    try {
+      const to = new Date().toISOString().split('T')[0];
+      const from = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const res = await fetch(`/api/admin/analytics?type=export&from=${from}&to=${to}`, {
+        headers: { 'x-admin-secret': secret },
+      });
+      const data = await res.json();
+      if (data.aggregate) setAnalytics(data);
+    } catch (err) {
+      console.error('Analytics fetch failed:', err);
+    }
+    setAnalyticsLoading(false);
   };
 
   const refreshData = async () => {
@@ -289,9 +307,104 @@ export default function AdminHealthDashboard() {
         </div>
       </div>
 
+      {/* Analytics Section */}
+      <div style={styles.section}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <h2 style={styles.sectionTitle}>Analytics (Last 7 Days)</h2>
+          <button onClick={fetchAnalytics} disabled={analyticsLoading} style={styles.lookupButton}>
+            {analyticsLoading ? 'Loading...' : analytics ? '↻ Refresh' : 'Load Analytics'}
+          </button>
+        </div>
+
+        {analytics && analytics.aggregate && (
+          <>
+            {/* Top-level stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+              {[
+                { label: 'Total Requests', value: analytics.aggregate.totalRequests },
+                { label: 'Unique Users', value: analytics.aggregate.totalUniqueUsers },
+                { label: 'AI Cost (USD)', value: '$' + (analytics.aggregate.totalEstimatedCostUSD || 0).toFixed(4) },
+                { label: 'Input Tokens', value: (analytics.aggregate.totalInputTokens || 0).toLocaleString() },
+                { label: 'Output Tokens', value: (analytics.aggregate.totalOutputTokens || 0).toLocaleString() },
+                { label: 'Avg Response', value: (analytics.aggregate.avgResponseTimeMs || 0) + 'ms' },
+                { label: 'Errors', value: analytics.aggregate.totalErrors },
+                { label: 'Peak Hour', value: analytics.aggregate.peakHour !== null ? analytics.aggregate.peakHour + ':00' : '—' },
+              ].map((stat, i) => (
+                <div key={i} style={{ background: '#1F2937', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '11px', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{stat.label}</div>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#F9FAFB', marginTop: '4px' }}>{stat.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Model breakdown */}
+            {Object.keys(analytics.aggregate.modelBreakdown || {}).length > 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                <h3 style={{ color: '#D1D5DB', fontSize: '14px', marginBottom: '8px' }}>Model Usage</h3>
+                <div style={styles.logTable}>
+                  {Object.entries(analytics.aggregate.modelBreakdown).map(([model, data]) => (
+                    <div key={model} style={{ ...styles.logRow, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <code style={{ color: '#60A5FA', fontSize: '12px' }}>{model}</code>
+                      <span style={{ color: '#D1D5DB', fontSize: '12px' }}>{data.calls} calls | {data.inputTokens.toLocaleString()} in / {data.outputTokens.toLocaleString()} out | ${data.costUSD.toFixed(4)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Feature breakdown */}
+            {analytics.aggregate.topFeatures?.length > 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                <h3 style={{ color: '#D1D5DB', fontSize: '14px', marginBottom: '8px' }}>Feature Usage</h3>
+                <div style={styles.logTable}>
+                  {analytics.aggregate.topFeatures.map((f, i) => (
+                    <div key={i} style={{ ...styles.logRow, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: '#D1D5DB', fontSize: '13px' }}>{f.feature}</span>
+                      <span style={{ color: '#10B981', fontSize: '13px', fontWeight: '600' }}>{f.count} uses</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Chat capability breakdown */}
+            {Object.keys(analytics.aggregate.chatCapabilities || {}).length > 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                <h3 style={{ color: '#D1D5DB', fontSize: '14px', marginBottom: '8px' }}>Chatbot Capabilities Used</h3>
+                <div style={styles.logTable}>
+                  {Object.entries(analytics.aggregate.chatCapabilities).sort((a, b) => b[1] - a[1]).map(([cap, count]) => (
+                    <div key={cap} style={{ ...styles.logRow, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: '#D1D5DB', fontSize: '13px' }}>{cap.replace(/_/g, ' ')}</span>
+                      <span style={{ color: '#FBCE04', fontSize: '13px', fontWeight: '600' }}>{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Daily summaries */}
+            {analytics.dailySummaries?.length > 0 && (
+              <div>
+                <h3 style={{ color: '#D1D5DB', fontSize: '14px', marginBottom: '8px' }}>Daily Breakdown</h3>
+                <div style={styles.logTable}>
+                  {analytics.dailySummaries.map((day, i) => (
+                    <div key={i} style={{ ...styles.logRow, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: '#60A5FA', fontSize: '13px', fontFamily: 'monospace' }}>{day.date}</span>
+                      <span style={{ color: '#D1D5DB', fontSize: '12px' }}>
+                        {day.totalRequests} req | {day.uniqueUserCount || 0} users | ${(day.estimatedCostUSD || 0).toFixed(4)} | {day.errors || 0} errors
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
       {/* Logout */}
       <div style={{ textAlign: 'center', marginTop: '32px', paddingBottom: '48px' }}>
-        <button onClick={() => { setAuthenticated(false); setSecret(''); setHealth(null); }} style={styles.logoutButton}>
+        <button onClick={() => { setAuthenticated(false); setSecret(''); setHealth(null); setAnalytics(null); }} style={styles.logoutButton}>
           🔒 Lock Dashboard
         </button>
       </div>

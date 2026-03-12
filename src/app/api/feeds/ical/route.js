@@ -5,8 +5,10 @@
 import { NextResponse } from 'next/server';
 import { fetchAndParseICalFeed, getUpcomingEvents, assignCourseColors } from '@/lib/ical-parser';
 import { requireAuth, sanitizeUrl } from '@/lib/auth';
+import { trackICalRefresh, trackError } from '@/lib/analytics';
 
 export async function POST(request) {
+  const startTime = Date.now();
   const session = requireAuth(request);
   if (session instanceof NextResponse) return session;
 
@@ -46,6 +48,15 @@ export async function POST(request) {
     // Get upcoming events for dashboard view
     const upcoming = getUpcomingEvents(events, daysAhead);
 
+    // Track analytics (fire-and-forget)
+    trackICalRefresh({
+      userEmail: session.email || session.sub,
+      isManual: body.isManual || false,
+      courseCount: Object.keys(courseMap || {}).length,
+      assignmentCount: events.length,
+      responseTimeMs: Date.now() - startTime,
+    }).catch(() => {});
+
     return NextResponse.json({
       success: true,
       events,
@@ -57,6 +68,7 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error('iCal feed API error:', error);
+    trackError({ endpoint: '/api/feeds/ical', userEmail: session?.email, errorType: 'ical_error', errorMessage: error.message, statusCode: 500 }).catch(() => {});
     return NextResponse.json(
       { error: 'Internal server error processing iCal feed' },
       { status: 500 }

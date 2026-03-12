@@ -57,8 +57,20 @@ export default function NotificationPreferencesPage() {
   const [saved, setSaved] = useState(false);
   const [expandedCourse, setExpandedCourse] = useState(null);
 
+  // Load saved preferences from localStorage on mount
   useEffect(() => {
     setPushPermission(getPushPermission());
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('syncwise_notification_prefs');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setPreferences(prev => ({ ...prev, ...parsed }));
+        }
+      } catch (e) {
+        console.warn('Failed to load notification preferences:', e);
+      }
+    }
   }, []);
 
   function updatePreferences(updater) {
@@ -120,7 +132,14 @@ export default function NotificationPreferencesPage() {
   }
 
   function handleSave() {
-    // In production, this would POST to an API
+    // Persist to localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('syncwise_notification_prefs', JSON.stringify(preferences));
+      } catch (e) {
+        console.error('Failed to save notification preferences:', e);
+      }
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   }

@@ -64,20 +64,16 @@ export async function GET(request) {
     diagnostics.services.ai = {
       status: 'configured',
       provider: 'anthropic',
-      keyPrefix: aiKey.slice(0, 12) + '...',
-      note: 'Key format valid. Live connectivity verified via chat/prioritize endpoints.',
     };
   } else if (aiKey) {
     diagnostics.services.ai = {
-      status: 'error',
+      status: 'misconfigured',
       provider: 'anthropic',
-      note: 'AI_API_KEY is set but does not match expected Anthropic key format.',
     };
     diagnostics.status = 'degraded';
   } else {
     diagnostics.services.ai = {
       status: 'not_configured',
-      note: 'AI_API_KEY environment variable is not set. Chatbot will use keyword fallback.',
     };
     diagnostics.status = 'degraded';
   }
@@ -87,8 +83,6 @@ export async function GET(request) {
   diagnostics.services.email = {
     status: resendKey ? 'configured' : 'not_configured',
     provider: 'resend',
-    keyPrefix: resendKey ? resendKey.slice(0, 8) + '...' : null,
-    adminEmail: process.env.ADMIN_EMAIL ? '***@' + process.env.ADMIN_EMAIL.split('@')[1] : 'not_set',
   };
 
   // ── Environment Variables (presence check only, no values) ──
@@ -135,11 +129,9 @@ export async function GET(request) {
     memoryTotalMB: Math.round(process.memoryUsage().heapTotal / 1024 / 1024 * 10) / 10,
   };
 
-  // ── Vercel deployment info ──
+  // ── Vercel deployment info (admin-only, no sensitive data) ──
   diagnostics.deployment = {
     commitSha: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'unknown',
-    commitMessage: process.env.VERCEL_GIT_COMMIT_MESSAGE || 'unknown',
-    deploymentUrl: process.env.VERCEL_URL || 'unknown',
     branch: process.env.VERCEL_GIT_COMMIT_REF || 'unknown',
   };
 

@@ -24,7 +24,32 @@ export async function POST(request) {
       );
     }
 
-    // Basic URL validation — must be a D2L calendar feed
+    // Strict URL validation — must be a D2L calendar feed from an allowed domain
+    const ALLOWED_ICAL_HOSTS = ['d2l.coloradomesa.edu', 'brightspace.coloradomesa.edu'];
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(feedUrl);
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid URL format.' },
+        { status: 400 }
+      );
+    }
+
+    if (!ALLOWED_ICAL_HOSTS.includes(parsedUrl.hostname)) {
+      return NextResponse.json(
+        { error: 'Feed URL must be from your D2L Brightspace domain (d2l.coloradomesa.edu).' },
+        { status: 400 }
+      );
+    }
+
+    if (parsedUrl.protocol !== 'https:') {
+      return NextResponse.json(
+        { error: 'Feed URL must use HTTPS.' },
+        { status: 400 }
+      );
+    }
+
     if (!feedUrl.includes('/d2l/le/calendar/feed/') && !feedUrl.endsWith('.ics')) {
       return NextResponse.json(
         { error: 'Invalid feed URL. Must be a D2L calendar feed (.ics) URL.' },

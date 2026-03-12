@@ -103,9 +103,19 @@ export function middleware(request) {
     }
   }
 
-  // ─── Admin API Route Protection (FAIL CLOSED) ───
-  // Only protect /api/admin/* routes in middleware.
-  // Admin page routes (/admin/*) have their own client-side password gate.
+  // ─── Admin Route Protection (FAIL CLOSED) ───
+  // Protect both /api/admin/* AND /admin/* page routes in middleware.
+  if (pathname.startsWith('/admin') && !pathname.startsWith('/api/admin')) {
+    // Admin page routes — require secret via cookie or redirect to login
+    if (!ADMIN_SECRET) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    const adminCookie = request.cookies.get('admin_authenticated')?.value;
+    if (adminCookie !== ADMIN_SECRET) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+  }
+
   if (pathname.startsWith('/api/admin')) {
     if (!ADMIN_SECRET) {
       return NextResponse.json(

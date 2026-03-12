@@ -124,10 +124,8 @@ export default function SetupPage() {
     }
   };
 
-  const totalSteps = role === 'instructor' ? 3 : 4;
-  const stepLabels = role === 'instructor'
-    ? ['Role', 'Your Info', 'Review']
-    : ['Role', 'Your Info', 'D2L Calendar', 'Review'];
+  const totalSteps = 4;
+  const stepLabels = ['Role', 'Your Info', 'D2L Calendar', 'Review'];
 
   return (
     <div style={styles.container}>
@@ -267,8 +265,7 @@ export default function SetupPage() {
                 onClick={() => {
                   setError('');
                   if (validateStep2()) {
-                    // Instructors skip D2L step, go straight to review
-                    setStep(role === 'instructor' ? 3 : 3);
+                    setStep(3);
                   }
                 }}
                 style={styles.primaryButton}
@@ -279,8 +276,8 @@ export default function SetupPage() {
           </div>
         )}
 
-        {/* Step 3: D2L Calendar (Students only) or Review (Instructors) */}
-        {step === 3 && role === 'student' && (
+        {/* Step 3: D2L Calendar (both students and instructors) */}
+        {step === 3 && (
           <div style={styles.stepContent}>
             <h2 style={styles.stepTitle}>Connect D2L Calendar</h2>
 
@@ -353,8 +350,8 @@ export default function SetupPage() {
           </div>
         )}
 
-        {/* Review Step (Step 3 for instructors, Step 4 for students) */}
-        {((step === 3 && role === 'instructor') || (step === 4 && role === 'student')) && (
+        {/* Step 4: Review & Complete */}
+        {step === 4 && (
           <div style={styles.stepContent}>
             <h2 style={styles.stepTitle}>You&apos;re All Set!</h2>
 
@@ -375,29 +372,25 @@ export default function SetupPage() {
                 <span style={styles.reviewLabel}>Password</span>
                 <span style={styles.reviewValue}>••••••••</span>
               </div>
-              {role === 'student' && (
+              <div style={styles.reviewItem}>
+                <span style={styles.reviewLabel}>D2L Calendar</span>
+                <span style={{
+                  ...styles.reviewValue,
+                  color: icalStatus === 'success' ? '#059669' : '#F59E0B',
+                }}>
+                  {icalStatus === 'success' ? 'Connected' : 'Not connected yet'}
+                </span>
+              </div>
+              {icalData && (
                 <>
                   <div style={styles.reviewItem}>
-                    <span style={styles.reviewLabel}>D2L Calendar</span>
-                    <span style={{
-                      ...styles.reviewValue,
-                      color: icalStatus === 'success' ? '#059669' : '#F59E0B',
-                    }}>
-                      {icalStatus === 'success' ? 'Connected' : 'Not connected yet'}
-                    </span>
+                    <span style={styles.reviewLabel}>Courses</span>
+                    <span style={styles.reviewValue}>{Object.keys(icalData.courseMap).length} found</span>
                   </div>
-                  {icalData && (
-                    <>
-                      <div style={styles.reviewItem}>
-                        <span style={styles.reviewLabel}>Courses</span>
-                        <span style={styles.reviewValue}>{Object.keys(icalData.courseMap).length} found</span>
-                      </div>
-                      <div style={styles.reviewItem}>
-                        <span style={styles.reviewLabel}>Upcoming Items</span>
-                        <span style={styles.reviewValue}>{icalData.upcomingCount || 0}</span>
-                      </div>
-                    </>
-                  )}
+                  <div style={styles.reviewItem}>
+                    <span style={styles.reviewLabel}>Upcoming Items</span>
+                    <span style={styles.reviewValue}>{icalData.upcomingCount || 0}</span>
+                  </div>
                 </>
               )}
             </div>
@@ -412,7 +405,7 @@ export default function SetupPage() {
 
             <div style={styles.buttonRow}>
               <button
-                onClick={() => { setStep(role === 'instructor' ? 2 : 3); setError(''); }}
+                onClick={() => { setStep(3); setError(''); }}
                 style={styles.backButton}
               >
                 Back

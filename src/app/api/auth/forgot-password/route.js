@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { sanitizeEmail } from '@/lib/auth';
 import { getUser, savePasswordResetToken, validateResetToken, consumeResetToken, saveUserPassword } from '@/lib/db';
+import { sendEmail, notifyPasswordReset } from '@/lib/email';
 import crypto from 'crypto';
 
 // ─── Send reset email ───
@@ -31,55 +32,38 @@ export async function POST(request) {
     const token = crypto.randomBytes(32).toString('hex');
     await savePasswordResetToken(cleanEmail, token);
 
-    // Send reset email via Resend
-    const resendKey = process.env.RESEND_API_KEY;
-    if (resendKey) {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://syncwise-app.vercel.app';
-      const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+    // Send reset email to the user
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://syncwise-app.vercel.app';
+    const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
-      try {
-        await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${resendKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            from: 'CMU AI Calendar <noreply@resend.dev>',
-            to: cleanEmail,
-            subject: 'Reset your CMU AI Calendar password',
-            html: `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
-                <div style="text-align: center; margin-bottom: 24px;">
-                  <div style="width: 48px; height: 48px; background: #5D0022; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; color: white; font-size: 20px; font-weight: 800;">C</div>
-                </div>
-                <h2 style="text-align: center; color: #111827; font-size: 20px;">Reset Your Password</h2>
-                <p style="color: #6B7280; font-size: 15px; line-height: 1.6;">
-                  Hey ${user.name || 'there'}, we got a request to reset your CMU AI Calendar password. Click the button below to set a new one.
-                </p>
-                <div style="text-align: center; margin: 32px 0;">
-                  <a href="${resetUrl}" style="background: #5D0022; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px;">Reset Password</a>
-                </div>
-                <p style="color: #9CA3AF; font-size: 13px; line-height: 1.5;">
-                  This link expires in 1 hour. If you didn't request this, just ignore this email — your password won't change.
-                </p>
-                <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;" />
-                <p style="color: #9CA3AF; font-size: 12px; text-align: center;">
-                  CMU AI Calendar by SyncWise AI
-                </p>
-              </div>
-            `,
-          }),
-        });
-      } catch (emailErr) {
-        console.error('[FORGOT-PASSWORD] Email send failed:', emailErr);
-        // Still return success to not reveal info
-      }
-    } else {
-      console.warn('[FORGOT-PASSWORD] RESEND_API_KEY not set — cannot send reset email');
-      // In dev, log the token for testing
-      console.log('[FORGOT-PASSWORD] Reset token for', cleanEmail, ':', token);
-    }
+    await sendEmail({
+      to: cleanEmail,
+      subject: 'Reset your CMU AI Calendar password',
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="width: 48px; height: 48px; background: #5D0022; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; color: white; font-size: 20px; font-weight: 800;">C</div>
+          </div>
+          <h2 style="text-align: center; color: #111827; font-size: 20px;">Reset Your Password</h2>
+          <p style="color: #6B7280; font-size: 15px; line-height: 1.6;">
+            Hey ${user.name || 'there'}, we got a request to reset your CMU AI Calendar password. Click the button below to set a new one.
+          </p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${resetUrl}" style="background: #5D0022; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px;">Reset Password</a>
+          </div>
+          <p style="color: #9CA3AF; font-size: 13px; line-height: 1.5;">
+            This link expires in 1 hour. If you didn't request this, just ignore this email — your password won't change.
+          </p>
+          <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;" />
+          <p style="color: #9CA3AF; font-size: 12px; text-align: center;">
+            CMU AI Calendar by SyncWise AI
+          </p>
+        </div>
+      `,
+    });
+
+    // Notify admin about password reset request
+    notifyPasswordReset(request, cleanEmail).catch(() => {});
 
     return NextResponse.json({
       success: true,

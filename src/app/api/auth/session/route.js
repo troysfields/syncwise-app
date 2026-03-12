@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import { createSession, getSession, sessionCookieHeader, clearSessionCookieHeader, sanitizeString, sanitizeEmail } from '@/lib/auth';
 import { saveUser, getUser, saveUserPassword, verifyUserPassword, hasPassword } from '@/lib/db';
+import { notifyNewUserSignup, notifyInstructorSignup, notifyMultipleFailedLogins } from '@/lib/email';
 
 export async function POST(request) {
   try {
@@ -34,6 +35,8 @@ export async function POST(request) {
       // Verify password
       const valid = await verifyUserPassword(cleanEmail, password);
       if (!valid) {
+        // Fire-and-forget security notification for failed login
+        notifyMultipleFailedLogins(request, cleanEmail, 1).catch(() => {});
         return NextResponse.json({ error: 'Incorrect password. Please try again.' }, { status: 401 });
       }
 
@@ -127,6 +130,12 @@ export async function POST(request) {
       });
     } catch (dbErr) {
       console.warn('[SESSION] DB save failed (continuing with cookie-only):', dbErr.message);
+    }
+
+    // Fire-and-forget security notifications
+    notifyNewUserSignup(request, { name: cleanName, email: cleanEmail, role: userRole }).catch(() => {});
+    if (userRole === 'instructor') {
+      notifyInstructorSignup(request, { name: cleanName, email: cleanEmail }).catch(() => {});
     }
 
     const response = NextResponse.json({

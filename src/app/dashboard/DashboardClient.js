@@ -233,7 +233,7 @@ export default function StudentDashboard() {
   const [pendingConflicts, setPendingConflicts] = useState(0);
 
   // Calendar view state
-  const [calendarView, setCalendarView] = useState('today');
+  const [calendarView, setCalendarView] = useState('week');
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [courseFilter, setCourseFilter] = useState('all'); // 'all' or specific course name
 

@@ -58,7 +58,7 @@ export default function SetupPage() {
       const res = await fetch('/api/feeds/ical', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ feedUrl: icalUrl.trim(), user: email || 'setup' }),
+        body: JSON.stringify({ feedUrl: icalUrl.trim(), user: email || 'setup', setupMode: true }),
       });
       const data = await res.json();
 

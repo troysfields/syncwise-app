@@ -9,12 +9,22 @@ import { trackICalRefresh, trackError } from '@/lib/analytics';
 
 export async function POST(request) {
   const startTime = Date.now();
-  const session = requireAuth(request);
-  if (session instanceof NextResponse) return session;
+
+  // Clone request so we can read body twice if needed
+  const body = await request.json();
+  const { feedUrl, user = 'anonymous', daysAhead = 90 } = body;
+
+  // Allow unauthenticated access during setup (read-only feed test)
+  // Setup mode only returns feed data — no writes, no sensitive operations
+  const isSetupMode = body.setupMode === true;
+  let session = null;
+
+  if (!isSetupMode) {
+    session = requireAuth(request);
+    if (session instanceof NextResponse) return session;
+  }
 
   try {
-    const body = await request.json();
-    const { feedUrl, user = 'anonymous', daysAhead = 90 } = body;
 
     // Validate feed URL
     if (!feedUrl) {
@@ -73,14 +83,16 @@ export async function POST(request) {
     // Get upcoming events for dashboard view
     const upcoming = getUpcomingEvents(events, daysAhead);
 
-    // Track analytics (fire-and-forget)
-    trackICalRefresh({
-      userEmail: session.email || session.sub,
-      isManual: body.isManual || false,
-      courseCount: Object.keys(courseMap || {}).length,
-      assignmentCount: events.length,
-      responseTimeMs: Date.now() - startTime,
-    }).catch(() => {});
+    // Track analytics (fire-and-forget) — skip during setup
+    if (session) {
+      trackICalRefresh({
+        userEmail: session.email || session.sub,
+        isManual: body.isManual || false,
+        courseCount: Object.keys(courseMap || {}).length,
+        assignmentCount: events.length,
+        responseTimeMs: Date.now() - startTime,
+      }).catch(() => {});
+    }
 
     return NextResponse.json({
       success: true,

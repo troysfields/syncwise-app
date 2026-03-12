@@ -10,15 +10,19 @@ import { scheduleNotifications, cancelItemNotifications, getUnreadCount } from '
 import { trackPageView, trackFeatureUsage, trackCalendarView, trackFocusMode, trackExport, trackManualEvent, initSession } from '../../lib/analytics';
 
 // ============================================================
-// DEMO DATA — Replaced with real API data once D2L/Outlook connected
+// COURSE COLORS — dynamically assigned when using live data
 // ============================================================
 
-const COURSE_COLORS = {
+const DEFAULT_COURSE_COLORS = {
   'ENTR 450': '#4F46E5',
   'ACCT 301': '#059669',
   'ENTR 343': '#D97706',
   'BUS 201': '#DC2626',
   'CSCI 110': '#7C3AED',
+  'MANG 471': '#0891B2',
+  'MANG 491': '#6D28D9',
+  'MANG 499': '#BE185D',
+  'ENGR 353': '#EA580C',
 };
 
 const DEMO_TASKS = [
@@ -314,6 +318,8 @@ export default function StudentDashboard() {
   const [gradeAlerts, setGradeAlerts] = useState(DEMO_GRADE_ALERTS);
   const [courseProgress, setCourseProgress] = useState(DEMO_COURSE_PROGRESS);
   const [isDemo, setIsDemo] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [scanning, setScanning] = useState(false);
   const [scanComplete, setScanComplete] = useState(false);
   const [emailsScanned, setEmailsScanned] = useState(0);
@@ -323,6 +329,8 @@ export default function StudentDashboard() {
   const [editingDateId, setEditingDateId] = useState(null);
   const [editDateValue, setEditDateValue] = useState('');
   const [dismissedGrades, setDismissedGrades] = useState([]);
+  const [dateNotifications, setDateNotifications] = useState([]);
+  const [pendingConflicts, setPendingConflicts] = useState(0);
 
   // Calendar view state
   const [calendarView, setCalendarView] = useState('today');
@@ -335,14 +343,132 @@ export default function StudentDashboard() {
   const [manualEvents, setManualEvents] = useState([]);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
-  // Initialize analytics and notifications on mount
+  // ============================================================
+  // LIVE DATA FETCH — Pull from consent-data API if user completed setup
+  // ============================================================
+
   useEffect(() => {
     trackPageView('StudentDashboard');
     initSession();
-    // Load unread notification count
     const unreadCount = getUnreadCount();
     setUnreadNotificationCount(unreadCount);
+
+    // Check if student completed setup
+    let settings = null;
+    try {
+      const raw = localStorage.getItem('syncwise_settings');
+      if (raw) settings = JSON.parse(raw);
+    } catch (e) { /* ignore parse errors */ }
+
+    if (settings && settings.icalUrl) {
+      // Fetch real data from consent-data API
+      fetchLiveData(settings);
+    } else {
+      // No setup completed — show demo data
+      setIsDemo(true);
+      setIsLoading(false);
+    }
   }, []);
+
+  async function fetchLiveData(settings) {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const res = await fetch('/api/dashboard/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          icalUrl: settings.icalUrl,
+          studentEmail: settings.studentEmail || 'anonymous',
+        }),
+      });
+
+      if (!res.ok) throw new Error(`Dashboard API returned ${res.status}`);
+
+      const data = await res.json();
+
+      if (data.events && data.events.length > 0) {
+        // Convert consent-data events to dashboard format
+        const liveTasks = data.events.map(evt => ({
+          id: evt.id || `ical-${Math.random().toString(36).slice(2)}`,
+          type: evt.type || 'assignment',
+          name: evt.name || evt.summary || 'Untitled',
+          courseName: evt.courseName || 'Unknown Course',
+          courseColor: (data.courses && data.courses[evt.courseName]?.color) || DEFAULT_COURSE_COLORS[evt.courseName] || '#6B7280',
+          dueDate: evt.dueDate || evt.end || evt.start || null,
+          points: evt.points || null,
+          source: evt.source || 'ical',
+          hasDueDate: !!(evt.dueDate || evt.end),
+          submitted: evt.submitted || false,
+          graded: evt.graded || false,
+          grade: evt.grade || null,
+          unread: evt.unread || false,
+          isRecurring: evt.isRecurring || false,
+          recurringLabel: evt.recurringLabel || null,
+          status: evt.status || 'active',
+          manualDate: evt.manualDate || null,
+          pendingReview: evt.pendingReview || false,
+          hasConflict: evt.hasConflict || false,
+          description: evt.description || '',
+        }));
+
+        setTasks(liveTasks);
+        setIsDemo(false);
+
+        // Set course progress from stats
+        if (data.courses) {
+          const progress = Object.entries(data.courses).map(([name, info]) => ({
+            courseName: name,
+            courseColor: info.color || DEFAULT_COURSE_COLORS[name] || '#6B7280',
+            completed: info.completed || 0,
+            total: info.total || 0,
+          }));
+          setCourseProgress(progress);
+        }
+
+        // Set AI suggestions if available
+        if (data.suggestions && data.suggestions.length > 0) {
+          setSuggestions(data.suggestions);
+        }
+
+        // Set date change notifications if available
+        if (data.conflictNotifications) {
+          setDateNotifications(data.conflictNotifications);
+        }
+
+        // Track pending conflicts
+        if (data.stats?.pendingConflicts) {
+          setPendingConflicts(data.stats.pendingConflicts);
+        }
+
+        // No grades or email suggestions in iCal-only mode
+        setGradeAlerts([]);
+        setEmailSuggestions([]);
+        setEvents([]);
+      } else {
+        // API returned but no events
+        setIsDemo(true);
+      }
+    } catch (err) {
+      console.error('Failed to fetch live data:', err);
+      setLoadError(err.message);
+      setIsDemo(true); // Fall back to demo data
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  // Refresh data function (called after manual actions)
+  async function refreshData() {
+    let settings = null;
+    try {
+      const raw = localStorage.getItem('syncwise_settings');
+      if (raw) settings = JSON.parse(raw);
+    } catch (e) { /* ignore */ }
+    if (settings && settings.icalUrl) {
+      await fetchLiveData(settings);
+    }
+  }
 
   // ============================================================
   // EXPORT WEEK FUNCTION
@@ -713,19 +839,70 @@ export default function StudentDashboard() {
             <ThemeToggle />
             <NotificationCenter />
             {isDemo && <span className="badge badge-medium">Demo Mode</span>}
-            <span>Troy Fields</span>
+            {!isDemo && pendingConflicts > 0 && (
+              <span className="badge badge-high" title={`${pendingConflicts} date conflicts need instructor review`}>
+                {pendingConflicts} Conflicts
+              </span>
+            )}
+            <span>{(() => { try { const s = typeof window !== 'undefined' && localStorage.getItem('syncwise_settings'); return s ? JSON.parse(s).studentName || 'Student' : 'Student'; } catch(e) { return 'Student'; }})()}</span>
             <a href="/instructor" style={{ color: '#64748B', textDecoration: 'none', fontSize: '13px' }}>Instructor View</a>
           </div>
         </nav>
 
         <div className="container">
+          {/* Loading State */}
+          {isLoading && (
+            <div style={{
+              background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '10px',
+              padding: '20px', margin: '20px 0 0', fontSize: '14px', color: '#1E40AF',
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: '24px', marginBottom: '8px' }}>Loading your dashboard...</div>
+              <div>Fetching assignments from D2L calendar feed</div>
+            </div>
+          )}
+
+          {/* Error Banner */}
+          {loadError && !isLoading && (
+            <div style={{
+              background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px',
+              padding: '12px 20px', margin: '20px 0 0', fontSize: '14px', color: '#991B1B',
+            }}>
+              <strong>Connection Issue</strong> — Could not load live data: {loadError}. Showing demo data instead.
+              <button onClick={refreshData} style={{ marginLeft: '12px', padding: '4px 12px', background: '#DC2626', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>Retry</button>
+            </div>
+          )}
+
           {/* Demo Banner */}
-          {isDemo && (
+          {isDemo && !isLoading && (
             <div style={{
               background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '10px',
               padding: '12px 20px', margin: '20px 0 0', fontSize: '14px', color: '#92400E',
             }}>
-              <strong>Demo Mode</strong> — Showing sample data. Connect your CMU accounts to see real assignments and events.
+              <strong>Demo Mode</strong> — Showing sample data.{' '}
+              <a href="/setup" style={{ color: '#92400E', fontWeight: '600' }}>Complete setup</a> to see your real D2L assignments.
+            </div>
+          )}
+
+          {/* Live Data Banner */}
+          {!isDemo && !isLoading && (
+            <div style={{
+              background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '10px',
+              padding: '12px 20px', margin: '20px 0 0', fontSize: '14px', color: '#065F46',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <span>Connected to D2L — showing {tasks.length} items across your courses</span>
+              <button onClick={refreshData} style={{ padding: '4px 12px', background: '#059669', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>Refresh</button>
+            </div>
+          )}
+
+          {/* Date Change Notifications */}
+          {dateNotifications.length > 0 && !isLoading && (
+            <div style={{
+              background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '10px',
+              padding: '12px 20px', margin: '12px 0 0', fontSize: '14px', color: '#1E40AF',
+            }}>
+              <strong>Date Changes ({dateNotifications.length})</strong> — Your instructor updated due dates for some assignments.
             </div>
           )}
 

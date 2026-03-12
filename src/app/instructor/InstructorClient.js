@@ -277,7 +277,7 @@ const DEMO_CALENDAR_EVENTS = [
 
 export default function InstructorDashboard() {
   const [calendarView, setCalendarView] = useState('week');
-  const [currentDate, setCurrentDate] = useState(new Date('2026-03-11'));
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedTypeFilter, setSelectedTypeFilter] = useState('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all');
   const [showManualEventModal, setShowManualEventModal] = useState(false);
@@ -290,24 +290,136 @@ export default function InstructorDashboard() {
   });
   const [showConfirmPost, setShowConfirmPost] = useState(false);
   const [actionLog, setActionLog] = useState([]);
+  const [items, setItems] = useState(DEMO_ITEMS);
+  const [conflicts, setConflicts] = useState([]);
+  const [isDemo, setIsDemo] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // ============================================================
+  // LIVE DATA FETCH — Instructor dashboard
+  // ============================================================
+
+  useEffect(() => {
+    let settings = null;
+    try {
+      const raw = typeof window !== 'undefined' && localStorage.getItem('syncwise_settings');
+      if (raw) settings = JSON.parse(raw);
+    } catch (e) { /* ignore */ }
+
+    if (settings && settings.icalUrl) {
+      fetchInstructorData(settings);
+    } else {
+      setIsDemo(true);
+      setIsLoading(false);
+    }
+  }, []);
+
+  async function fetchInstructorData(settings) {
+    setIsLoading(true);
+    try {
+      // Fetch dashboard data (same as student, but instructor views it differently)
+      const dataRes = await fetch('/api/dashboard/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ icalUrl: settings.icalUrl, studentEmail: settings.studentEmail || 'anonymous' }),
+      });
+
+      if (dataRes.ok) {
+        const data = await dataRes.json();
+        if (data.events && data.events.length > 0) {
+          // Convert to instructor view format
+          const liveItems = data.events.map(evt => ({
+            id: evt.id || `ical-${Math.random().toString(36).slice(2)}`,
+            type: evt.type || 'assignment',
+            name: evt.name || evt.summary || 'Untitled',
+            courseName: evt.courseName || 'Unknown Course',
+            courseColor: (data.courses && data.courses[evt.courseName]?.color) || COURSE_COLORS[evt.courseName] || '#6B7280',
+            dueDate: evt.dueDate || evt.end || evt.start || null,
+            points: evt.points || null,
+            submissions: 0,
+            totalStudents: 0,
+            ungraded: 0,
+            averageScore: null,
+            source: evt.source || 'ical',
+            pendingReview: evt.pendingReview || false,
+            hasConflict: evt.hasConflict || false,
+          }));
+          setItems(liveItems);
+          setIsDemo(false);
+        }
+      }
+
+      // Fetch conflicts
+      const conflictRes = await fetch('/api/instructor/conflicts?includeResolved=false');
+      if (conflictRes.ok) {
+        const conflictData = await conflictRes.json();
+        setConflicts(conflictData.conflicts || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch instructor data:', err);
+      setIsDemo(true);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function resolveConflict(conflictId, action, resolution = {}) {
+    try {
+      const res = await fetch('/api/instructor/conflicts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, conflictId, ...resolution }),
+      });
+      if (res.ok) {
+        // Remove resolved conflict from list
+        setConflicts(prev => prev.filter(c => c.id !== conflictId));
+        setActionLog(prev => [...prev, { action: `Resolved conflict: ${action}`, time: new Date().toLocaleTimeString() }]);
+      }
+    } catch (err) {
+      console.error('Failed to resolve conflict:', err);
+    }
+  }
+
+  async function overrideDate(itemName, courseName, newDate, reason) {
+    try {
+      const res = await fetch('/api/instructor/conflicts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'override',
+          itemName,
+          courseName,
+          newDate,
+          reason: reason || 'Instructor date override',
+          instructorId: 'instructor-1',
+        }),
+      });
+      if (res.ok) {
+        setActionLog(prev => [...prev, { action: `Date override: ${itemName} → ${new Date(newDate).toLocaleDateString()}`, time: new Date().toLocaleTimeString() }]);
+      }
+    } catch (err) {
+      console.error('Failed to override date:', err);
+    }
+  }
 
   // Determine which items need attention (instructor-specific)
-  const needsAttentionItems = DEMO_ITEMS.filter(item => {
+  const needsAttentionItems = items.filter(item => {
+    if (item.hasConflict || item.pendingReview) return true;
     if (item.type === 'assignment' && item.ungraded > 0 && item.ungraded === item.submissions) {
-      return true; // Ungraded submissions
+      return true;
     }
-    if (item.type === 'assignment' && item.submissions / item.totalStudents < 0.5) {
-      return true; // Low submission rate
+    if (item.type === 'assignment' && item.totalStudents > 0 && item.submissions / item.totalStudents < 0.5) {
+      return true;
     }
     if (item.type === 'discussion' && item.unansweredPosts > 0) {
-      return true; // Unanswered discussion posts
+      return true;
     }
     return false;
   });
 
   // Calendar navigation
   function goToday() {
-    setCurrentDate(new Date('2026-03-11'));
+    setCurrentDate(new Date());
   }
 
   function goToPrevious() {
@@ -375,7 +487,7 @@ export default function InstructorDashboard() {
 
   function getItemsForDate(date) {
     const dateStr = date.toISOString().split('T')[0];
-    return DEMO_ITEMS.filter(item => {
+    return items.filter(item => {
       if (!item.dueDate) return false;
       const itemDateStr = item.dueDate.split('T')[0];
       return itemDateStr === dateStr;
@@ -454,7 +566,7 @@ export default function InstructorDashboard() {
   };
 
   // Filtered items
-  let filteredItems = DEMO_ITEMS;
+  let filteredItems = items;
   if (selectedTypeFilter !== 'all') {
     filteredItems = filteredItems.filter(item => item.type === selectedTypeFilter);
   }
@@ -476,14 +588,66 @@ export default function InstructorDashboard() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <ThemeToggle />
             <NotificationCenter />
-            <span className="badge badge-medium">Demo Mode</span>
-            <span style={{ fontSize: '14px', fontWeight: '600' }}>Prof. Jouflas</span>
+            {isDemo && <span className="badge badge-medium">Demo Mode</span>}
+            {!isDemo && conflicts.length > 0 && (
+              <span className="badge badge-high">{conflicts.length} Conflicts</span>
+            )}
+            <span style={{ fontSize: '14px', fontWeight: '600' }}>Instructor</span>
             <a href="/dashboard" style={{ color: '#64748B', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}>Student View →</a>
           </div>
         </nav>
 
         {/* Dashboard Container */}
         <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+          {/* Status Banners */}
+          {isLoading && (
+            <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '10px', padding: '16px 20px', marginBottom: '16px', fontSize: '14px', color: '#1E40AF', textAlign: 'center' }}>
+              Loading instructor dashboard...
+            </div>
+          )}
+          {isDemo && !isLoading && (
+            <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '10px', padding: '12px 20px', marginBottom: '16px', fontSize: '14px', color: '#92400E' }}>
+              <strong>Demo Mode</strong> — Showing sample data. <a href="/setup" style={{ color: '#92400E', fontWeight: '600' }}>Complete setup</a> to connect live D2L data.
+            </div>
+          )}
+          {!isDemo && !isLoading && (
+            <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '10px', padding: '12px 20px', marginBottom: '16px', fontSize: '14px', color: '#065F46' }}>
+              Connected to D2L — showing {items.length} items from calendar feed
+            </div>
+          )}
+
+          {/* Date Conflict Resolution Panel */}
+          {conflicts.length > 0 && !isLoading && (
+            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', padding: '16px 20px', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#991B1B', marginBottom: '12px' }}>
+                Date Conflicts ({conflicts.length}) — Requires Your Review
+              </h3>
+              <p style={{ fontSize: '13px', color: '#7F1D1D', marginBottom: '14px' }}>
+                The dates below don&apos;t match between the D2L calendar and your uploaded documents. Please choose the correct date for each item.
+              </p>
+              {conflicts.slice(0, 5).map(conflict => (
+                <div key={conflict.id} style={{ background: '#FFF', borderRadius: '8px', padding: '12px', marginBottom: '8px', border: '1px solid #FECACA' }}>
+                  <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '6px' }}>{conflict.itemName || 'Unknown Item'}</div>
+                  <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>{conflict.courseName}</div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button onClick={() => resolveConflict(conflict.id, 'resolve', { chosenDate: conflict.icalDate, chosenSource: 'ical' })}
+                      style={{ padding: '6px 12px', background: '#4F46E5', color: '#FFF', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                      Use D2L Date
+                    </button>
+                    <button onClick={() => resolveConflict(conflict.id, 'resolve', { chosenDate: conflict.uploadDate, chosenSource: 'upload' })}
+                      style={{ padding: '6px 12px', background: '#059669', color: '#FFF', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                      Use Uploaded Date
+                    </button>
+                    <button onClick={() => resolveConflict(conflict.id, 'dismiss_all')}
+                      style={{ padding: '6px 12px', background: '#6B7280', color: '#FFF', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Calendar Section */}
           <div className="card" style={{ marginBottom: '24px' }}>
             <div className="calendar-header">
@@ -749,7 +913,7 @@ export default function InstructorDashboard() {
               {/* Grading-Needed Summary */}
               <div className="card" style={{ marginBottom: '20px' }}>
                 <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '14px' }}>Grading Queue</h3>
-                {DEMO_ITEMS.filter(i => i.type === 'assignment' && i.ungraded > 0).map(item => (
+                {items.filter(i => i.type === 'assignment' && i.ungraded > 0).map(item => (
                   <div key={item.id} style={{ paddingBottom: '14px', borderBottom: '1px solid #F1F5F9', marginBottom: '12px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                       <span style={{ fontSize: '13px', fontWeight: '600' }}>{item.name}</span>

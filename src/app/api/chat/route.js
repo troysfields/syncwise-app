@@ -130,7 +130,7 @@ export async function GET() {
   return NextResponse.json({
     endpoint: '/api/chat',
     method: 'POST',
-    description: 'SyncWise AI chatbot — platform guidance and navigation help',
+    description: 'CMU AI Calendar chatbot — platform guidance and navigation help',
     requires: 'Authentication (session cookie)',
     body: {
       message: '(required) User message, max 2000 chars',
@@ -168,8 +168,8 @@ function getFallbackResponse(message) {
   }
 
   if (lower.includes('help') || lower.includes('what can you')) {
-    return 'I can help you with:\n• Setting up your D2L calendar connection\n• Navigating the dashboard features\n• Understanding notifications and settings\n• Explaining how features work\n• Troubleshooting common issues\n\nJust ask me anything about SyncWise!';
+    return 'I can help you with:\n• Setting up your D2L calendar connection\n• Navigating the dashboard features\n• Understanding notifications and settings\n• Explaining how features work\n• Troubleshooting common issues\n\nJust ask me anything!';
   }
 
-  return 'I\'m the SyncWise AI assistant! I can help you navigate the platform, set up your D2L calendar, configure notifications, and explain any feature. What would you like to know?';
+  return 'I\'m the CMU AI Calendar assistant! I can help you navigate the platform, set up your D2L calendar, configure notifications, and explain any feature. What would you like to know?';
 }

@@ -11,7 +11,7 @@ export default function WelcomePage() {
         <div style={styles.header}>
           <h1 style={styles.title}>You&apos;re all set up!</h1>
           <p style={styles.subtitle}>
-            Here&apos;s a quick rundown of what SyncWise AI can do for you.
+            Here&apos;s a quick rundown of what CMU AI Calendar can do for you.
           </p>
         </div>
 
@@ -33,7 +33,7 @@ export default function WelcomePage() {
             <div>
               <h3 style={styles.featureName}>AI Priority Suggestions</h3>
               <p style={styles.featureDesc}>
-                SyncWise AI analyzes your workload and tells you what to tackle first
+                CMU AI Calendar analyzes your workload and tells you what to tackle first
                 based on due dates, weight, and your schedule.
               </p>
             </div>
@@ -89,7 +89,7 @@ export default function WelcomePage() {
           <div style={styles.chatIcon}>💬</div>
           <h2 style={styles.chatTitle}>Need help? Ask the AI assistant</h2>
           <p style={styles.chatDesc}>
-            The SyncWise AI chatbot (bottom-right corner) can walk you through
+            The AI chatbot (bottom-right corner) can walk you through
             anything — connecting your D2L account, navigating features, configuring
             notifications, and more. Just click the chat bubble and ask.
           </p>

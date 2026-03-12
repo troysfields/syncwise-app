@@ -8,7 +8,7 @@ const DashboardClient = dynamic(() => import('./DashboardClient'), {
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--bg-primary, #0f1923)', color: 'var(--text-primary, #e2e8f0)' }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📚</div>
-        <div>Loading SyncWise AI...</div>
+        <div>Loading CMU AI Calendar...</div>
       </div>
     </div>
   ),

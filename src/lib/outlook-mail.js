@@ -103,7 +103,7 @@ export async function parseEmailsForEvents(emails, existingEvents = [], studentI
     return `- ${name} (${start})`;
   }).join('\n');
 
-  const prompt = `You are SyncWise AI, an academic assistant. Analyze these emails and identify ANY that contain or reference events, meetings, deadlines, or activities that should go on a student's calendar.
+  const prompt = `You are CMU AI Calendar, an academic assistant at Colorado Mesa University. Analyze these emails and identify ANY that contain or reference events, meetings, deadlines, or activities that should go on a student's calendar.
 
 For each event found, extract:
 - title: clear event name
@@ -270,7 +270,7 @@ export function buildEventFromSuggestion(suggestion) {
       contentType: 'HTML',
       content: `<p><strong>Category:</strong> ${suggestion.category}</p>
         <p><strong>Source:</strong> Email — "${suggestion.sourceSubject}"</p>
-        <p><em>Added from email suggestion by SyncWise AI</em></p>`,
+        <p><em>Added from email suggestion by CMU AI Calendar</em></p>`,
     },
     start: {
       dateTime: startDate.toISOString(),

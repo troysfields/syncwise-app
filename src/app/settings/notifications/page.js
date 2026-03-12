@@ -130,8 +130,8 @@ export default function NotificationPreferencesPage() {
       {/* Top Nav */}
       <nav className="topnav">
         <a className="topnav-logo" href="/dashboard">
-          <span className="topnav-logo-icon">S</span>
-          SyncWise AI
+          <span className="topnav-logo-icon">C</span>
+          CMU AI Calendar
         </a>
         <div className="topnav-user">
           <ThemeToggle />
@@ -148,7 +148,7 @@ export default function NotificationPreferencesPage() {
           <div className="settings-container">
             <div className="settings-header">
               <h1>Notification Preferences</h1>
-              <p>Control how and when SyncWise alerts you. Changes apply immediately.</p>
+              <p>Control how and when CMU AI Calendar alerts you. Changes apply immediately.</p>
             </div>
 
             {/* Browser Push Permission */}
@@ -161,7 +161,7 @@ export default function NotificationPreferencesPage() {
                     <div style={{ fontSize: '13px', color: '#64748B' }}>
                       {pushPermission === 'denied'
                         ? 'Browser notifications are blocked. Enable them in your browser settings.'
-                        : 'Get alerts even when you\'re not on the SyncWise tab.'}
+                        : 'Get alerts even when you\'re not on the CMU AI Calendar tab.'}
                     </div>
                   </div>
                   {pushPermission !== 'denied' && (

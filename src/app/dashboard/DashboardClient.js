@@ -527,7 +527,7 @@ export default function StudentDashboard() {
     const startDate = weekDays[0];
     const endDate = weekDays[6];
 
-    let text = `SYNCWISE AI — WEEKLY SUMMARY\n`;
+    let text = `CMU AI CALENDAR — WEEKLY SUMMARY\n`;
     text += `${startDate.toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${endDate.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}\n`;
     text += `\n${'='.repeat(50)}\n\n`;
 
@@ -880,8 +880,8 @@ export default function StudentDashboard() {
         {/* Top Nav */}
         <nav className="topnav">
           <a className="topnav-logo" href="/dashboard">
-            <span className="topnav-logo-icon">S</span>
-            SyncWise AI
+            <span className="topnav-logo-icon">C</span>
+            CMU AI Calendar
           </a>
           <div className="topnav-user">
             <ThemeToggle />

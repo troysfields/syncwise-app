@@ -633,8 +633,8 @@ export default function InstructorDashboard() {
         {/* Top Nav */}
         <nav className="topnav">
           <a className="topnav-logo" href="/instructor">
-            <span className="topnav-logo-icon">S</span>
-            SyncWise AI
+            <span className="topnav-logo-icon">C</span>
+            CMU AI Calendar
             <span style={{ fontSize: '12px', fontWeight: '500', color: '#64748B', marginLeft: '4px' }}>Instructor</span>
           </a>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>

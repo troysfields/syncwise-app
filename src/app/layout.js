@@ -6,8 +6,8 @@ import { ThemeProvider } from './components/ThemeProvider';
 import ChatWidget from './components/ChatWidget';
 
 export const metadata = {
-  title: 'SyncWise AI — Smart Academic Calendar',
-  description: 'All your deadlines, one smart calendar. Syncs D2L and Outlook with AI prioritization.',
+  title: 'CMU AI Calendar — Smart Academic Calendar by SyncWise AI',
+  description: 'All your deadlines, one smart calendar. Syncs D2L with AI prioritization for Colorado Mesa University.',
 };
 
 export default function RootLayout({ children }) {

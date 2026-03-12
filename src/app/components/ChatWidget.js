@@ -11,7 +11,7 @@ export default function ChatWidget() {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: 'Hey! I\'m the SyncWise AI assistant. I can help you set up your D2L calendar, navigate the dashboard, or explain any feature. What do you need?',
+      content: 'Hey! I\'m the CMU AI Calendar assistant. I can help you set up your D2L calendar, navigate the dashboard, or explain any feature. What do you need?',
     },
   ]);
   const [input, setInput] = useState('');
@@ -95,7 +95,7 @@ export default function ChatWidget() {
   // Quick action buttons for common tasks
   const quickActions = [
     { label: 'Setup D2L', message: 'How do I connect my D2L calendar?' },
-    { label: 'Features', message: 'What features does SyncWise have?' },
+    { label: 'Features', message: 'What features does CMU AI Calendar have?' },
     { label: 'Privacy', message: 'Is my data safe?' },
   ];
 
@@ -105,8 +105,8 @@ export default function ChatWidget() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         style={styles.bubble}
-        aria-label={isOpen ? 'Close chat' : 'Open SyncWise AI chat'}
-        title="Chat with SyncWise AI"
+        aria-label={isOpen ? 'Close chat' : 'Open CMU AI Calendar chat'}
+        title="Chat with CMU AI Calendar"
       >
         {isOpen ? (
           <span style={styles.bubbleIcon}>✕</span>
@@ -121,7 +121,7 @@ export default function ChatWidget() {
           {/* Header */}
           <div style={styles.header}>
             <div>
-              <strong style={styles.headerTitle}>SyncWise AI</strong>
+              <strong style={styles.headerTitle}>CMU AI Calendar</strong>
               <span style={styles.headerSubtitle}>Platform Guide</span>
             </div>
             <button onClick={() => setIsOpen(false)} style={styles.closeBtn}>✕</button>
@@ -206,7 +206,7 @@ export default function ChatWidget() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask me anything about SyncWise..."
+              placeholder="Ask me anything..."
               style={styles.input}
               disabled={isLoading}
               maxLength={2000}

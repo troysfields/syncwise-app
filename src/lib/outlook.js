@@ -131,7 +131,7 @@ export function buildSyncWiseEvent(assignment) {
       content: `<p><strong>Course:</strong> ${assignment.courseName || 'Unknown'}</p>
         <p><strong>Due:</strong> ${dueDate.toLocaleString()}</p>
         <p><strong>Points:</strong> ${assignment.points || 'N/A'}</p>
-        <p><em>Synced automatically by SyncWise AI</em></p>`,
+        <p><em>Synced automatically by CMU AI Calendar</em></p>`,
     },
     start: {
       dateTime: startDate.toISOString(),

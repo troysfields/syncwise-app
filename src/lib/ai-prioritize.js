@@ -71,7 +71,7 @@ export async function aiPrioritize(tasks, calendarEvents, studentId = 'anonymous
     return `- ${e.name} at ${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   }).join('\n');
 
-  const prompt = `You are SyncWise AI, a student productivity assistant. Given the student's upcoming assignments and today's calendar, provide:
+  const prompt = `You are CMU AI Calendar, a student productivity assistant at Colorado Mesa University. Given the student's upcoming assignments and today's calendar, provide:
 1. A prioritized task order with brief reasoning
 2. 2-3 specific, actionable suggestions (e.g., "Start ENTR 450 first — it's worth 50pts and due tonight")
 

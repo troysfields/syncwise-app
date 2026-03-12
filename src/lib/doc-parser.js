@@ -81,7 +81,7 @@ export async function analyzeDocument(text, fileName, courseName, instructorId =
   // Truncate very long documents (keep first ~8000 words)
   const truncatedText = truncateText(text, 8000);
 
-  const prompt = `You are an academic document analyzer for SyncWise AI. Extract structured data from this course document.
+  const prompt = `You are an academic document analyzer for CMU AI Calendar. Extract structured data from this course document.
 
 Document: "${fileName}"
 Course: ${courseName || 'Unknown'}

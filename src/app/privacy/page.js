@@ -13,7 +13,7 @@ export default function PrivacyPolicy() {
         <section style={styles.section}>
           <h2 style={styles.heading}>Overview</h2>
           <p style={styles.text}>
-            SyncWise AI is an academic productivity tool built by Troy Fields as part of
+            CMU AI Calendar (by SyncWise AI) is an academic productivity tool built by Troy Fields as part of
             the ENTR 450 capstone at Colorado Mesa University. This policy explains what
             data we collect, how we use it, and how we protect it.
           </p>
@@ -58,7 +58,7 @@ export default function PrivacyPolicy() {
           <h2 style={styles.heading}>How We Use Your Data</h2>
           <p style={styles.text}>
             Your calendar data is used solely to display your assignments and due dates
-            on your SyncWise dashboard. AI prioritization features analyze your task list
+            on your CMU AI Calendar dashboard. AI prioritization features analyze your task list
             to suggest study priorities — this analysis happens in real-time and results
             are not stored. Instructor-uploaded documents (syllabi, schedules) are parsed
             for dates and course information to supplement your calendar.
@@ -68,7 +68,7 @@ export default function PrivacyPolicy() {
         <section style={styles.section}>
           <h2 style={styles.heading}>Data Storage and Security</h2>
           <p style={styles.text}>
-            SyncWise AI is hosted on Vercel with HTTPS encryption for all connections.
+            CMU AI Calendar is hosted on Vercel with HTTPS encryption for all connections.
             Session data is signed with HMAC-SHA256 and stored in httpOnly, secure
             cookies that cannot be accessed by JavaScript. API routes are protected by
             session authentication. Admin routes require a separate secret key and fail
@@ -85,7 +85,7 @@ export default function PrivacyPolicy() {
         <section style={styles.section}>
           <h2 style={styles.heading}>FERPA Compliance</h2>
           <p style={styles.text}>
-            SyncWise AI is designed with FERPA (Family Educational Rights and Privacy Act)
+            CMU AI Calendar is designed with FERPA (Family Educational Rights and Privacy Act)
             compliance in mind. We access only data that the student explicitly consents
             to share (calendar feed URL). No education records are accessed without
             student consent. All data access is audit-logged. Students can disconnect
@@ -96,7 +96,7 @@ export default function PrivacyPolicy() {
         <section style={styles.section}>
           <h2 style={styles.heading}>AI Processing</h2>
           <p style={styles.text}>
-            SyncWise uses Anthropic&apos;s Claude AI for task prioritization and document
+            CMU AI Calendar uses Anthropic&apos;s Claude AI for task prioritization and document
             analysis. When AI features are used, your task names and due dates may be
             sent to Anthropic&apos;s API for processing. Anthropic does not use this data
             for training. No personally identifiable information (names, emails, student

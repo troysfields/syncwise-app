@@ -71,33 +71,14 @@ export default function FutureUpdatesPage() {
   const isStudent = role === 'student';
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-primary, #f1f5f9)' }}>
+    <div className="layout-with-sidebar">
       {/* Sidebar */}
       <Sidebar role={role} activeSection="future-updates" />
 
       {/* Main Content */}
-      <main
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'auto',
-        }}
-      >
+      <main className="main-content">
         {/* Top Navigation Bar */}
-        <nav
-          style={{
-            background: 'white',
-            borderBottom: '1px solid #e2e8f0',
-            padding: '12px 24px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            position: 'sticky',
-            top: 0,
-            zIndex: 40,
-          }}
-        >
+        <nav className="topnav">
           <div style={{ fontSize: '16px', fontWeight: 600, color: '#1e293b' }}>
             Future Updates
           </div>

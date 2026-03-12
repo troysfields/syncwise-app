@@ -294,9 +294,12 @@ export default function InstructorDashboard() {
   const [conflicts, setConflicts] = useState([]);
   const [isDemo, setIsDemo] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastRefreshTime, setLastRefreshTime] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // ============================================================
   // LIVE DATA FETCH — Instructor dashboard
+  // Auto-refreshes every 10 minutes in the background
   // ============================================================
 
   useEffect(() => {
@@ -332,10 +335,37 @@ export default function InstructorDashboard() {
       }
     }
     loadData();
+
+    // Auto-refresh every 10 minutes
+    const refreshInterval = setInterval(() => {
+      let settings = null;
+      try {
+        const raw = localStorage.getItem('syncwise_settings');
+        if (raw) settings = JSON.parse(raw);
+      } catch {}
+      if (settings?.icalUrl) {
+        console.log('[REFRESH] Auto-refreshing instructor data...');
+        fetchInstructorData(settings);
+      }
+    }, 10 * 60 * 1000);
+
+    return () => clearInterval(refreshInterval);
   }, []);
 
-  async function fetchInstructorData(settings) {
-    setIsLoading(true);
+  async function refreshData() {
+    let settings = null;
+    try {
+      const raw = localStorage.getItem('syncwise_settings');
+      if (raw) settings = JSON.parse(raw);
+    } catch (e) { /* ignore */ }
+    if (settings && settings.icalUrl) {
+      await fetchInstructorData(settings, true);
+    }
+  }
+
+  async function fetchInstructorData(settings, isManualRefresh = false) {
+    if (isManualRefresh) setIsRefreshing(true);
+    else setIsLoading(true);
     try {
       // Fetch dashboard data (same as student, but instructor views it differently)
       const dataRes = await fetch('/api/dashboard/data', {
@@ -377,9 +407,11 @@ export default function InstructorDashboard() {
       }
     } catch (err) {
       console.error('Failed to fetch instructor data:', err);
-      setIsDemo(true);
+      if (!isManualRefresh) setIsDemo(true);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
+      setLastRefreshTime(new Date());
     }
   }
 
@@ -608,6 +640,30 @@ export default function InstructorDashboard() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <ThemeToggle />
             <NotificationCenter />
+            {!isDemo && (
+              <button
+                onClick={refreshData}
+                disabled={isRefreshing}
+                title={lastRefreshTime ? `Last refreshed: ${lastRefreshTime.toLocaleTimeString()}` : 'Refresh calendar data'}
+                style={{
+                  background: 'none',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  cursor: isRefreshing ? 'wait' : 'pointer',
+                  fontSize: '13px',
+                  color: '#64748B',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontFamily: 'inherit',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <span style={{ display: 'inline-block', animation: isRefreshing ? 'spin 1s linear infinite' : 'none' }}>↻</span>
+                {isRefreshing ? 'Refreshing...' : lastRefreshTime ? lastRefreshTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Refresh'}
+              </button>
+            )}
             {isDemo && <span className="badge badge-medium">Demo Mode</span>}
             {!isDemo && conflicts.length > 0 && (
               <span className="badge badge-high">{conflicts.length} Conflicts</span>

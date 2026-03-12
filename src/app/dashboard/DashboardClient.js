@@ -342,9 +342,12 @@ export default function StudentDashboard() {
   const [showManualEventModal, setShowManualEventModal] = useState(false);
   const [manualEvents, setManualEvents] = useState([]);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [lastRefreshTime, setLastRefreshTime] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // ============================================================
   // LIVE DATA FETCH — Pull from consent-data API if user completed setup
+  // Auto-refreshes every 10 minutes in the background
   // ============================================================
 
   useEffect(() => {
@@ -395,10 +398,26 @@ export default function StudentDashboard() {
     }
 
     loadUserData();
+
+    // Auto-refresh every 10 minutes
+    const refreshInterval = setInterval(() => {
+      let settings = null;
+      try {
+        const raw = localStorage.getItem('syncwise_settings');
+        if (raw) settings = JSON.parse(raw);
+      } catch {}
+      if (settings?.icalUrl) {
+        console.log('[REFRESH] Auto-refreshing calendar data...');
+        fetchLiveData(settings);
+      }
+    }, 10 * 60 * 1000);
+
+    return () => clearInterval(refreshInterval);
   }, []);
 
-  async function fetchLiveData(settings) {
-    setIsLoading(true);
+  async function fetchLiveData(settings, isManualRefresh = false) {
+    if (isManualRefresh) setIsRefreshing(true);
+    else setIsLoading(true);
     setLoadError(null);
     try {
       const res = await fetch('/api/dashboard/data', {
@@ -482,10 +501,12 @@ export default function StudentDashboard() {
       setIsDemo(true); // Fall back to demo data
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
+      setLastRefreshTime(new Date());
     }
   }
 
-  // Refresh data function (called after manual actions)
+  // Refresh data function (called after manual actions or refresh button)
   async function refreshData() {
     let settings = null;
     try {
@@ -493,7 +514,7 @@ export default function StudentDashboard() {
       if (raw) settings = JSON.parse(raw);
     } catch (e) { /* ignore */ }
     if (settings && settings.icalUrl) {
-      await fetchLiveData(settings);
+      await fetchLiveData(settings, true);
     }
   }
 
@@ -865,6 +886,30 @@ export default function StudentDashboard() {
           <div className="topnav-user">
             <ThemeToggle />
             <NotificationCenter />
+            {!isDemo && (
+              <button
+                onClick={refreshData}
+                disabled={isRefreshing}
+                title={lastRefreshTime ? `Last refreshed: ${lastRefreshTime.toLocaleTimeString()}` : 'Refresh calendar data'}
+                style={{
+                  background: 'none',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  cursor: isRefreshing ? 'wait' : 'pointer',
+                  fontSize: '13px',
+                  color: '#64748B',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontFamily: 'inherit',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <span style={{ display: 'inline-block', animation: isRefreshing ? 'spin 1s linear infinite' : 'none' }}>↻</span>
+                {isRefreshing ? 'Refreshing...' : lastRefreshTime ? lastRefreshTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Refresh'}
+              </button>
+            )}
             {isDemo && <span className="badge badge-medium">Demo Mode</span>}
             {!isDemo && pendingConflicts > 0 && (
               <span className="badge badge-high" title={`${pendingConflicts} date conflicts need instructor review`}>

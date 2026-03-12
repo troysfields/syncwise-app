@@ -67,53 +67,6 @@ const DEMO_SUGGESTIONS = [
   { type: 'planning', text: 'Your IT meeting with Mike is tomorrow at 10 AM. Review the Beta API Request doc tonight so you\'re ready.' },
 ];
 
-const DEMO_EMAIL_SUGGESTIONS = [
-  {
-    id: 'demo-1',
-    title: 'ENTR 450 Group Project Meeting',
-    date: '2026-03-13T16:00:00',
-    endDate: '2026-03-13T17:00:00',
-    category: 'Group Project',
-    confidence: 'high',
-    sourceSubject: 'Re: Group Project — Let\'s meet Thursday at 4pm',
-    reason: 'Email thread discussing a group project meeting with explicit date and time',
-    status: 'pending',
-  },
-  {
-    id: 'demo-2',
-    title: 'Career Fair — Maverick Center',
-    date: '2026-03-18T10:00:00',
-    endDate: '2026-03-18T14:00:00',
-    category: 'Campus Event',
-    confidence: 'high',
-    sourceSubject: 'Spring Career Fair — March 18th',
-    reason: 'Campus-wide email announcing career fair with specific date, time, and location',
-    status: 'pending',
-  },
-  {
-    id: 'demo-3',
-    title: 'Prof. Williams Review Session',
-    date: '2026-03-15T14:00:00',
-    endDate: '2026-03-15T15:30:00',
-    category: 'Exam / Review',
-    confidence: 'medium',
-    sourceSubject: 'ACCT 301 — Midterm review this Saturday',
-    reason: 'Professor email mentioning a review session with approximate date',
-    status: 'pending',
-  },
-  {
-    id: 'demo-4',
-    title: 'Entrepreneurship Club Weekly Meeting',
-    date: '2026-03-12T18:00:00',
-    endDate: '2026-03-12T19:00:00',
-    category: 'Club Meeting',
-    confidence: 'medium',
-    sourceSubject: 'E-Club this Wednesday — guest speaker!',
-    reason: 'Club email with meeting details and day of week reference',
-    status: 'pending',
-  },
-];
-
 // ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
@@ -133,12 +86,6 @@ function formatDate(dateStr) {
   return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-function formatSuggestionDate(dateStr) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) +
-    ' at ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-}
-
 function getPriorityLevel(task) {
   if (!task.dueDate && !task.manualDate) return 'low';
   const dateToUse = task.manualDate || task.dueDate;
@@ -149,26 +96,6 @@ function getPriorityLevel(task) {
   return 'low';
 }
 
-function getConfidenceStyle(confidence) {
-  if (confidence === 'high') return { bg: '#ECFDF5', color: '#059669', label: 'High Confidence' };
-  if (confidence === 'medium') return { bg: '#FEF3C7', color: '#D97706', label: 'Likely Match' };
-  return { bg: '#FEE2E2', color: '#DC2626', label: 'Maybe' };
-}
-
-function getCategoryIcon(category) {
-  const icons = {
-    'Group Project': '\u{1F465}',
-    'Study Session': '\u{1F4DA}',
-    'Campus Event': '\u{1F3DB}',
-    'Office Hours': '\u{1F468}\u200D\u{1F3EB}',
-    'Club Meeting': '\u{1F91D}',
-    'Exam / Review': '\u{1F4DD}',
-    'Workshop': '\u{1F6E0}',
-    'Social': '\u{1F389}',
-    'Other': '\u{1F4CC}',
-  };
-  return icons[category] || '\u{1F4CC}';
-}
 
 function getItemTypeIcon(type) {
   const icons = {
@@ -188,28 +115,6 @@ function getItemTypeBadgeClass(type) {
 
 function getItemTypeLabel(type) {
   return type.charAt(0).toUpperCase() + type.slice(1);
-}
-
-// ============================================================
-// SMART NOTIFICATION — Urgency detection for <24hr events
-// ============================================================
-
-function getUrgencyInfo(suggestion) {
-  const eventDate = new Date(suggestion.date);
-  const now = new Date();
-  const hoursUntil = (eventDate - now) / (1000 * 60 * 60);
-
-  if (hoursUntil < 0) return { isUrgent: false, label: null, style: null };
-  if (hoursUntil <= 3) {
-    return { isUrgent: true, label: `Happening in ${Math.max(1, Math.round(hoursUntil * 60))} min — act now!`, style: 'critical' };
-  }
-  if (hoursUntil <= 12) {
-    return { isUrgent: true, label: `Today — ${Math.round(hoursUntil)}h away`, style: 'urgent' };
-  }
-  if (hoursUntil <= 24) {
-    return { isUrgent: true, label: `Less than 24 hours away`, style: 'soon' };
-  }
-  return { isUrgent: false, label: null, style: null };
 }
 
 // ============================================================
@@ -314,16 +219,11 @@ export default function StudentDashboard() {
   const [tasks, setTasks] = useState(DEMO_TASKS);
   const [events, setEvents] = useState(DEMO_EVENTS);
   const [suggestions, setSuggestions] = useState(DEMO_SUGGESTIONS);
-  const [emailSuggestions, setEmailSuggestions] = useState(DEMO_EMAIL_SUGGESTIONS);
   const [gradeAlerts, setGradeAlerts] = useState(DEMO_GRADE_ALERTS);
   const [courseProgress, setCourseProgress] = useState(DEMO_COURSE_PROGRESS);
   const [isDemo, setIsDemo] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  const [scanning, setScanning] = useState(false);
-  const [scanComplete, setScanComplete] = useState(false);
-  const [emailsScanned, setEmailsScanned] = useState(0);
-  const [filterCategory, setFilterCategory] = useState('all');
   const [itemFilter, setItemFilter] = useState('active'); // 'active', 'completed', 'all-types'
   const [typeFilter, setTypeFilter] = useState('all'); // 'all', 'assignment', 'quiz', etc.
   const [editingDateId, setEditingDateId] = useState(null);
@@ -497,9 +397,8 @@ export default function StudentDashboard() {
           setPendingConflicts(data.stats.pendingConflicts);
         }
 
-        // No grades or email suggestions in iCal-only mode
+        // No grades in iCal-only mode
         setGradeAlerts([]);
-        setEmailSuggestions([]);
         setEvents([]);
       } else {
         // API returned but no events
@@ -638,25 +537,6 @@ export default function StudentDashboard() {
   const focusModeAttentionItems = focusMode ? attentionItems : null;
   const focusModeTasks = focusMode ? todayTodayTasks : null;
 
-  // Get unique categories from email suggestions
-  const activeCategories = [...new Set(emailSuggestions.filter(s => s.status === 'pending').map(s => s.category))];
-
-  // Filter and sort email suggestions — urgent ones float to top
-  const pendingSuggestions = emailSuggestions.filter(s => s.status === 'pending');
-  const sortedPendingSuggestions = [...pendingSuggestions].sort((a, b) => {
-    const aUrgency = getUrgencyInfo(a);
-    const bUrgency = getUrgencyInfo(b);
-    if (aUrgency.isUrgent && !bUrgency.isUrgent) return -1;
-    if (!aUrgency.isUrgent && bUrgency.isUrgent) return 1;
-    if (aUrgency.isUrgent && bUrgency.isUrgent) return new Date(a.date) - new Date(b.date);
-    return new Date(a.date) - new Date(b.date);
-  });
-  const filteredSuggestions = sortedPendingSuggestions.filter(s => {
-    if (filterCategory === 'all') return true;
-    return s.category === filterCategory;
-  });
-  const snoozedSuggestions = emailSuggestions.filter(s => s.status === 'snoozed');
-
   // Filter assignment list
   const filteredTasks = visibleTasks.filter(t => {
     if (itemFilter === 'completed') return t.submitted || t.status === 'completed';
@@ -729,109 +609,6 @@ export default function StudentDashboard() {
 
   function handleDismissGrade(gradeId) {
     setDismissedGrades(prev => [...prev, gradeId]);
-  }
-
-  // ============================================================
-  // HANDLERS — Email scan
-  // ============================================================
-
-  async function handleScanInbox() {
-    if (isDemo) {
-      setScanning(true);
-      setScanComplete(false);
-      setTimeout(() => {
-        setScanning(false);
-        setScanComplete(true);
-        setEmailsScanned(47);
-        setEmailSuggestions(DEMO_EMAIL_SUGGESTIONS.map(s => ({ ...s, status: 'pending' })));
-      }, 2000);
-      return;
-    }
-
-    setScanning(true);
-    setScanComplete(false);
-    let retries = 0;
-    const maxRetries = 2;
-
-    while (retries <= maxRetries) {
-      try {
-        const res = await fetch('/api/email/scan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ accessToken: '', user: '', days: 7 }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        if (data.success) {
-          setEmailsScanned(data.emailsScanned);
-          setEmailSuggestions(data.suggestions.map((s, i) => ({ ...s, id: `scan-${i}`, status: 'pending' })));
-          setScanComplete(true);
-          break;
-        } else {
-          throw new Error(data.error || 'Scan returned unsuccessful');
-        }
-      } catch (err) {
-        retries++;
-        if (retries > maxRetries) {
-          reportError({
-            errorCode: 'outlook_email_scan_failed',
-            severity: 'medium',
-            platform: 'outlook',
-            endpoint: '/api/email/scan',
-            errorMessage: err.message,
-            context: { retries: maxRetries },
-          });
-        } else {
-          await new Promise(r => setTimeout(r, 1000 * retries));
-        }
-      }
-    }
-    setScanning(false);
-  }
-
-  async function handleAccept(suggestionId) {
-    setEmailSuggestions(prev => prev.map(s =>
-      s.id === suggestionId ? { ...s, status: 'accepted' } : s
-    ));
-    if (!isDemo) {
-      const suggestion = emailSuggestions.find(s => s.id === suggestionId);
-      try {
-        const res = await fetch('/api/email/accept', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ accessToken: '', user: '', suggestion }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        showToast({ type: 'success', message: 'Event added to your Outlook calendar!', duration: 4000 });
-      } catch (err) {
-        reportError({
-          errorCode: 'outlook_calendar_write_failed',
-          severity: 'medium',
-          platform: 'outlook',
-          endpoint: '/api/email/accept',
-          errorMessage: err.message,
-          context: { suggestionTitle: suggestion?.title },
-        });
-      }
-    }
-  }
-
-  function handleDismiss(suggestionId) {
-    setEmailSuggestions(prev => prev.map(s =>
-      s.id === suggestionId ? { ...s, status: 'dismissed' } : s
-    ));
-  }
-
-  function handleSnooze(suggestionId) {
-    setEmailSuggestions(prev => prev.map(s =>
-      s.id === suggestionId ? { ...s, status: 'snoozed' } : s
-    ));
-  }
-
-  function handleUnsnooze(suggestionId) {
-    setEmailSuggestions(prev => prev.map(s =>
-      s.id === suggestionId ? { ...s, status: 'pending' } : s
-    ));
   }
 
   // Calendar navigation
@@ -1428,109 +1205,6 @@ export default function StudentDashboard() {
                     <span key={name} className="legend-item"><span className="month-dot" style={{ background: color }}></span> {name}</span>
                   ))}
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* ============================================================ */}
-          {/* FULL WIDTH: Email Suggested Events */}
-          {/* ============================================================ */}
-          <div className="card dash-full">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-              <h2 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                <span style={{ fontSize: '20px' }}>&#128233;</span> Suggested Events from Email
-                {filteredSuggestions.length > 0 && (
-                  <span className="email-scan-count">{filteredSuggestions.length} new</span>
-                )}
-              </h2>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                {scanComplete && (
-                  <span style={{ fontSize: '12px', color: '#059669' }}>&#10003; Scanned {emailsScanned} emails</span>
-                )}
-                <button className="btn btn-primary" onClick={handleScanInbox} disabled={scanning}
-                  style={{ fontSize: '13px', padding: '8px 16px', opacity: scanning ? 0.7 : 1 }}>
-                  {scanning ? 'Scanning...' : 'Scan My Inbox'}
-                </button>
-              </div>
-            </div>
-
-            {activeCategories.length > 1 && (
-              <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                <button className={`email-filter-btn ${filterCategory === 'all' ? 'active' : ''}`}
-                  onClick={() => setFilterCategory('all')}>All</button>
-                {activeCategories.map(cat => (
-                  <button key={cat} className={`email-filter-btn ${filterCategory === cat ? 'active' : ''}`}
-                    onClick={() => setFilterCategory(cat)}>{getCategoryIcon(cat)} {cat}</button>
-                ))}
-              </div>
-            )}
-
-            {filteredSuggestions.length === 0 && !scanning && (
-              <div style={{ textAlign: 'center', padding: '32px 16px', color: '#94A3B8' }}>
-                <div style={{ fontSize: '32px', marginBottom: '8px' }}>&#128233;</div>
-                <p style={{ fontSize: '14px' }}>No pending suggestions. Hit <strong>Scan My Inbox</strong> to check for events in your recent emails.</p>
-              </div>
-            )}
-
-            {scanning && (
-              <div style={{ textAlign: 'center', padding: '32px 16px', color: '#64748B' }}>
-                <div className="scan-spinner"></div>
-                <p style={{ fontSize: '14px', marginTop: '12px' }}>Scanning your inbox for calendar-worthy events...</p>
-              </div>
-            )}
-
-            {filteredSuggestions.map(suggestion => {
-              const conf = getConfidenceStyle(suggestion.confidence);
-              const urgency = getUrgencyInfo(suggestion);
-              return (
-                <div key={suggestion.id} className={`email-suggestion-card ${urgency.isUrgent ? 'urgency-' + urgency.style : ''}`}>
-                  {urgency.isUrgent && (
-                    <div className={`urgency-banner urgency-banner-${urgency.style}`}>
-                      <span className="urgency-icon">&#9888;</span> {urgency.label}
-                    </div>
-                  )}
-                  <div className="email-suggestion-header">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-                      <span style={{ fontSize: '18px' }}>{getCategoryIcon(suggestion.category)}</span>
-                      <div>
-                        <div className="email-suggestion-title">{suggestion.title}</div>
-                        <div className="email-suggestion-meta">{formatSuggestionDate(suggestion.date)} &middot; {suggestion.category}</div>
-                      </div>
-                    </div>
-                    <span className="email-confidence-badge" style={{ background: conf.bg, color: conf.color }}>{conf.label}</span>
-                  </div>
-                  <div className="email-suggestion-source">From email: &quot;{suggestion.sourceSubject}&quot;</div>
-                  <div className="email-suggestion-reason">{suggestion.reason}</div>
-                  <div className="email-suggestion-actions">
-                    <button className="btn btn-primary" style={{ fontSize: '13px', padding: '7px 16px' }}
-                      onClick={() => handleAccept(suggestion.id)}>&#10003; Add to Calendar</button>
-                    <button className="btn btn-outline" style={{ fontSize: '13px', padding: '7px 16px' }}
-                      onClick={() => handleSnooze(suggestion.id)}>&#128340; Remind Later</button>
-                    <button className="btn btn-danger" style={{ fontSize: '13px', padding: '7px 16px' }}
-                      onClick={() => handleDismiss(suggestion.id)}>&#10005; Dismiss</button>
-                  </div>
-                </div>
-              );
-            })}
-
-            {snoozedSuggestions.length > 0 && (
-              <div style={{ marginTop: '20px' }}>
-                <div style={{ fontSize: '13px', fontWeight: '600', color: '#94A3B8', marginBottom: '8px' }}>
-                  &#128340; Snoozed ({snoozedSuggestions.length})
-                </div>
-                {snoozedSuggestions.map(suggestion => (
-                  <div key={suggestion.id} className="email-suggestion-card snoozed">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '16px' }}>{getCategoryIcon(suggestion.category)}</span>
-                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#94A3B8' }}>{suggestion.title}</span>
-                        <span style={{ fontSize: '12px', color: '#CBD5E1' }}>{formatSuggestionDate(suggestion.date)}</span>
-                      </div>
-                      <button className="btn btn-outline" style={{ fontSize: '12px', padding: '4px 12px' }}
-                        onClick={() => handleUnsnooze(suggestion.id)}>Review</button>
-                    </div>
-                  </div>
-                ))}
               </div>
             )}
           </div>

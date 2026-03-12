@@ -286,12 +286,16 @@ function getFallbackResponse(message) {
   }
 
   if (lower.includes('instructor') || lower.includes('teacher')) {
-    return 'The instructor dashboard lets teachers manage date conflicts, override assignment dates, track submissions, and compose announcements. Instructors access it at /instructor.';
+    return 'The instructor dashboard lets teachers view assignments and due dates, manage date conflicts, override assignment dates, and see the calendar from a student perspective. Features like submission tracking, grading dashboards, and announcement posting are coming soon — we\'re working with CMU to get full D2L API access. Check out /future-updates for the full roadmap!';
   }
 
   if (lower.includes('safe') || lower.includes('privacy') || lower.includes('data') || lower.includes('secure')) {
     return 'Your data is protected with HTTPS encryption, signed session cookies, and FERPA-compliant audit logging. Calendar data is processed in real-time and never permanently stored. See our full privacy policy at /privacy.';
   }
 
-  return 'I\'m the CMU AI Calendar assistant! I can help you navigate the platform, set up your D2L calendar, report issues, check your workload, draft emails to professors, or suggest study plans. Ask me "what can you do?" for the full list!';
+  if (lower.includes('canvas') || lower.includes('outlook') || lower.includes('email sync') || lower.includes('submission') || lower.includes('grading')) {
+    return 'That feature is on our roadmap! We\'re actively working with CMU to secure D2L API access, which will unlock a lot more functionality. Check out /future-updates to see everything we\'re building — and let us know what matters most to you. Your feedback helps us prioritize!';
+  }
+
+  return 'I\'m the CMU AI Calendar assistant! I can help you navigate the platform, set up your D2L calendar, report issues, check your workload, draft emails to professors, or suggest study plans. This is a beta — check out /future-updates to see what\'s coming next! Ask me "what can you do?" for the full list.';
 }

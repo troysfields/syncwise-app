@@ -16,18 +16,17 @@ const STUDENT_NAV = [
   { id: 'focus', label: 'Focus Mode', icon: '🎯', href: '/dashboard#focus' },
   { id: 'notifications', label: 'Notifications', icon: '🔔', href: '/settings/notifications' },
   { id: 'settings', label: 'Settings', icon: '⚙️', href: '/settings' },
+  { id: 'future-updates', label: 'Future Updates', icon: '🚀', href: '/future-updates' },
 ];
 
 const INSTRUCTOR_NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊', href: '/instructor' },
   { id: 'calendar', label: 'Calendar', icon: '📅', href: '/instructor#calendar' },
   { id: 'assignments', label: 'Assignments', icon: '📋', href: '/instructor#assignments' },
-  { id: 'grading', label: 'Grading', icon: '✏️', href: '/instructor#grading' },
   { id: 'students', label: 'Student View', icon: '👥', href: '/instructor#student-view' },
-  { id: 'announcements', label: 'Announcements', icon: '📢', href: '/instructor#announcements' },
-  { id: 'analytics', label: 'Analytics', icon: '📈', href: '/instructor#analytics' },
   { id: 'notifications', label: 'Notifications', icon: '🔔', href: '/settings/notifications' },
   { id: 'settings', label: 'Settings', icon: '⚙️', href: '/settings' },
+  { id: 'future-updates', label: 'Future Updates', icon: '🚀', href: '/future-updates' },
 ];
 
 export function Sidebar({ role = 'student', activeSection = 'dashboard', onNavigate, unreadCount = 0 }) {

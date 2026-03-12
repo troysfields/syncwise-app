@@ -32,10 +32,6 @@ const DEMO_ITEMS = [
     courseColor: COURSE_COLORS['ENTR 450'],
     dueDate: '2026-03-11T23:59:00',
     points: 50,
-    submissions: 34,
-    totalStudents: 38,
-    ungraded: 12,
-    averageScore: 87,
     source: 'd2l',
   },
   {
@@ -46,10 +42,6 @@ const DEMO_ITEMS = [
     courseColor: COURSE_COLORS['ENTR 343'],
     dueDate: '2026-03-13T23:59:00',
     points: 25,
-    submissions: 28,
-    totalStudents: 32,
-    ungraded: 28,
-    averageScore: null,
     source: 'd2l',
   },
   {
@@ -60,10 +52,6 @@ const DEMO_ITEMS = [
     courseColor: COURSE_COLORS['BUS 201'],
     dueDate: '2026-03-14T23:59:00',
     points: 40,
-    submissions: 18,
-    totalStudents: 28,
-    ungraded: 0,
-    averageScore: 91,
     source: 'd2l',
   },
   {
@@ -74,10 +62,6 @@ const DEMO_ITEMS = [
     courseColor: COURSE_COLORS['ENTR 450'],
     dueDate: '2026-03-18T23:59:00',
     points: 75,
-    submissions: 5,
-    totalStudents: 38,
-    ungraded: 5,
-    averageScore: null,
     source: 'd2l',
   },
   {
@@ -88,10 +72,6 @@ const DEMO_ITEMS = [
     courseColor: COURSE_COLORS['ACCT 301'],
     dueDate: '2026-03-12T17:00:00',
     points: 30,
-    submissions: 26,
-    totalStudents: 30,
-    ungraded: 3,
-    averageScore: 94,
     source: 'd2l',
   },
   {
@@ -102,10 +82,6 @@ const DEMO_ITEMS = [
     courseColor: COURSE_COLORS['CSCI 110'],
     dueDate: '2026-03-15T23:59:00',
     points: 100,
-    submissions: 20,
-    totalStudents: 25,
-    ungraded: 20,
-    averageScore: null,
     source: 'd2l',
   },
 
@@ -118,9 +94,6 @@ const DEMO_ITEMS = [
     courseColor: COURSE_COLORS['ACCT 301'],
     dueDate: '2026-03-11T17:00:00',
     points: 10,
-    attempts: 29,
-    totalStudents: 30,
-    averageScore: 89,
     source: 'd2l',
   },
   {
@@ -131,9 +104,6 @@ const DEMO_ITEMS = [
     courseColor: COURSE_COLORS['ENTR 450'],
     dueDate: '2026-03-13T23:59:00',
     points: 15,
-    attempts: 22,
-    totalStudents: 38,
-    averageScore: 76,
     source: 'd2l',
   },
   {
@@ -144,9 +114,6 @@ const DEMO_ITEMS = [
     courseColor: COURSE_COLORS['BUS 201'],
     dueDate: '2026-03-12T23:59:00',
     points: 20,
-    attempts: 15,
-    totalStudents: 28,
-    averageScore: 82,
     source: 'd2l',
   },
 
@@ -158,9 +125,6 @@ const DEMO_ITEMS = [
     courseName: 'ENTR 450',
     courseColor: COURSE_COLORS['ENTR 450'],
     dueDate: '2026-03-14T23:59:00',
-    postCount: 47,
-    studentParticipation: 28,
-    unansweredPosts: 5,
     source: 'd2l',
   },
   {
@@ -170,9 +134,6 @@ const DEMO_ITEMS = [
     courseName: 'ACCT 301',
     courseColor: COURSE_COLORS['ACCT 301'],
     dueDate: '2026-03-15T23:59:00',
-    postCount: 12,
-    studentParticipation: 11,
-    unansweredPosts: 0,
     source: 'd2l',
   },
   {
@@ -182,9 +143,6 @@ const DEMO_ITEMS = [
     courseName: 'BUS 201',
     courseColor: COURSE_COLORS['BUS 201'],
     dueDate: '2026-03-13T23:59:00',
-    postCount: 34,
-    studentParticipation: 24,
-    unansweredPosts: 3,
     source: 'd2l',
   },
 
@@ -234,8 +192,6 @@ const DEMO_ITEMS = [
     courseName: 'ACCT 301',
     courseColor: COURSE_COLORS['ACCT 301'],
     dueDate: '2026-03-12T23:59:00',
-    completedCount: 24,
-    totalCount: 30,
     source: 'd2l',
   },
 ];
@@ -282,13 +238,6 @@ export default function InstructorDashboard() {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all');
   const [showManualEventModal, setShowManualEventModal] = useState(false);
   const [showStudentView, setShowStudentView] = useState(false);
-  const [showPostAnnouncement, setShowPostAnnouncement] = useState(false);
-  const [announcementData, setAnnouncementData] = useState({
-    courseId: 'ENTR 450',
-    title: '',
-    body: '',
-  });
-  const [showConfirmPost, setShowConfirmPost] = useState(false);
   const [actionLog, setActionLog] = useState([]);
   const [items, setItems] = useState(DEMO_ITEMS);
   const [conflicts, setConflicts] = useState([]);
@@ -386,10 +335,6 @@ export default function InstructorDashboard() {
             courseColor: (data.courses && data.courses[evt.courseName]?.color) || COURSE_COLORS[evt.courseName] || '#6B7280',
             dueDate: evt.dueDate || evt.end || evt.start || null,
             points: evt.points || null,
-            submissions: 0,
-            totalStudents: 0,
-            ungraded: 0,
-            averageScore: null,
             source: evt.source || 'ical',
             pendingReview: evt.pendingReview || false,
             hasConflict: evt.hasConflict || false,
@@ -455,17 +400,20 @@ export default function InstructorDashboard() {
   }
 
   // Determine which items need attention (instructor-specific)
+  // Only flag items with conflicts, pending review, or due within 48 hours
   const needsAttentionItems = items.filter(item => {
     if (item.hasConflict || item.pendingReview) return true;
-    if (item.type === 'assignment' && item.ungraded > 0 && item.ungraded === item.submissions) {
-      return true;
+
+    // Check if due date is approaching (within 48 hours)
+    if (item.dueDate) {
+      const dueTime = new Date(item.dueDate).getTime();
+      const now = new Date().getTime();
+      const hoursUntilDue = (dueTime - now) / (1000 * 60 * 60);
+      if (hoursUntilDue > 0 && hoursUntilDue <= 48) {
+        return true;
+      }
     }
-    if (item.type === 'assignment' && item.totalStudents > 0 && item.submissions / item.totalStudents < 0.5) {
-      return true;
-    }
-    if (item.type === 'discussion' && item.unansweredPosts > 0) {
-      return true;
-    }
+
     return false;
   });
 
@@ -559,20 +507,6 @@ export default function InstructorDashboard() {
     }
   }
 
-  function handlePostAnnouncement() {
-    if (!announcementData.title || !announcementData.body) return;
-
-    const logEntry = {
-      time: new Date().toLocaleTimeString(),
-      action: `Posted announcement "${announcementData.title}" to ${announcementData.courseId}`,
-    };
-    setActionLog([logEntry, ...actionLog]);
-
-    setAnnouncementData({ courseId: 'ENTR 450', title: '', body: '' });
-    setShowPostAnnouncement(false);
-    setShowConfirmPost(false);
-  }
-
   function logAction(description) {
     const logEntry = {
       time: new Date().toLocaleTimeString(),
@@ -604,17 +538,6 @@ export default function InstructorDashboard() {
       'content': 'badge-content',
     };
     return classes[type] || 'badge';
-  };
-
-  const getSubmissionRate = (item) => {
-    if (!item.submissions || !item.totalStudents) return 0;
-    return (item.submissions / item.totalStudents) * 100;
-  };
-
-  const getSubmissionColor = (rate) => {
-    if (rate >= 80) return '#059669';
-    if (rate >= 50) return '#D97706';
-    return '#DC2626';
   };
 
   // Filtered items
@@ -852,23 +775,30 @@ export default function InstructorDashboard() {
                   <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px', color: '#DC2626' }}>
                     🔴 Needs Attention ({needsAttentionItems.length})
                   </h3>
-                  {needsAttentionItems.map(item => (
-                    <div key={item.id} className="attention-item" style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: '10px', marginBottom: '10px' }}>
-                      <span style={{ fontSize: '18px' }}>{typeIcon(item.type)}</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '13px', fontWeight: '600' }}>{item.name}</div>
-                        <div style={{ fontSize: '12px', color: '#64748B' }}>
-                          {item.type === 'assignment' && item.ungraded > 0 && `${item.ungraded} submissions ungraded`}
-                          {item.type === 'assignment' && item.submissions / item.totalStudents < 0.5 && `${Math.round((item.submissions / item.totalStudents) * 100)}% submitted`}
-                          {item.type === 'discussion' && item.unansweredPosts > 0 && `${item.unansweredPosts} unanswered posts`}
+                  {needsAttentionItems.map(item => {
+                    const dueTime = new Date(item.dueDate).getTime();
+                    const now = new Date().getTime();
+                    const hoursUntilDue = (dueTime - now) / (1000 * 60 * 60);
+                    const isDueSoon = hoursUntilDue > 0 && hoursUntilDue <= 48;
+
+                    return (
+                      <div key={item.id} className="attention-item" style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: '10px', marginBottom: '10px' }}>
+                        <span style={{ fontSize: '18px' }}>{typeIcon(item.type)}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '13px', fontWeight: '600' }}>{item.name}</div>
+                          <div style={{ fontSize: '12px', color: '#64748B' }}>
+                            {item.hasConflict && 'Date conflict pending review'}
+                            {item.pendingReview && 'Pending review'}
+                            {isDueSoon && `Due in ${Math.round(hoursUntilDue)} hours`}
+                          </div>
                         </div>
+                        <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '12px' }}
+                          onClick={() => logAction(`Reviewed ${item.name}`)}>
+                          Review
+                        </button>
                       </div>
-                      <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '12px' }}
-                        onClick={() => logAction(`Reviewed ${item.name}`)}>
-                        Review
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
@@ -903,7 +833,7 @@ export default function InstructorDashboard() {
                     padding: '14px',
                     borderRadius: '10px',
                     marginBottom: '8px',
-                    borderLeft: item.type === 'assignment' && item.ungraded > 0 ? '3px solid #DC2626' : '3px solid ' + item.courseColor,
+                    borderLeft: '3px solid ' + item.courseColor,
                     background: '#FAFAFA',
                     transition: 'all 0.2s',
                   }}
@@ -915,34 +845,9 @@ export default function InstructorDashboard() {
                       <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '4px' }}>
                         {item.courseName} • {item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit' }) : 'No due date'}
                       </div>
-
-                      {/* Submission Rate Bar for Assignments */}
-                      {item.type === 'assignment' && (
-                        <div style={{ marginTop: '6px' }}>
-                          <div style={{ fontSize: '11px', color: '#64748B', marginBottom: '3px', fontWeight: '500' }}>
-                            {item.submissions} of {item.totalStudents} submitted
-                          </div>
-                          <div className="course-progress-bar" style={{ height: '4px' }}>
-                            <div className="course-progress-fill" style={{
-                              width: `${getSubmissionRate(item)}%`,
-                              background: getSubmissionColor(getSubmissionRate(item)),
-                            }} />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Quiz Stats */}
-                      {item.type === 'quiz' && (
-                        <div style={{ fontSize: '11px', color: '#64748B' }}>
-                          {item.attempts} attempts • Avg: {item.averageScore}%
-                        </div>
-                      )}
-
-                      {/* Discussion Stats */}
-                      {item.type === 'discussion' && (
-                        <div style={{ fontSize: '11px', color: '#64748B' }}>
-                          {item.postCount} posts • {item.studentParticipation} students
-                          {item.unansweredPosts > 0 && <span style={{ color: '#DC2626', fontWeight: '600', marginLeft: '8px' }}>• {item.unansweredPosts} unanswered</span>}
+                      {item.points && (
+                        <div style={{ fontSize: '12px', color: '#64748B' }}>
+                          {item.points} points
                         </div>
                       )}
                     </div>
@@ -950,18 +855,6 @@ export default function InstructorDashboard() {
                     {/* Badges and Controls */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span className={`badge ${typeBadgeClass(item.type)}`}>{item.type}</span>
-
-                      {item.type === 'assignment' && item.ungraded > 0 && (
-                        <span className="badge badge-danger" style={{ background: '#FEE2E2', color: '#DC2626' }}>
-                          {item.ungraded} ungraded
-                        </span>
-                      )}
-
-                      {item.type === 'assignment' && item.averageScore && (
-                        <span className="badge badge-graded">
-                          {item.averageScore}% avg
-                        </span>
-                      )}
 
                       {/* Action Buttons */}
                       <div className="item-actions">
@@ -984,62 +877,8 @@ export default function InstructorDashboard() {
               </div>
             </div>
 
-            {/* RIGHT COLUMN — Grading, Announcements, Admin */}
+            {/* RIGHT COLUMN — Admin & Info */}
             <div>
-              {/* Grading-Needed Summary */}
-              <div className="card" style={{ marginBottom: '20px' }}>
-                <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '14px' }}>Grading Queue</h3>
-                {items.filter(i => i.type === 'assignment' && i.ungraded > 0).map(item => (
-                  <div key={item.id} style={{ paddingBottom: '14px', borderBottom: '1px solid #F1F5F9', marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: '600' }}>{item.name}</span>
-                      <span style={{ fontSize: '12px', fontWeight: '700', color: '#DC2626' }}>{item.ungraded} ungraded</span>
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '8px' }}>
-                      Due: {new Date(item.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                    {item.averageScore && (
-                      <div style={{ fontSize: '12px', color: '#64748B' }}>Average: {item.averageScore}%</div>
-                    )}
-                    <button className="btn btn-primary" style={{ width: '100%', marginTop: '8px', padding: '8px', fontSize: '12px' }}
-                      onClick={() => logAction(`Started grading ${item.name}`)}>
-                      Grade Submissions
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              {/* Quick Post Announcement */}
-              <div className="card" style={{ marginBottom: '20px' }}>
-                <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '14px' }}>Post Announcement</h3>
-                <div className="form-group">
-                  <label className="form-label">Course</label>
-                  <select className="form-input" value={announcementData.courseId}
-                    onChange={(e) => setAnnouncementData({ ...announcementData, courseId: e.target.value })}>
-                    {Object.keys(COURSE_COLORS).map(course => (
-                      <option key={course} value={course}>{course}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Title</label>
-                  <input className="form-input" placeholder="Announcement title"
-                    value={announcementData.title}
-                    onChange={(e) => setAnnouncementData({ ...announcementData, title: e.target.value })} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Body</label>
-                  <textarea className="form-input form-textarea" placeholder="Announcement body..."
-                    value={announcementData.body}
-                    onChange={(e) => setAnnouncementData({ ...announcementData, body: e.target.value })} />
-                </div>
-                <button className="btn btn-primary" style={{ width: '100%' }}
-                  disabled={!announcementData.title || !announcementData.body}
-                  onClick={() => setShowConfirmPost(true)}>
-                  Post to D2L
-                </button>
-              </div>
-
               {/* Student View Toggle */}
               <div className="card" style={{ marginBottom: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -1120,38 +959,6 @@ export default function InstructorDashboard() {
             setShowManualEventModal(false);
           }}
         />
-      )}
-
-      {/* Confirm Post Announcement Modal */}
-      {showConfirmPost && (
-        <div className="modal-overlay" onClick={() => setShowConfirmPost(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>Confirm Announcement</h3>
-            <p>You're about to post this announcement to {announcementData.courseId}:</p>
-            <div style={{
-              background: '#FDF2F4',
-              border: '1px solid #E8B4BF',
-              borderRadius: '8px',
-              padding: '12px',
-              marginBottom: '16px',
-            }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', marginBottom: '4px' }}>
-                {announcementData.title}
-              </div>
-              <div style={{ fontSize: '12px', color: '#64748B', lineHeight: '1.5' }}>
-                {announcementData.body}
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button className="btn btn-outline" onClick={() => setShowConfirmPost(false)}>
-                Cancel
-              </button>
-              <button className="btn btn-primary" onClick={handlePostAnnouncement}>
-                Confirm & Post
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

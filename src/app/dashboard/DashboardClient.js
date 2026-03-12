@@ -784,7 +784,7 @@ export default function StudentDashboard() {
           )}
 
           {/* Focus Mode Toggle */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '20px 0', gap: '12px' }}>
+          <div id="focus" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '20px 0', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <button
                 onClick={() => {
@@ -857,7 +857,6 @@ export default function StudentDashboard() {
           )}
 
           {/* Focus Mode View */}
-          <div id="focus"></div>
           {focusMode && (
             <div className="card" style={{ margin: '16px 0 0', borderLeft: '4px solid #5D0022' }}>
               <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1015,7 +1014,6 @@ export default function StudentDashboard() {
         {/* ============================================================ */}
         {/* GRADE ALERTS — Hidden in focus mode */}
         {/* ============================================================ */}
-        <div id="grades"></div>
         {!focusMode && gradeAlerts.filter(g => !dismissedGrades.includes(g.id)).length > 0 && (
           <div className="card" style={{ margin: '16px 0 0', borderLeft: '4px solid #059669' }}>
             <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1046,7 +1044,7 @@ export default function StudentDashboard() {
         {/* MAIN GRID — Hidden in focus mode */}
         {/* ============================================================ */}
         {!focusMode && (
-        <div className="dash-grid" style={{ marginTop: '4px' }}>
+        <div id="calendar" className="dash-grid" style={{ marginTop: '4px' }}>
           {/* LEFT: AI Suggestions */}
           <div className="card">
             <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1067,7 +1065,7 @@ export default function StudentDashboard() {
                 <span style={{ fontSize: '16px' }}>&#128200;</span> Course Progress
               </h3>
               {courseProgress.map(cp => {
-                const pct = Math.round((cp.completed / cp.total) * 100);
+                const pct = cp.total > 0 ? Math.round((cp.completed / cp.total) * 100) : 0;
                 return (
                   <div key={cp.courseName} className="course-progress" style={{ marginBottom: '10px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
@@ -1084,7 +1082,7 @@ export default function StudentDashboard() {
           </div>
 
           {/* RIGHT: Calendar with View Toggle */}
-          <div id="calendar" className="card">
+          <div className="card">
             <div className="calendar-header">
               <h2 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                 <span style={{ fontSize: '20px' }}>&#128197;</span>
@@ -1232,7 +1230,7 @@ export default function StudentDashboard() {
           {/* ============================================================ */}
           {/* FULL WIDTH: All Items (Assignment Queue) */}
           {/* ============================================================ */}
-          <div className="card dash-full">
+          <div id="grades" className="card dash-full">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                 <span style={{ fontSize: '20px' }}>&#128218;</span> All Items

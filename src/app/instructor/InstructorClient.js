@@ -251,6 +251,22 @@ export default function InstructorDashboard() {
   // Auto-refreshes every 10 minutes in the background
   // ============================================================
 
+  // Hash-based scroll navigation for sidebar links
+  useEffect(() => {
+    function scrollToHash() {
+      const hash = window.location.hash?.slice(1);
+      if (hash) {
+        const el = document.getElementById(hash);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }
+    scrollToHash();
+    window.addEventListener('hashchange', scrollToHash);
+    return () => window.removeEventListener('hashchange', scrollToHash);
+  }, []);
+
   useEffect(() => {
     // Load user data — try database first, fall back to localStorage
     async function loadData() {
@@ -648,7 +664,7 @@ export default function InstructorDashboard() {
           )}
 
           {/* Calendar Section */}
-          <div className="card" style={{ marginBottom: '24px' }}>
+          <div id="calendar" className="card" style={{ marginBottom: '24px' }}>
             <div className="calendar-header">
               <h2 style={{ fontSize: '16px', fontWeight: '700' }}>Calendar View</h2>
               <div className="calendar-view-toggle">
@@ -803,7 +819,7 @@ export default function InstructorDashboard() {
               )}
 
               {/* Items List with Filters */}
-              <div className="card">
+              <div id="assignments" className="card">
                 <div style={{ marginBottom: '16px' }}>
                   <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px' }}>D2L Items</h3>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
@@ -880,7 +896,7 @@ export default function InstructorDashboard() {
             {/* RIGHT COLUMN — Admin & Info */}
             <div>
               {/* Student View Toggle */}
-              <div className="card" style={{ marginBottom: '20px' }}>
+              <div id="student-view" className="card" style={{ marginBottom: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                   <h3 style={{ fontSize: '15px', fontWeight: '700' }}>What Students See</h3>
                   <button className="btn btn-outline" style={{ padding: '6px 12px', fontSize: '12px' }}

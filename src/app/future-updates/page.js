@@ -220,6 +220,11 @@ export default function FutureUpdatesPage() {
                       description:
                         'See how your current pace might affect your final grade, with suggestions for where to focus.',
                     },
+                    {
+                      title: 'Mobile App (iOS & Android)',
+                      description:
+                        'A native mobile app so you can check assignments, get push notifications, and manage your calendar on the go.',
+                    },
                   ].map((feature, idx) => (
                     <div
                       key={idx}
@@ -341,6 +346,11 @@ export default function FutureUpdatesPage() {
                       title: 'Canvas LMS Support',
                       description:
                         "We're building Canvas compatibility to support courses and institutions that use Canvas alongside or instead of D2L.",
+                    },
+                    {
+                      title: 'Mobile App (iOS & Android)',
+                      description:
+                        'A native mobile app for instructors to manage courses, review assignments, and stay on top of deadlines from anywhere.',
                     },
                   ].map((feature, idx) => (
                     <div

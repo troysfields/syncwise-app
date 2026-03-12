@@ -336,7 +336,7 @@ export function detectRecurringItems(items) {
 // Get ALL items across all courses for a student
 export async function getAllStudentItems(accessToken, user, enrollments) {
   const allItems = [];
-  const courseColors = ['#4F46E5', '#059669', '#D97706', '#DC2626', '#7C3AED', '#0891B2', '#DB2777', '#65A30D'];
+  const courseColors = ['#5D0022', '#059669', '#D97706', '#DC2626', '#7C3AED', '#0891B2', '#DB2777', '#65A30D'];
 
   for (let i = 0; i < enrollments.length; i++) {
     const course = enrollments[i];

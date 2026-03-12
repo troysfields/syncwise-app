@@ -153,7 +153,7 @@ function normalizeICalEvent(raw) {
     type: itemType,
     name: itemName,
     courseName: courseName,
-    courseColor: '#4F46E5', // Default — dashboard will assign per-course colors
+    courseColor: '#5D0022', // Default — dashboard will assign per-course colors
     dueDate: dueDate ? dueDate.toISOString() : null,
     startDate: dtStart ? dtStart.toISOString() : null,
     endDate: dtEnd ? dtEnd.toISOString() : null,
@@ -394,7 +394,7 @@ export function groupByType(events) {
 
 // Assign consistent colors per course
 export function assignCourseColors(events) {
-  const courseColors = ['#4F46E5', '#059669', '#D97706', '#DC2626', '#7C3AED', '#0891B2', '#DB2777', '#65A30D'];
+  const courseColors = ['#5D0022', '#059669', '#D97706', '#DC2626', '#7C3AED', '#0891B2', '#DB2777', '#65A30D'];
   const courseMap = {};
   let colorIdx = 0;
 

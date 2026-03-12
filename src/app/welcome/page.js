@@ -179,10 +179,10 @@ const styles = {
   chatCta: {
     textAlign: 'center',
     padding: '1.5rem',
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#FDF2F4',
     borderRadius: '12px',
     marginBottom: '2rem',
-    border: '1px solid #C7D2FE',
+    border: '1px solid #E8B4BF',
   },
   chatIcon: {
     fontSize: '2rem',
@@ -196,7 +196,7 @@ const styles = {
   },
   chatDesc: {
     fontSize: '0.875rem',
-    color: '#4338CA',
+    color: '#470019',
     lineHeight: '1.6',
     margin: 0,
   },
@@ -208,7 +208,7 @@ const styles = {
   },
   primaryBtn: {
     padding: '0.75rem 2rem',
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#5D0022',
     color: '#fff',
     borderRadius: '8px',
     textDecoration: 'none',
@@ -230,7 +230,7 @@ const styles = {
     color: '#9CA3AF',
   },
   privacyLink: {
-    color: '#4F46E5',
+    color: '#5D0022',
     textDecoration: 'none',
   },
 };

@@ -43,7 +43,7 @@ const ITEM_TYPE_LABELS = {
 
 // Demo courses for the per-course override section
 const DEMO_COURSES = [
-  { id: 'ENTR 450', name: 'ENTR 450', color: '#4F46E5' },
+  { id: 'ENTR 450', name: 'ENTR 450', color: '#5D0022' },
   { id: 'ACCT 301', name: 'ACCT 301', color: '#059669' },
   { id: 'ENTR 343', name: 'ENTR 343', color: '#D97706' },
   { id: 'BUS 201', name: 'BUS 201', color: '#DC2626' },
@@ -153,7 +153,7 @@ export default function NotificationPreferencesPage() {
 
             {/* Browser Push Permission */}
             {pushPermission !== 'granted' && (
-              <div className="card" style={{ marginBottom: '20px', background: '#EEF2FF', border: '1px solid #C7D2FE' }}>
+              <div className="card" style={{ marginBottom: '20px', background: '#FDF2F4', border: '1px solid #E8B4BF' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{ fontSize: '24px' }}>🔔</span>
                   <div style={{ flex: 1 }}>

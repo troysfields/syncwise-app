@@ -200,7 +200,7 @@ const styles = {
     textAlign: 'center',
   },
   link: {
-    color: '#4F46E5',
+    color: '#5D0022',
     textDecoration: 'none',
     fontWeight: '500',
   },

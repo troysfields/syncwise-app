@@ -9,7 +9,7 @@ import { useState } from 'react';
 // ============================================================
 
 const EVENT_TYPES = [
-  { value: 'study', label: 'Study Block', icon: '📚', color: '#4F46E5' },
+  { value: 'study', label: 'Study Block', icon: '📚', color: '#5D0022' },
   { value: 'reminder', label: 'Reminder', icon: '⏰', color: '#D97706' },
   { value: 'meeting', label: 'Meeting', icon: '👥', color: '#059669' },
   { value: 'personal', label: 'Personal', icon: '📌', color: '#DC2626' },
@@ -56,7 +56,7 @@ export function ManualEventModal({ isOpen, onClose, onSave, defaultDate }) {
       repeat,
       notes,
       courseName: course || null,
-      courseColor: selectedType?.color || '#4F46E5',
+      courseColor: selectedType?.color || '#5D0022',
       source: 'manual',
       icon: selectedType?.icon || '📌',
       createdAt: new Date().toISOString(),
@@ -154,7 +154,7 @@ export function ManualEventModal({ isOpen, onClose, onSave, defaultDate }) {
                 type="checkbox"
                 checked={allDay}
                 onChange={e => setAllDay(e.target.checked)}
-                style={{ accentColor: '#4F46E5' }}
+                style={{ accentColor: '#5D0022' }}
               />
               All day
             </label>

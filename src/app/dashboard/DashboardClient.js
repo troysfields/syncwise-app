@@ -14,7 +14,7 @@ import { trackPageView, trackFeatureUsage, trackCalendarView, trackFocusMode, tr
 // ============================================================
 
 const DEFAULT_COURSE_COLORS = {
-  'ENTR 450': '#4F46E5',
+  'ENTR 450': '#5D0022',
   'ACCT 301': '#059669',
   'ENTR 343': '#D97706',
   'BUS 201': '#DC2626',
@@ -26,27 +26,27 @@ const DEFAULT_COURSE_COLORS = {
 };
 
 const DEMO_TASKS = [
-  { id: 'd2l-asgn-1', type: 'assignment', name: 'Section IV-A Market Analysis', courseName: 'ENTR 450', courseColor: '#4F46E5', dueDate: '2026-03-11T23:59:00', points: 50, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-asgn-1', type: 'assignment', name: 'Section IV-A Market Analysis', courseName: 'ENTR 450', courseColor: '#5D0022', dueDate: '2026-03-11T23:59:00', points: 50, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
   { id: 'd2l-quiz-1', type: 'quiz', name: 'Chapter 8 Quiz', courseName: 'ACCT 301', courseColor: '#059669', dueDate: '2026-03-11T17:00:00', points: 10, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
   { id: 'd2l-asgn-2', type: 'assignment', name: 'Idea Journal #3', courseName: 'ENTR 343', courseColor: '#D97706', dueDate: '2026-03-13T23:59:00', points: 25, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
   { id: 'd2l-asgn-3', type: 'assignment', name: 'Case Study Write-up', courseName: 'BUS 201', courseColor: '#DC2626', dueDate: '2026-03-14T23:59:00', points: 40, source: 'd2l', hasDueDate: true, submitted: true, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
-  { id: 'd2l-disc-1', type: 'discussion', name: 'Discussion 5 — Market Entry Strategies', courseName: 'ENTR 450', courseColor: '#4F46E5', dueDate: '2026-03-12T23:59:00', points: 15, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: true, isRecurring: true, recurringLabel: 'Weekly', status: 'active', manualDate: null },
+  { id: 'd2l-disc-1', type: 'discussion', name: 'Discussion 5 — Market Entry Strategies', courseName: 'ENTR 450', courseColor: '#5D0022', dueDate: '2026-03-12T23:59:00', points: 15, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: true, isRecurring: true, recurringLabel: 'Weekly', status: 'active', manualDate: null },
   { id: 'd2l-quiz-2', type: 'quiz', name: 'Accounting Ethics Quiz', courseName: 'ACCT 301', courseColor: '#059669', dueDate: '2026-03-16T23:59:00', points: 20, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
   { id: 'd2l-ann-1', type: 'announcement', name: 'Midterm Study Guide Posted', courseName: 'ACCT 301', courseColor: '#059669', dueDate: null, points: null, source: 'd2l', hasDueDate: false, submitted: false, graded: false, grade: null, unread: true, isRecurring: false, status: 'active', manualDate: null },
   { id: 'd2l-ann-2', type: 'announcement', name: 'Guest Speaker Next Week — Bring Questions', courseName: 'ENTR 343', courseColor: '#D97706', dueDate: null, points: null, source: 'd2l', hasDueDate: false, submitted: false, graded: false, grade: null, unread: true, isRecurring: false, status: 'active', manualDate: null },
   { id: 'd2l-check-1', type: 'checklist', name: 'Week 8 Checklist — Read Ch. 9', courseName: 'BUS 201', courseColor: '#DC2626', dueDate: '2026-03-15T23:59:00', points: null, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
-  { id: 'd2l-content-1', type: 'content', name: 'Module 7 — Financial Projections (Lecture Slides)', courseName: 'ENTR 450', courseColor: '#4F46E5', dueDate: null, points: null, source: 'd2l', hasDueDate: false, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-content-1', type: 'content', name: 'Module 7 — Financial Projections (Lecture Slides)', courseName: 'ENTR 450', courseColor: '#5D0022', dueDate: null, points: null, source: 'd2l', hasDueDate: false, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
 ];
 
 // Demo grade alerts — newly graded items
 const DEMO_GRADE_ALERTS = [
-  { id: 'grade-1', name: 'Discussion 4 — Competitive Analysis', courseName: 'ENTR 450', courseColor: '#4F46E5', grade: { earned: 14, outOf: 15, percentage: 93 }, type: 'discussion' },
+  { id: 'grade-1', name: 'Discussion 4 — Competitive Analysis', courseName: 'ENTR 450', courseColor: '#5D0022', grade: { earned: 14, outOf: 15, percentage: 93 }, type: 'discussion' },
   { id: 'grade-2', name: 'Chapter 7 Quiz', courseName: 'ACCT 301', courseColor: '#059669', grade: { earned: 9, outOf: 10, percentage: 90 }, type: 'quiz' },
 ];
 
 // Demo course progress (completion %)
 const DEMO_COURSE_PROGRESS = [
-  { courseName: 'ENTR 450', courseColor: '#4F46E5', completed: 18, total: 26 },
+  { courseName: 'ENTR 450', courseColor: '#5D0022', completed: 18, total: 26 },
   { courseName: 'ACCT 301', courseColor: '#059669', completed: 14, total: 22 },
   { courseName: 'ENTR 343', courseColor: '#D97706', completed: 10, total: 18 },
   { courseName: 'BUS 201', courseColor: '#DC2626', completed: 12, total: 20 },
@@ -943,7 +943,7 @@ export default function StudentDashboard() {
                 }}
                 style={{
                   padding: '8px 16px',
-                  background: focusMode ? '#4F46E5' : '#E2E8F0',
+                  background: focusMode ? '#5D0022' : '#E2E8F0',
                   color: focusMode ? '#FFFFFF' : '#1E293B',
                   border: 'none',
                   borderRadius: '6px',
@@ -957,7 +957,7 @@ export default function StudentDashboard() {
                 {focusMode ? '🎯 Focus Mode ON' : '🎯 Focus Mode'}
               </button>
               {focusMode && (
-                <span style={{ fontSize: '12px', color: '#4F46E5', fontWeight: '500' }}>
+                <span style={{ fontSize: '12px', color: '#5D0022', fontWeight: '500' }}>
                   Showing today's tasks only
                 </span>
               )}
@@ -1008,7 +1008,7 @@ export default function StudentDashboard() {
 
           {/* Focus Mode View */}
           {focusMode && (
-            <div className="card" style={{ margin: '16px 0 0', borderLeft: '4px solid #4F46E5' }}>
+            <div className="card" style={{ margin: '16px 0 0', borderLeft: '4px solid #5D0022' }}>
               <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '20px' }}>🎯</span> Today's Focus
               </h2>

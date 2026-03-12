@@ -32,7 +32,7 @@ export default function LoginPage() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #EEF2FF 0%, #F1F5F9 100%)',
+      background: 'linear-gradient(135deg, #FDF2F4 0%, #F1F5F9 100%)',
     }}>
       <div style={{
         background: 'white',
@@ -47,7 +47,7 @@ export default function LoginPage() {
         <div style={{
           width: '56px',
           height: '56px',
-          background: '#4F46E5',
+          background: '#5D0022',
           borderRadius: '14px',
           display: 'flex',
           alignItems: 'center',

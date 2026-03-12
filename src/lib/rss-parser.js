@@ -172,7 +172,7 @@ function normalizeRSSItem(item, courseName, feedUrl) {
     type: 'announcement',
     name: item.title,
     courseName: courseName,
-    courseColor: '#4F46E5', // Default — dashboard assigns per-course colors
+    courseColor: '#5D0022', // Default — dashboard assigns per-course colors
     dueDate: null, // Announcements don't have due dates
     startDate: pubDate ? pubDate.toISOString() : null,
     publishedAt: pubDate ? pubDate.toISOString() : null,

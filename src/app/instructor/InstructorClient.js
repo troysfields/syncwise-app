@@ -11,7 +11,7 @@ import { ManualEventModal } from '../components/ManualEventModal';
 // ============================================================
 
 const COURSE_COLORS = {
-  'ENTR 450': '#4F46E5',
+  'ENTR 450': '#5D0022',
   'ACCT 301': '#059669',
   'ENTR 343': '#D97706',
   'BUS 201': '#DC2626',
@@ -651,7 +651,7 @@ export default function InstructorDashboard() {
                   <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>{conflict.courseName}</div>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     <button onClick={() => resolveConflict(conflict.id, 'resolve', { chosenDate: conflict.icalDate, chosenSource: 'ical' })}
-                      style={{ padding: '6px 12px', background: '#4F46E5', color: '#FFF', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                      style={{ padding: '6px 12px', background: '#5D0022', color: '#FFF', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
                       Use D2L Date
                     </button>
                     <button onClick={() => resolveConflict(conflict.id, 'resolve', { chosenDate: conflict.uploadDate, chosenSource: 'upload' })}
@@ -1073,8 +1073,8 @@ export default function InstructorDashboard() {
             <h3>Confirm Announcement</h3>
             <p>You're about to post this announcement to {announcementData.courseId}:</p>
             <div style={{
-              background: '#EEF2FF',
-              border: '1px solid #C7D2FE',
+              background: '#FDF2F4',
+              border: '1px solid #E8B4BF',
               borderRadius: '8px',
               padding: '12px',
               marginBottom: '16px',

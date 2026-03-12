@@ -113,14 +113,14 @@ export default function SetupPage() {
             <div key={s} style={styles.progressStep}>
               <div style={{
                 ...styles.stepCircle,
-                backgroundColor: step >= s ? '#4F46E5' : '#E5E7EB',
+                backgroundColor: step >= s ? '#5D0022' : '#E5E7EB',
                 color: step >= s ? '#fff' : '#9CA3AF',
               }}>
                 {step > s ? '\u2713' : s}
               </div>
               <span style={{
                 ...styles.stepLabel,
-                color: step >= s ? '#4F46E5' : '#9CA3AF',
+                color: step >= s ? '#5D0022' : '#9CA3AF',
               }}>
                 {s === 1 ? 'Your Info' : s === 2 ? 'D2L Calendar' : 'Review'}
               </span>
@@ -405,7 +405,7 @@ const styles = {
     boxSizing: 'border-box',
   },
   button: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#5D0022',
     color: '#fff',
     border: 'none',
     borderRadius: '8px',
@@ -435,7 +435,7 @@ const styles = {
     borderRadius: '8px',
     padding: '1.25rem',
     marginBottom: '1.5rem',
-    borderLeft: '4px solid #4F46E5',
+    borderLeft: '4px solid #5D0022',
   },
   instructionTitle: {
     fontWeight: '600',

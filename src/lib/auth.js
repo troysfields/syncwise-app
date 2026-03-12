@@ -136,11 +136,9 @@ export function requireAdmin(request) {
     );
   }
 
-  const url = new URL(request.url);
-  const querySecret = url.searchParams.get('secret');
   const headerSecret = request.headers.get('x-admin-secret');
 
-  if (querySecret !== ADMIN_SECRET && headerSecret !== ADMIN_SECRET) {
+  if (headerSecret !== ADMIN_SECRET) {
     return NextResponse.json(
       { error: 'Unauthorized — valid admin credentials required.' },
       { status: 401 }

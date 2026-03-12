@@ -22,7 +22,9 @@ export default function AdminHealthDashboard() {
     setError('');
 
     try {
-      const res = await fetch(`/api/health?secret=${encodeURIComponent(secret.trim())}`);
+      const res = await fetch('/api/health', {
+        headers: { 'x-admin-secret': secret.trim() },
+      });
       const data = await res.json();
 
       if (data.services) {
@@ -42,7 +44,9 @@ export default function AdminHealthDashboard() {
 
   const fetchSecurityLogs = async (s) => {
     try {
-      const res = await fetch(`/api/admin/security-log?limit=20&secret=${encodeURIComponent(s || secret)}`);
+      const res = await fetch('/api/admin/security-log?limit=20', {
+        headers: { 'x-admin-secret': s || secret },
+      });
       const data = await res.json();
       if (data.events) setSecurityLogs(data.events);
     } catch {}
@@ -67,7 +71,9 @@ export default function AdminHealthDashboard() {
   const refreshData = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/health?secret=${encodeURIComponent(secret)}`);
+      const res = await fetch('/api/health', {
+        headers: { 'x-admin-secret': secret },
+      });
       const data = await res.json();
       if (data.services) {
         setHealth(data);
@@ -81,7 +87,9 @@ export default function AdminHealthDashboard() {
   const lookupEvent = async () => {
     if (!lookupCode.trim()) return;
     try {
-      const res = await fetch(`/api/admin/security-log?code=${encodeURIComponent(lookupCode.trim())}&secret=${encodeURIComponent(secret)}`);
+      const res = await fetch(`/api/admin/security-log?code=${encodeURIComponent(lookupCode.trim())}`, {
+        headers: { 'x-admin-secret': secret },
+      });
       const data = await res.json();
       setLookupResult(data.event || data);
     } catch {

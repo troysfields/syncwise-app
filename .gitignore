@@ -1,6 +1,14 @@
 node_modules/
 .next/
-.env.local
 .env
+.env.*
+.env.local
+.env.production
+.env.development
 logs/
 .DS_Store
+*.pem
+*.key
+.vercel
+coverage/
+*.tsbuildinfo

@@ -28,7 +28,7 @@ export default function AdminFeedbackDashboard() {
       <div style={{ background: '#1E293B', borderBottom: '1px solid #334155', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '20px' }}>&#128172;</span>
-          <h1 style={{ fontSize: '18px', fontWeight: '700', margin: 0 }}>SyncWise Admin — Feedback</h1>
+          <h1 style={{ fontSize: '18px', fontWeight: '700', margin: 0 }}>CMU AI Calendar — Feedback</h1>
           <span style={{ fontSize: '12px', color: '#94A3B8' }}>{total} responses</span>
         </div>
         <div style={{ display: 'flex', gap: '12px', fontSize: '13px' }}>

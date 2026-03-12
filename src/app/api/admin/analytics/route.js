@@ -19,8 +19,9 @@ function isAdmin(request, session) {
   const authHeader = request.headers.get('x-admin-secret');
   if (authHeader && ADMIN_SECRET && authHeader === ADMIN_SECRET) return true;
   if (session.role === 'admin') return true;
-  // Allow the app owner
-  if (session.email === 'troysfields@gmail.com') return true;
+  // Allow the app owner (configured via env var)
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (adminEmail && session.email === adminEmail) return true;
   return false;
 }
 

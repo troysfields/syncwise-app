@@ -11,9 +11,8 @@ import { dbHealthCheck } from '@/lib/db';
 const startTime = Date.now();
 
 export async function GET(request) {
-  const url = new URL(request.url);
-  const secret = url.searchParams.get('secret');
-  const isAdmin = secret && secret === process.env.ADMIN_SECRET;
+  const headerSecret = request.headers.get('x-admin-secret');
+  const isAdmin = headerSecret && headerSecret === process.env.ADMIN_SECRET;
 
   // ─── Public health check (no secret) ───
   if (!isAdmin) {
@@ -59,40 +58,22 @@ export async function GET(request) {
     diagnostics.status = 'degraded';
   }
 
-  // ── AI API Key Check ──
+  // ── AI API Key Check (format validation only — no live API call to save costs) ──
   const aiKey = process.env.AI_API_KEY;
-  if (aiKey) {
-    // Test the key with a minimal API call
-    const aiStart = Date.now();
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'x-api-key': aiKey,
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 1,
-          messages: [{ role: 'user', content: 'ping' }],
-        }),
-      });
-      diagnostics.services.ai = {
-        status: res.ok ? 'connected' : 'error',
-        provider: 'anthropic',
-        keyPrefix: aiKey.slice(0, 12) + '...',
-        latencyMs: Date.now() - aiStart,
-        httpStatus: res.status,
-      };
-    } catch (err) {
-      diagnostics.services.ai = {
-        status: 'error',
-        error: err.message,
-        latencyMs: Date.now() - aiStart,
-      };
-      diagnostics.status = 'degraded';
-    }
+  if (aiKey && aiKey.startsWith('sk-ant-') && aiKey.length > 20) {
+    diagnostics.services.ai = {
+      status: 'configured',
+      provider: 'anthropic',
+      keyPrefix: aiKey.slice(0, 12) + '...',
+      note: 'Key format valid. Live connectivity verified via chat/prioritize endpoints.',
+    };
+  } else if (aiKey) {
+    diagnostics.services.ai = {
+      status: 'error',
+      provider: 'anthropic',
+      note: 'AI_API_KEY is set but does not match expected Anthropic key format.',
+    };
+    diagnostics.status = 'degraded';
   } else {
     diagnostics.services.ai = {
       status: 'not_configured',

@@ -16,11 +16,29 @@ const ALLOWED_ORIGINS = [
 // ─── Rate Limiting ───
 const requestCounts = new Map();
 const RATE_WINDOW_MS = 60 * 1000; // 1 minute
-const MAX_REQUESTS_PER_MINUTE = 60;
 
-function checkRateLimit(ip) {
+// Different limits for different route types
+const RATE_LIMITS_BY_ROUTE = {
+  '/api/chat': 20,            // 20 chat messages per minute (costs money)
+  '/api/ai/prioritize': 10,   // 10 prioritization calls per minute
+  '/api/auth/session': 10,    // 10 auth attempts per minute (brute force protection)
+  '/api/auth/forgot-password': 3, // 3 password resets per minute
+  '/api/feeds/ical': 15,      // 15 iCal refreshes per minute
+  '/api/admin/': 30,          // 30 admin requests per minute
+  _default: 60,               // 60 requests per minute for everything else
+};
+
+function getRouteLimit(pathname) {
+  for (const [route, limit] of Object.entries(RATE_LIMITS_BY_ROUTE)) {
+    if (route !== '_default' && pathname.startsWith(route)) return limit;
+  }
+  return RATE_LIMITS_BY_ROUTE._default;
+}
+
+function checkRateLimit(ip, pathname) {
   const now = Date.now();
-  const key = ip || 'unknown';
+  const limit = getRouteLimit(pathname);
+  const key = `${ip || 'unknown'}:${pathname.split('/').slice(0, 4).join('/')}`;
   const entry = requestCounts.get(key);
 
   if (!entry || now - entry.windowStart > RATE_WINDOW_MS) {
@@ -29,7 +47,7 @@ function checkRateLimit(ip) {
   }
 
   entry.count++;
-  return entry.count <= MAX_REQUESTS_PER_MINUTE;
+  return entry.count <= limit;
 }
 
 // Clean up stale rate limit entries every 5 minutes
@@ -77,7 +95,7 @@ export function middleware(request) {
 
   // ─── Rate Limiting (all API routes) ───
   if (pathname.startsWith('/api/')) {
-    if (!checkRateLimit(ip)) {
+    if (!checkRateLimit(ip, pathname)) {
       return NextResponse.json(
         { error: 'Too many requests. Please try again later.' },
         { status: 429 }
@@ -98,11 +116,9 @@ export function middleware(request) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
-    const url = new URL(request.url);
-    const querySecret = url.searchParams.get('secret');
     const headerSecret = request.headers.get('x-admin-secret');
 
-    if (querySecret !== ADMIN_SECRET && headerSecret !== ADMIN_SECRET) {
+    if (headerSecret !== ADMIN_SECRET) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json(
           { error: 'Unauthorized — admin credentials required.' },

@@ -55,7 +55,7 @@ export default function AdminHealthDashboard() {
       <div style={{ background: '#1E293B', borderBottom: '1px solid #334155', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '20px' }}>🛡️</span>
-          <h1 style={{ fontSize: '18px', fontWeight: '700', margin: 0 }}>SyncWise Admin — System Health</h1>
+          <h1 style={{ fontSize: '18px', fontWeight: '700', margin: 0 }}>CMU AI Calendar — System Health</h1>
           {errors.recentSpike && (
             <span style={{ background: '#DC2626', color: 'white', padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: '700', animation: 'pulse 2s infinite' }}>
               ⚠ SPIKE DETECTED

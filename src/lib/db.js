@@ -1,9 +1,9 @@
 // SyncWise AI — Database Layer
 // Persistent storage for user accounts, settings, conflicts, and notifications.
-// Uses Vercel KV (Redis) in production, in-memory fallback for dev/build.
+// Uses Upstash Redis in production, in-memory fallback for dev/build.
 //
 // Data model:
-//   user:{email}          → user profile + settings
+//   user:{email}          → user profile + settings (JSON)
 //   conflicts:{courseId}   → array of conflict objects
 //   overrides:{courseId}   → array of instructor overrides
 //   notifications:{email}  → array of student notifications
@@ -11,18 +11,57 @@
 
 let kv = null;
 
-// Try to load Vercel KV — falls back to in-memory if not configured
+// Detect Upstash Redis env vars (Vercel Marketplace injects these automatically)
+function getRedisConfig() {
+  // Upstash naming (via Vercel Marketplace)
+  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (url && token) return { url, token };
+  return null;
+}
+
+// Connect to Upstash Redis or fall back to in-memory for dev/build
 async function getKV() {
   if (kv) return kv;
 
-  // Check if KV env vars are set
-  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+  const config = getRedisConfig();
+  if (config) {
     try {
-      const { kv: vercelKV } = await import('@vercel/kv');
-      kv = vercelKV;
+      const { Redis } = await import('@upstash/redis');
+      const redis = new Redis({ url: config.url, token: config.token });
+
+      // Wrap Upstash Redis to match our interface (get/set store JSON automatically)
+      kv = {
+        async get(key) {
+          const val = await redis.get(key);
+          return val ?? null;
+        },
+        async set(key, value) {
+          // Upstash auto-serializes objects to JSON
+          await redis.set(key, value);
+          return 'OK';
+        },
+        async del(key) {
+          return await redis.del(key);
+        },
+        async keys(pattern) {
+          // Upstash supports SCAN-based keys
+          const results = [];
+          let cursor = 0;
+          do {
+            const [nextCursor, keys] = await redis.scan(cursor, { match: pattern, count: 100 });
+            cursor = nextCursor;
+            results.push(...keys);
+          } while (cursor !== 0);
+          return results;
+        },
+        _redis: redis,
+        _isMemory: false,
+      };
+      console.log('[DB] Connected to Upstash Redis');
       return kv;
     } catch (err) {
-      console.warn('[DB] Vercel KV not available, using in-memory fallback:', err.message);
+      console.warn('[DB] Upstash Redis not available, using in-memory fallback:', err.message);
     }
   }
 
@@ -31,24 +70,15 @@ async function getKV() {
     const store = new Map();
     kv = {
       async get(key) { return store.get(key) || null; },
-      async set(key, value, options) { store.set(key, value); return 'OK'; },
+      async set(key, value) { store.set(key, value); return 'OK'; },
       async del(key) { store.delete(key); return 1; },
       async keys(pattern) {
         const prefix = pattern.replace('*', '');
         return [...store.keys()].filter(k => k.startsWith(prefix));
       },
-      async hget(key, field) {
-        const obj = store.get(key);
-        return obj?.[field] || null;
-      },
-      async hset(key, data) {
-        const existing = store.get(key) || {};
-        store.set(key, { ...existing, ...data });
-        return 'OK';
-      },
-      async hgetall(key) { return store.get(key) || null; },
       _isMemory: true,
     };
+    console.log('[DB] Using in-memory fallback (no Redis configured)');
   }
   return kv;
 }
@@ -353,7 +383,7 @@ export async function dbHealthCheck() {
     const result = await db.get('health:ping');
     return {
       connected: true,
-      type: db._isMemory ? 'in-memory' : 'vercel-kv',
+      type: db._isMemory ? 'in-memory' : 'upstash-redis',
       latency: Date.now() - result.ts,
     };
   } catch (err) {

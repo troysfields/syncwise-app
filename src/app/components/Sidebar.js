@@ -53,7 +53,27 @@ export function Sidebar({ role = 'student', activeSection = 'dashboard', onNavig
     if (onNavigate) {
       onNavigate(item.id);
     } else {
-      window.location.href = item.href;
+      // For hash links on the current page, scroll smoothly instead of full navigation
+      const hashIndex = item.href.indexOf('#');
+      if (hashIndex !== -1) {
+        const basePath = item.href.slice(0, hashIndex);
+        const hash = item.href.slice(hashIndex + 1);
+        const currentPath = window.location.pathname;
+        // Check if we're already on the target page
+        if (currentPath === basePath || currentPath === basePath + '/') {
+          const el = document.getElementById(hash);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            window.history.replaceState(null, '', item.href);
+          } else {
+            window.location.href = item.href;
+          }
+        } else {
+          window.location.href = item.href;
+        }
+      } else {
+        window.location.href = item.href;
+      }
     }
     setMobileOpen(false);
   }

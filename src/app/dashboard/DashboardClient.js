@@ -250,6 +250,24 @@ export default function StudentDashboard() {
   // Auto-refreshes every 10 minutes in the background
   // ============================================================
 
+  // Handle hash-based navigation from sidebar
+  useEffect(() => {
+    function scrollToHash() {
+      const hash = window.location.hash?.slice(1);
+      if (hash) {
+        const el = document.getElementById(hash);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }
+    // Scroll on initial load if hash present
+    scrollToHash();
+    // Listen for hash changes (sidebar clicks while already on /dashboard)
+    window.addEventListener('hashchange', scrollToHash);
+    return () => window.removeEventListener('hashchange', scrollToHash);
+  }, []);
+
   useEffect(() => {
     trackPageView('StudentDashboard');
     initSession();
@@ -839,6 +857,7 @@ export default function StudentDashboard() {
           )}
 
           {/* Focus Mode View */}
+          <div id="focus"></div>
           {focusMode && (
             <div className="card" style={{ margin: '16px 0 0', borderLeft: '4px solid #5D0022' }}>
               <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -996,6 +1015,7 @@ export default function StudentDashboard() {
         {/* ============================================================ */}
         {/* GRADE ALERTS — Hidden in focus mode */}
         {/* ============================================================ */}
+        <div id="grades"></div>
         {!focusMode && gradeAlerts.filter(g => !dismissedGrades.includes(g.id)).length > 0 && (
           <div className="card" style={{ margin: '16px 0 0', borderLeft: '4px solid #059669' }}>
             <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1064,7 +1084,7 @@ export default function StudentDashboard() {
           </div>
 
           {/* RIGHT: Calendar with View Toggle */}
-          <div className="card">
+          <div id="calendar" className="card">
             <div className="calendar-header">
               <h2 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                 <span style={{ fontSize: '20px' }}>&#128197;</span>

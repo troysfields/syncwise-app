@@ -16,8 +16,30 @@ export default function ChatWidget() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Load saved chat history on first open
+  useEffect(() => {
+    if (isOpen && !historyLoaded) {
+      setHistoryLoaded(true);
+      fetch('/api/chat')
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.messages && data.messages.length > 0) {
+            setMessages([
+              {
+                role: 'assistant',
+                content: 'Hey! I\'m the CMU AI Calendar assistant. I can help with D2L setup, check your workload, draft emails to professors, report issues, and more. Ask me "what can you do?" to see everything!',
+              },
+              ...data.messages,
+            ]);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen, historyLoaded]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {

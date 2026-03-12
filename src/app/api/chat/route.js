@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth, sanitizeString } from '@/lib/auth';
 import { SYNCWISE_SYSTEM_PROMPT, CHATBOT_CONFIG } from '@/lib/chatbot-prompt';
 import { getModelForRequest } from '@/lib/rate-limiter';
-import { saveFeedback } from '@/lib/db';
+import { saveFeedback, saveChatHistory, getChatHistory } from '@/lib/db';
 import { trackChatMessage, trackError } from '@/lib/analytics';
 
 export async function POST(request) {
@@ -130,6 +130,17 @@ export async function POST(request) {
     // Detect which capability was used
     const capability = detectCapability(sanitizedMessage, actionResult.action);
 
+    // Save chat history (fire-and-forget) — persist last 50 messages per user
+    const userEmail = session.email || session.sub;
+    if (userEmail) {
+      const updatedHistory = [
+        ...recentHistory,
+        { role: 'user', content: sanitizedMessage },
+        { role: 'assistant', content: assistantMessage },
+      ];
+      saveChatHistory(userEmail, updatedHistory).catch(() => {});
+    }
+
     // Track analytics (fire-and-forget)
     trackChatMessage({
       userEmail: session.email || session.sub,
@@ -221,9 +232,20 @@ async function processActions(message, session, userMessage, history) {
   return result;
 }
 
-// GET endpoint for info
-export async function GET() {
-  return NextResponse.json({ error: 'Method not allowed. Use POST.' }, { status: 405 });
+// GET endpoint — load saved chat history
+export async function GET(request) {
+  const session = requireAuth(request);
+  if (session instanceof NextResponse) return session;
+
+  try {
+    const email = session.email || session.sub;
+    if (!email) return NextResponse.json({ messages: [] });
+    const messages = await getChatHistory(email);
+    return NextResponse.json({ messages });
+  } catch (error) {
+    console.error('Chat history load error:', error);
+    return NextResponse.json({ messages: [] });
+  }
 }
 
 // ─── Detect which chatbot capability is being used ───

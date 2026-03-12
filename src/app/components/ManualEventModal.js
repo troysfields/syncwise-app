@@ -44,14 +44,18 @@ export function ManualEventModal({ isOpen, onClose, onSave, defaultDate }) {
     e.preventDefault();
     if (!name.trim()) return;
 
+    // Build start/end as ISO datetime strings so calendar views can match them
+    const startISO = allDay ? `${date}T00:00:00` : `${date}T${startTime}:00`;
+    const endISO = allDay ? `${date}T23:59:59` : `${date}T${endTime}:00`;
+
     const event = {
       id: `manual-${Date.now()}`,
       type: 'manual',
       eventType,
       name: name.trim(),
       date,
-      startTime: allDay ? null : startTime,
-      endTime: allDay ? null : endTime,
+      start: startISO,
+      end: endISO,
       allDay,
       repeat,
       notes,

@@ -8,7 +8,7 @@ import crypto from 'crypto';
 
 // ─── Configuration ───
 const SESSION_COOKIE = 'syncwise_session';
-const SESSION_MAX_AGE = 7 * 24 * 60 * 60; // 7 days in seconds
+const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
 const SIGNING_SECRET = process.env.NEXTAUTH_SECRET || process.env.SESSION_SECRET || null;
 const ADMIN_SECRET = process.env.ADMIN_SECRET || null;
 

@@ -62,7 +62,6 @@ export default function SetupPage() {
 
   // Save setup and redirect to dashboard
   const completeSetup = async () => {
-    // Store settings in localStorage (will move to DB in production)
     const settings = {
       studentName,
       studentEmail,
@@ -72,9 +71,11 @@ export default function SetupPage() {
       setupDate: new Date().toISOString(),
     };
 
+    // Save to localStorage as fallback
     localStorage.setItem('syncwise_settings', JSON.stringify(settings));
 
-    // Create authenticated session (sets httpOnly cookie)
+    // Create authenticated session + save profile to database
+    // This persists the account server-side so it works across devices
     try {
       await fetch('/api/auth/session', {
         method: 'POST',
@@ -83,10 +84,12 @@ export default function SetupPage() {
           name: studentName,
           email: studentEmail,
           role: 'student',
+          icalUrl: icalUrl.trim(),
+          courses: icalData?.courseMap || {},
         }),
       });
     } catch (err) {
-      console.warn('Session creation failed — continuing in demo mode:', err);
+      console.warn('Session creation failed — continuing with local data:', err);
     }
 
     // Redirect to welcome/onboarding page (shows features + chatbot intro)

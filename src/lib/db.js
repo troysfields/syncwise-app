@@ -1,0 +1,362 @@
+// SyncWise AI — Database Layer
+// Persistent storage for user accounts, settings, conflicts, and notifications.
+// Uses Vercel KV (Redis) in production, in-memory fallback for dev/build.
+//
+// Data model:
+//   user:{email}          → user profile + settings
+//   conflicts:{courseId}   → array of conflict objects
+//   overrides:{courseId}   → array of instructor overrides
+//   notifications:{email}  → array of student notifications
+//   feedback              → array of feedback entries
+
+let kv = null;
+
+// Try to load Vercel KV — falls back to in-memory if not configured
+async function getKV() {
+  if (kv) return kv;
+
+  // Check if KV env vars are set
+  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    try {
+      const { kv: vercelKV } = await import('@vercel/kv');
+      kv = vercelKV;
+      return kv;
+    } catch (err) {
+      console.warn('[DB] Vercel KV not available, using in-memory fallback:', err.message);
+    }
+  }
+
+  // In-memory fallback for local dev and build
+  if (!kv) {
+    const store = new Map();
+    kv = {
+      async get(key) { return store.get(key) || null; },
+      async set(key, value, options) { store.set(key, value); return 'OK'; },
+      async del(key) { store.delete(key); return 1; },
+      async keys(pattern) {
+        const prefix = pattern.replace('*', '');
+        return [...store.keys()].filter(k => k.startsWith(prefix));
+      },
+      async hget(key, field) {
+        const obj = store.get(key);
+        return obj?.[field] || null;
+      },
+      async hset(key, data) {
+        const existing = store.get(key) || {};
+        store.set(key, { ...existing, ...data });
+        return 'OK';
+      },
+      async hgetall(key) { return store.get(key) || null; },
+      _isMemory: true,
+    };
+  }
+  return kv;
+}
+
+// ─── User Profiles ───
+
+/**
+ * Save or update a user profile.
+ * Called after setup wizard or when settings change.
+ */
+export async function saveUser(email, userData) {
+  const db = await getKV();
+  const key = `user:${email.toLowerCase()}`;
+
+  const existing = await db.get(key);
+  const profile = {
+    ...(existing || {}),
+    ...userData,
+    email: email.toLowerCase(),
+    updatedAt: new Date().toISOString(),
+    createdAt: existing?.createdAt || new Date().toISOString(),
+  };
+
+  await db.set(key, profile);
+  return profile;
+}
+
+/**
+ * Get a user profile by email.
+ */
+export async function getUser(email) {
+  if (!email) return null;
+  const db = await getKV();
+  return await db.get(`user:${email.toLowerCase()}`);
+}
+
+/**
+ * Delete a user profile (for account deletion/GDPR).
+ */
+export async function deleteUser(email) {
+  const db = await getKV();
+  const key = `user:${email.toLowerCase()}`;
+  await db.del(key);
+  // Also clean up related data
+  await db.del(`notifications:${email.toLowerCase()}`);
+  return true;
+}
+
+/**
+ * List all users (admin only).
+ */
+export async function listUsers() {
+  const db = await getKV();
+  const keys = await db.keys('user:*');
+  const users = [];
+  for (const key of keys) {
+    const user = await db.get(key);
+    if (user) {
+      // Strip sensitive data for listing
+      const { icalUrl, ...safe } = user;
+      users.push({ ...safe, hasIcal: !!icalUrl });
+    }
+  }
+  return users;
+}
+
+// ─── User Settings (subset of profile, for quick access) ───
+
+/**
+ * Update specific settings for a user.
+ */
+export async function updateUserSettings(email, settings) {
+  const db = await getKV();
+  const key = `user:${email.toLowerCase()}`;
+  const existing = await db.get(key);
+
+  if (!existing) return null;
+
+  const updated = {
+    ...existing,
+    settings: { ...(existing.settings || {}), ...settings },
+    updatedAt: new Date().toISOString(),
+  };
+
+  await db.set(key, updated);
+  return updated;
+}
+
+// ─── Conflicts ───
+
+/**
+ * Save conflicts for a course.
+ */
+export async function saveConflicts(courseId, conflicts) {
+  const db = await getKV();
+  await db.set(`conflicts:${courseId}`, {
+    conflicts,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+/**
+ * Get conflicts for a course.
+ */
+export async function getConflicts(courseId) {
+  const db = await getKV();
+  const data = await db.get(`conflicts:${courseId}`);
+  return data?.conflicts || [];
+}
+
+/**
+ * Get all conflicts across all courses.
+ */
+export async function getAllConflicts() {
+  const db = await getKV();
+  const keys = await db.keys('conflicts:*');
+  const all = [];
+  for (const key of keys) {
+    const data = await db.get(key);
+    if (data?.conflicts) all.push(...data.conflicts);
+  }
+  return all;
+}
+
+// ─── Instructor Overrides ───
+
+/**
+ * Save an instructor override.
+ */
+export async function saveOverride(courseId, override) {
+  const db = await getKV();
+  const key = `overrides:${courseId}`;
+  const existing = await db.get(key) || { overrides: [] };
+  existing.overrides.push({ ...override, createdAt: new Date().toISOString() });
+  existing.updatedAt = new Date().toISOString();
+  await db.set(key, existing);
+  return override;
+}
+
+/**
+ * Get overrides for a course.
+ */
+export async function getOverrides(courseId) {
+  const db = await getKV();
+  const data = await db.get(`overrides:${courseId}`);
+  return data?.overrides || [];
+}
+
+/**
+ * Get all active overrides.
+ */
+export async function getAllOverrides() {
+  const db = await getKV();
+  const keys = await db.keys('overrides:*');
+  const all = [];
+  for (const key of keys) {
+    const data = await db.get(key);
+    if (data?.overrides) all.push(...data.overrides);
+  }
+  return all;
+}
+
+// ─── Student Notifications ───
+
+/**
+ * Add a notification for a student.
+ */
+export async function addNotification(email, notification) {
+  const db = await getKV();
+  const key = `notifications:${email.toLowerCase()}`;
+  const existing = await db.get(key) || { items: [] };
+
+  existing.items.unshift({
+    ...notification,
+    id: notification.id || `notif_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    read: false,
+    createdAt: new Date().toISOString(),
+  });
+
+  // Keep max 100 notifications per student
+  if (existing.items.length > 100) {
+    existing.items = existing.items.slice(0, 100);
+  }
+
+  await db.set(key, existing);
+  return existing.items[0];
+}
+
+/**
+ * Get notifications for a student.
+ */
+export async function getNotifications(email, { unreadOnly = false, limit = 50 } = {}) {
+  const db = await getKV();
+  const data = await db.get(`notifications:${email.toLowerCase()}`);
+  let items = data?.items || [];
+
+  if (unreadOnly) {
+    items = items.filter(n => !n.read);
+  }
+
+  return items.slice(0, limit);
+}
+
+/**
+ * Mark notification(s) as read.
+ */
+export async function markNotificationsRead(email, notificationIds) {
+  const db = await getKV();
+  const key = `notifications:${email.toLowerCase()}`;
+  const data = await db.get(key);
+  if (!data?.items) return 0;
+
+  let count = 0;
+  const ids = Array.isArray(notificationIds) ? notificationIds : [notificationIds];
+
+  for (const item of data.items) {
+    if (ids.includes(item.id) && !item.read) {
+      item.read = true;
+      item.readAt = new Date().toISOString();
+      count++;
+    }
+  }
+
+  await db.set(key, data);
+  return count;
+}
+
+/**
+ * Dismiss (delete) notification(s).
+ */
+export async function dismissNotifications(email, notificationIds) {
+  const db = await getKV();
+  const key = `notifications:${email.toLowerCase()}`;
+  const data = await db.get(key);
+  if (!data?.items) return 0;
+
+  const ids = Array.isArray(notificationIds) ? notificationIds : [notificationIds];
+  const before = data.items.length;
+  data.items = data.items.filter(n => !ids.includes(n.id));
+  await db.set(key, data);
+  return before - data.items.length;
+}
+
+// ─── Feedback (persistent) ───
+
+/**
+ * Save a feedback entry.
+ */
+export async function saveFeedback(entry) {
+  const db = await getKV();
+  const existing = await db.get('feedback') || { entries: [] };
+  existing.entries.unshift({
+    ...entry,
+    id: `fb_${Date.now()}`,
+    submittedAt: new Date().toISOString(),
+  });
+  await db.set('feedback', existing);
+  return existing.entries[0];
+}
+
+/**
+ * Get all feedback entries.
+ */
+export async function getAllFeedback() {
+  const db = await getKV();
+  const data = await db.get('feedback');
+  return data?.entries || [];
+}
+
+// ─── Chat History (optional, for Tier 2) ───
+
+/**
+ * Save chat history for a user session.
+ */
+export async function saveChatHistory(email, messages) {
+  const db = await getKV();
+  const key = `chat:${email.toLowerCase()}`;
+  await db.set(key, {
+    messages: messages.slice(-50), // Keep last 50 messages
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+/**
+ * Get chat history for a user.
+ */
+export async function getChatHistory(email) {
+  const db = await getKV();
+  const data = await db.get(`chat:${email.toLowerCase()}`);
+  return data?.messages || [];
+}
+
+// ─── Health Check ───
+
+/**
+ * Check if the database is connected and working.
+ */
+export async function dbHealthCheck() {
+  try {
+    const db = await getKV();
+    await db.set('health:ping', { ts: Date.now() });
+    const result = await db.get('health:ping');
+    return {
+      connected: true,
+      type: db._isMemory ? 'in-memory' : 'vercel-kv',
+      latency: Date.now() - result.ts,
+    };
+  } catch (err) {
+    return { connected: false, error: err.message };
+  }
+}

@@ -300,18 +300,38 @@ export default function InstructorDashboard() {
   // ============================================================
 
   useEffect(() => {
-    let settings = null;
-    try {
-      const raw = typeof window !== 'undefined' && localStorage.getItem('syncwise_settings');
-      if (raw) settings = JSON.parse(raw);
-    } catch (e) { /* ignore */ }
+    // Load user data — try database first, fall back to localStorage
+    async function loadData() {
+      // 1. Try server session (persistent account)
+      try {
+        const res = await fetch('/api/auth/session');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated && data.user?.icalUrl) {
+            fetchInstructorData({
+              icalUrl: data.user.icalUrl,
+              studentEmail: data.user.email,
+            });
+            return;
+          }
+        }
+      } catch { /* server not available */ }
 
-    if (settings && settings.icalUrl) {
-      fetchInstructorData(settings);
-    } else {
-      setIsDemo(true);
-      setIsLoading(false);
+      // 2. Fall back to localStorage
+      let settings = null;
+      try {
+        const raw = typeof window !== 'undefined' && localStorage.getItem('syncwise_settings');
+        if (raw) settings = JSON.parse(raw);
+      } catch (e) { /* ignore */ }
+
+      if (settings && settings.icalUrl) {
+        fetchInstructorData(settings);
+      } else {
+        setIsDemo(true);
+        setIsLoading(false);
+      }
     }
+    loadData();
   }, []);
 
   async function fetchInstructorData(settings) {

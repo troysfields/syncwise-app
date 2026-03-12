@@ -353,21 +353,48 @@ export default function StudentDashboard() {
     const unreadCount = getUnreadCount();
     setUnreadNotificationCount(unreadCount);
 
-    // Check if student completed setup
-    let settings = null;
-    try {
-      const raw = localStorage.getItem('syncwise_settings');
-      if (raw) settings = JSON.parse(raw);
-    } catch (e) { /* ignore parse errors */ }
+    // Load user data — try database first, fall back to localStorage
+    async function loadUserData() {
+      // 1. Try loading from server (persistent account)
+      try {
+        const res = await fetch('/api/auth/session');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated && data.user?.icalUrl) {
+            // Sync to localStorage as cache
+            localStorage.setItem('syncwise_settings', JSON.stringify({
+              studentName: data.user.name,
+              studentEmail: data.user.email,
+              icalUrl: data.user.icalUrl,
+              courses: data.user.courses || {},
+              setupCompleted: true,
+            }));
+            fetchLiveData({
+              icalUrl: data.user.icalUrl,
+              studentEmail: data.user.email,
+              studentName: data.user.name,
+            });
+            return;
+          }
+        }
+      } catch { /* server not available — try localStorage */ }
 
-    if (settings && settings.icalUrl) {
-      // Fetch real data from consent-data API
-      fetchLiveData(settings);
-    } else {
-      // No setup completed — show demo data
-      setIsDemo(true);
-      setIsLoading(false);
+      // 2. Fall back to localStorage
+      let settings = null;
+      try {
+        const raw = localStorage.getItem('syncwise_settings');
+        if (raw) settings = JSON.parse(raw);
+      } catch (e) { /* ignore parse errors */ }
+
+      if (settings && settings.icalUrl) {
+        fetchLiveData(settings);
+      } else {
+        setIsDemo(true);
+        setIsLoading(false);
+      }
     }
+
+    loadUserData();
   }, []);
 
   async function fetchLiveData(settings) {

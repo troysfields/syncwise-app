@@ -726,7 +726,7 @@ export default function StudentDashboard() {
           </div>
         </nav>
 
-        <div className="container">
+        <div className="container" id="dashboard">
           {/* Loading State */}
           {isLoading && (
             <div style={{

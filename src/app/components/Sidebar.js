@@ -50,31 +50,41 @@ export function Sidebar({ role = 'student', activeSection = 'dashboard', onNavig
 
   function handleNavClick(item, e) {
     e.preventDefault();
+
+    // Update active section highlight if callback provided
     if (onNavigate) {
       onNavigate(item.id);
-    } else {
-      // For hash links on the current page, scroll smoothly instead of full navigation
-      const hashIndex = item.href.indexOf('#');
-      if (hashIndex !== -1) {
-        const basePath = item.href.slice(0, hashIndex);
-        const hash = item.href.slice(hashIndex + 1);
-        const currentPath = window.location.pathname;
-        // Check if we're already on the target page
-        if (currentPath === basePath || currentPath === basePath + '/') {
-          const el = document.getElementById(hash);
-          if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            window.history.replaceState(null, '', item.href);
-          } else {
-            window.location.href = item.href;
-          }
-        } else {
-          window.location.href = item.href;
+    }
+
+    // Always handle actual navigation / scrolling
+    const hashIndex = item.href.indexOf('#');
+    if (hashIndex !== -1) {
+      // Hash link — scroll smoothly if already on the target page
+      const basePath = item.href.slice(0, hashIndex);
+      const hash = item.href.slice(hashIndex + 1);
+      const currentPath = window.location.pathname;
+      if (currentPath === basePath || currentPath === basePath + '/') {
+        const el = document.getElementById(hash);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          window.history.replaceState(null, '', item.href);
         }
       } else {
         window.location.href = item.href;
       }
+    } else {
+      // Non-hash link — check if it's a different page
+      const currentPath = window.location.pathname;
+      const targetPath = item.href.replace(/\/$/, '');
+      const currentClean = currentPath.replace(/\/$/, '');
+      if (targetPath !== currentClean) {
+        window.location.href = item.href;
+      } else {
+        // Same page, scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
+
     setMobileOpen(false);
   }
 

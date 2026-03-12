@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 const InstructorClient = dynamic(() => import('./InstructorClient'), {
   ssr: false,
@@ -15,5 +16,9 @@ const InstructorClient = dynamic(() => import('./InstructorClient'), {
 });
 
 export default function InstructorPage() {
-  return <InstructorClient />;
+  return (
+    <ErrorBoundary>
+      <InstructorClient />
+    </ErrorBoundary>
+  );
 }

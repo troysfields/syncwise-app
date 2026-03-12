@@ -899,7 +899,7 @@ export default function StudentDashboard() {
               {focusModeAttentionItems && focusModeAttentionItems.length > 0 && (
                 <>
                   <h3 style={{ fontSize: '14px', fontWeight: '600', marginTop: '16px', marginBottom: '8px', color: '#EF4444' }}>Needs Attention</h3>
-                  {focuseModeAttentionItems.map((item, i) => (
+                  {focusModeAttentionItems.map((item, i) => (
                     <div key={item.id + '-focus-' + i} className="task-item needs-attention-item" style={{ borderLeft: `3px solid ${item.courseColor || '#EF4444'}` }}>
                       {item.unread && <span className="unread-dot"></span>}
                       <span style={{ fontSize: '16px', flexShrink: 0 }}>{getItemTypeIcon(item.type)}</span>

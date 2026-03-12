@@ -1,11 +1,156 @@
-// CMU AI Calendar — Email Service
+// CMU AI Calendar — Email Service + Security Event Logging
 // Handles all outbound emails via Resend API.
-// Includes security notification system for admin alerts.
+// Includes security notification system with traceable error codes.
+//
+// Error Code Format: SEC-{TYPE}-{TIMESTAMP}-{RAND}
+// Example: SEC-FLOG-1773290000-a3f2
+//
+// Type codes:
+//   FLOG = Failed Login
+//   FADM = Failed Admin Auth
+//   ADMX = Admin Access
+//   NWUS = New User Signup
+//   INST = Instructor Signup
+//   PWRS = Password Reset Request
+//   PWCH = Password Changed
+//   SESS = Session Anomaly
+//   RLIM = Rate Limit Hit
+//   GERR = General Error
+//
+// All events are logged to Redis at key `seclog:{errorCode}`
+// and can be looked up by code or listed with `seclog:*` scan.
+
+import crypto from 'crypto';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'troysfields@gmail.com';
 const APP_NAME = 'CMU AI Calendar';
 const FROM_ADDRESS = `${APP_NAME} <noreply@resend.dev>`;
+
+// ─── Error Code Generator ───
+
+const EVENT_TYPE_CODES = {
+  'Failed Login': 'FLOG',
+  'Failed Admin Authentication': 'FADM',
+  'Admin Dashboard Accessed': 'ADMX',
+  'New User Registration': 'NWUS',
+  'Instructor Account Created': 'INST',
+  'Password Reset Requested': 'PWRS',
+  'Password Changed': 'PWCH',
+  'Session Anomaly': 'SESS',
+  'Rate Limit Hit': 'RLIM',
+  'Multiple Failed Login Attempts': 'FLOG',
+  'General Error': 'GERR',
+};
+
+/**
+ * Generate a unique, traceable error code.
+ * Format: SEC-{TYPE}-{TIMESTAMP_SHORT}-{RANDOM}
+ * Example: SEC-FLOG-7K3M2A-x9f2
+ */
+function generateErrorCode(eventName) {
+  const typeCode = EVENT_TYPE_CODES[eventName] || 'GERR';
+  const ts = Math.floor(Date.now() / 1000).toString(36).toUpperCase();
+  const rand = crypto.randomBytes(2).toString('hex');
+  return `SEC-${typeCode}-${ts}-${rand}`;
+}
+
+// ─── Security Event Logger (Redis) ───
+
+/**
+ * Log a security event to Redis for later lookup.
+ * Stores full context: event, details, IP, user agent, timestamp, severity.
+ * Entries expire after 90 days.
+ */
+async function logSecurityEvent(errorCode, eventData) {
+  try {
+    // Dynamic import to avoid circular deps with db.js
+    const { Redis } = await import('@upstash/redis');
+    const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+    const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    if (!url || !token) {
+      console.warn('[SECLOG] No Redis config — logging to console only');
+      console.log('[SECLOG]', errorCode, JSON.stringify(eventData));
+      return;
+    }
+
+    const redis = new Redis({ url, token });
+    const key = `seclog:${errorCode}`;
+
+    await redis.set(key, {
+      ...eventData,
+      errorCode,
+      loggedAt: new Date().toISOString(),
+    });
+
+    // Set 90-day TTL (in seconds)
+    await redis.expire(key, 90 * 24 * 60 * 60);
+
+    console.log('[SECLOG] Event logged:', errorCode);
+  } catch (err) {
+    // Never let logging failure break the app
+    console.error('[SECLOG] Failed to log event:', err.message);
+    console.log('[SECLOG] Fallback:', errorCode, JSON.stringify(eventData));
+  }
+}
+
+/**
+ * Look up a security event by its error code.
+ * Used from admin dashboard or Cowork session.
+ */
+export async function lookupSecurityEvent(errorCode) {
+  try {
+    const { Redis } = await import('@upstash/redis');
+    const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+    const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    if (!url || !token) return null;
+
+    const redis = new Redis({ url, token });
+    return await redis.get(`seclog:${errorCode}`);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * List recent security events (most recent first).
+ * Returns up to `limit` events.
+ */
+export async function listSecurityEvents(limit = 50) {
+  try {
+    const { Redis } = await import('@upstash/redis');
+    const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+    const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    if (!url || !token) return [];
+
+    const redis = new Redis({ url, token });
+    const keys = [];
+    let cursor = 0;
+    do {
+      const [nextCursor, batch] = await redis.scan(cursor, { match: 'seclog:*', count: 100 });
+      cursor = nextCursor;
+      keys.push(...batch);
+    } while (cursor !== 0 && keys.length < limit * 2);
+
+    // Fetch all events
+    const events = [];
+    for (const key of keys.slice(0, limit)) {
+      const data = await redis.get(key);
+      if (data) events.push(data);
+    }
+
+    // Sort by timestamp descending
+    events.sort((a, b) => new Date(b.loggedAt) - new Date(a.loggedAt));
+    return events.slice(0, limit);
+  } catch {
+    return [];
+  }
+}
+
+// ─── Email Sending ───
 
 /**
  * Send an email via Resend API.
@@ -47,13 +192,26 @@ export async function sendEmail({ to, subject, html }) {
 // ─── Security Notification Emails ───
 
 /**
- * Send a security alert to the admin.
- * Called when sensitive actions occur.
+ * Send a security alert to the admin with a traceable error code.
+ * Also logs the event to Redis for lookup.
  */
 export async function notifyAdmin({ event, details, severity = 'info', request = null }) {
+  const errorCode = generateErrorCode(event);
   const timestamp = new Date().toISOString();
   const ip = request?.headers?.get('x-forwarded-for') || request?.headers?.get('x-real-ip') || 'Unknown';
   const userAgent = request?.headers?.get('user-agent') || 'Unknown';
+  const url = request?.url || 'Unknown';
+
+  // Log to Redis first (fire-and-forget)
+  logSecurityEvent(errorCode, {
+    event,
+    details,
+    severity,
+    ip,
+    userAgent,
+    requestUrl: url,
+    timestamp,
+  }).catch(() => {});
 
   const severityColors = {
     info: '#3B82F6',
@@ -76,6 +234,13 @@ export async function notifyAdmin({ event, details, severity = 'info', request =
         <span style="display: inline-block; background: ${color}; color: white; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">${severityLabel}</span>
       </div>
 
+      <!-- ERROR CODE BLOCK -->
+      <div style="background: #111827; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px; text-align: center;">
+        <p style="margin: 0 0 4px 0; font-size: 11px; color: #9CA3AF; text-transform: uppercase; letter-spacing: 1px;">Tracking Code</p>
+        <code style="font-size: 18px; font-weight: 700; color: #FBCE04; letter-spacing: 1.5px; font-family: 'SF Mono', 'Fira Code', Consolas, monospace;">${errorCode}</code>
+        <p style="margin: 8px 0 0 0; font-size: 11px; color: #6B7280;">Use this code in Cowork to look up full event details</p>
+      </div>
+
       <div style="background: #F9FAFB; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
         <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
           <tr>
@@ -88,7 +253,7 @@ export async function notifyAdmin({ event, details, severity = 'info', request =
           </tr>
           <tr>
             <td style="padding: 8px 0; color: #6B7280; border-top: 1px solid #E5E7EB;">User Agent</td>
-            <td style="padding: 8px 0; color: #111827; font-weight: 500; border-top: 1px solid #E5E7EB; word-break: break-all;">${userAgent}</td>
+            <td style="padding: 8px 0; color: #111827; font-weight: 500; border-top: 1px solid #E5E7EB; word-break: break-all; font-size: 12px;">${userAgent}</td>
           </tr>
           ${details ? `
           <tr>
@@ -96,12 +261,16 @@ export async function notifyAdmin({ event, details, severity = 'info', request =
             <td style="padding: 8px 0; color: #111827; font-weight: 500; border-top: 1px solid #E5E7EB;">${details}</td>
           </tr>
           ` : ''}
+          <tr>
+            <td style="padding: 8px 0; color: #6B7280; border-top: 1px solid #E5E7EB;">Request URL</td>
+            <td style="padding: 8px 0; color: #111827; font-weight: 500; border-top: 1px solid #E5E7EB; word-break: break-all; font-size: 12px;">${url}</td>
+          </tr>
         </table>
       </div>
 
       <p style="color: #6B7280; font-size: 13px; line-height: 1.6;">
         This is an automated security notification from ${APP_NAME}. If you did not perform this action,
-        please investigate immediately and consider rotating your ADMIN_SECRET.
+        investigate immediately. Paste the tracking code above into Cowork to pull up the full log entry with all metadata.
       </p>
 
       <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;" />
@@ -113,7 +282,7 @@ export async function notifyAdmin({ event, details, severity = 'info', request =
 
   return await sendEmail({
     to: ADMIN_EMAIL,
-    subject: `[${severityLabel}] ${APP_NAME}: ${event}`,
+    subject: `[${severityLabel}] ${APP_NAME}: ${event} | ${errorCode}`,
     html,
   });
 }
@@ -132,7 +301,7 @@ export async function notifyAdminAccess(request, details = '') {
 export async function notifyFailedAdminAuth(request) {
   return notifyAdmin({
     event: 'Failed Admin Authentication',
-    details: 'Invalid admin credentials were submitted.',
+    details: 'Invalid admin credentials were submitted. Possible unauthorized access attempt.',
     severity: 'critical',
     request,
   });
@@ -150,7 +319,7 @@ export async function notifyNewUserSignup(request, { name, email, role }) {
 export async function notifyPasswordReset(request, email) {
   return notifyAdmin({
     event: 'Password Reset Requested',
-    details: `Reset requested for: ${email}`,
+    details: `Password reset link sent to: ${email}. If this wasn't requested by the account holder, the reset link will expire in 1 hour.`,
     severity: 'warning',
     request,
   });
@@ -159,7 +328,7 @@ export async function notifyPasswordReset(request, email) {
 export async function notifyMultipleFailedLogins(request, email, attempts) {
   return notifyAdmin({
     event: 'Multiple Failed Login Attempts',
-    details: `${attempts} failed attempts for: ${email}`,
+    details: `${attempts} failed login attempt(s) for account: ${email}. This could indicate a brute-force attack or a user who forgot their password.`,
     severity: 'critical',
     request,
   });
@@ -168,7 +337,7 @@ export async function notifyMultipleFailedLogins(request, email, attempts) {
 export async function notifyInstructorSignup(request, { name, email }) {
   return notifyAdmin({
     event: 'Instructor Account Created',
-    details: `${name} (${email}) registered as an instructor with @coloradomesa.edu verification.`,
+    details: `${name} (${email}) registered as an instructor. Email verified as @coloradomesa.edu domain. This account has elevated permissions for course management.`,
     severity: 'warning',
     request,
   });

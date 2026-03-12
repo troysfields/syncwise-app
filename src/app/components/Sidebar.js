@@ -13,8 +13,7 @@ const STUDENT_NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊', href: '/dashboard' },
   { id: 'calendar', label: 'Calendar', icon: '📅', href: '/dashboard#calendar' },
   { id: 'grades', label: 'Grades', icon: '📝', href: '/dashboard#grades' },
-  { id: 'focus', label: 'Focus Mode', icon: '🎯', href: '/dashboard#focus' },
-  { id: 'notifications', label: 'Notifications', icon: '🔔', href: '/settings/notifications' },
+  { id: 'focus', label: 'Focus Mode', icon: '🎯', href: '/dashboard#focus', action: 'toggle-focus' },
   { id: 'settings', label: 'Settings', icon: '⚙️', href: '/settings' },
   { id: 'future-updates', label: 'Future Updates', icon: '🚀', href: '/future-updates' },
 ];
@@ -24,12 +23,11 @@ const INSTRUCTOR_NAV = [
   { id: 'calendar', label: 'Calendar', icon: '📅', href: '/instructor#calendar' },
   { id: 'assignments', label: 'Assignments', icon: '📋', href: '/instructor#assignments' },
   { id: 'students', label: 'Student View', icon: '👥', href: '/instructor#student-view' },
-  { id: 'notifications', label: 'Notifications', icon: '🔔', href: '/settings/notifications' },
   { id: 'settings', label: 'Settings', icon: '⚙️', href: '/settings' },
   { id: 'future-updates', label: 'Future Updates', icon: '🚀', href: '/future-updates' },
 ];
 
-export function Sidebar({ role = 'student', activeSection = 'dashboard', onNavigate, unreadCount = 0 }) {
+export function Sidebar({ role = 'student', activeSection = 'dashboard', onNavigate, unreadCount = 0, onFocusToggle, focusMode = false }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navItems = role === 'instructor' ? INSTRUCTOR_NAV : STUDENT_NAV;
@@ -50,6 +48,13 @@ export function Sidebar({ role = 'student', activeSection = 'dashboard', onNavig
 
   function handleNavClick(item, e) {
     e.preventDefault();
+
+    // Special action: Focus Mode toggle
+    if (item.action === 'toggle-focus' && onFocusToggle) {
+      onFocusToggle();
+      setMobileOpen(false);
+      return;
+    }
 
     // Update active section highlight if callback provided
     if (onNavigate) {
@@ -135,7 +140,7 @@ export function Sidebar({ role = 'student', activeSection = 'dashboard', onNavig
               <a
                 href={item.href}
                 role="menuitem"
-                className={`sidebar-nav-item ${activeSection === item.id ? 'active' : ''}`}
+                className={`sidebar-nav-item ${activeSection === item.id ? 'active' : ''} ${item.action === 'toggle-focus' && focusMode ? 'active' : ''}`}
                 onClick={(e) => handleNavClick(item, e)}
                 title={collapsed ? item.label : undefined}
                 aria-current={activeSection === item.id ? 'page' : undefined}

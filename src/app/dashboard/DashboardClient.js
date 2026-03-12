@@ -679,6 +679,13 @@ export default function StudentDashboard() {
         activeSection={activeSection}
         onNavigate={setActiveSection}
         unreadCount={unreadNotificationCount}
+        focusMode={focusMode}
+        onFocusToggle={() => {
+          setFocusMode(!focusMode);
+          trackFocusMode(focusMode ? 'disabled' : 'enabled');
+          // Scroll to focus content area
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
       />
 
       <main className="main-content">
@@ -1041,11 +1048,11 @@ export default function StudentDashboard() {
         )}
 
         {/* ============================================================ */}
-        {/* MAIN GRID — Hidden in focus mode */}
+        {/* MAIN SECTIONS — Hidden in focus mode */}
         {/* ============================================================ */}
         {!focusMode && (
-        <div id="calendar" className="dash-grid" style={{ marginTop: '4px' }}>
-          {/* LEFT: AI Suggestions */}
+        <div className="dash-sections" style={{ marginTop: '4px', padding: '0 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* AI Suggestions + Course Progress */}
           <div className="card">
             <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '20px' }}>&#129302;</span> AI Priority Suggestions
@@ -1081,8 +1088,8 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          {/* RIGHT: Calendar with View Toggle */}
-          <div className="card">
+          {/* Calendar — Own section for distinct scroll target */}
+          <div id="calendar" className="card">
             <div className="calendar-header">
               <h2 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                 <span style={{ fontSize: '20px' }}>&#128197;</span>
@@ -1230,7 +1237,7 @@ export default function StudentDashboard() {
           {/* ============================================================ */}
           {/* FULL WIDTH: All Items (Assignment Queue) */}
           {/* ============================================================ */}
-          <div id="grades" className="card dash-full">
+          <div id="grades" className="card">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                 <span style={{ fontSize: '20px' }}>&#128218;</span> All Items

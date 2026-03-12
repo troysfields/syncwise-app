@@ -53,7 +53,7 @@ const DEMO_COURSES = [
 export default function NotificationPreferencesPage() {
   const [preferences, setPreferences] = useState(DEFAULT_PREFERENCES);
   const [pushPermission, setPushPermission] = useState('default');
-  const [activeSection, setActiveSection] = useState('notifications');
+  const [activeSection, setActiveSection] = useState('settings');
   const [saved, setSaved] = useState(false);
   const [expandedCourse, setExpandedCourse] = useState(null);
 

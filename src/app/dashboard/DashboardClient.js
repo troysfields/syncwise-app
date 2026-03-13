@@ -787,22 +787,76 @@ export default function StudentDashboard() {
     setDismissedGrades(prev => [...prev, gradeId]);
   }
 
-  // Calendar navigation with visual feedback
-  const [calendarNavKey, setCalendarNavKey] = useState(0);
+  // Calendar scroll-based navigation
+  const calendarScrollRef = typeof window !== 'undefined' ? { current: null } : { current: null };
+  const [visibleDateLabel, setVisibleDateLabel] = useState('');
 
-  function navigateCalendar(direction) {
-    const d = new Date(calendarDate);
-    if (calendarView === 'week') d.setDate(d.getDate() + (direction * 7));
-    else if (calendarView === 'month') d.setMonth(d.getMonth() + direction);
-    else d.setDate(d.getDate() + direction);
-    setCalendarDate(d);
-    setCalendarNavKey(k => k + 1); // trigger fade-in animation
-    trackCalendarView(calendarView);
+  // Generate multiple weeks of days for horizontal scrolling (4 weeks back, 8 weeks forward)
+  function getScrollCalendarDays() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - 28); // 4 weeks back
+    // Align to Sunday
+    startDate.setDate(startDate.getDate() - startDate.getDay());
+    const days = [];
+    for (let i = 0; i < 84; i++) { // 12 weeks total
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
+      days.push(d);
+    }
+    return days;
   }
 
-  function goToToday() {
-    setCalendarDate(new Date());
-    setCalendarNavKey(k => k + 1);
+  const scrollCalendarDays = getScrollCalendarDays();
+
+  // Find today's index for initial scroll position
+  const todayScrollIndex = scrollCalendarDays.findIndex(d => isSameDay(d, new Date()));
+
+  // Handle scroll to update the date label
+  function handleCalendarScroll(e) {
+    const container = e.target;
+    const scrollLeft = container.scrollLeft;
+    const dayWidth = 140; // matches CSS column width
+    const visibleIndex = Math.floor(scrollLeft / dayWidth);
+    const day = scrollCalendarDays[Math.min(visibleIndex, scrollCalendarDays.length - 1)];
+    if (day) {
+      const weekStart = new Date(day);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      let label;
+      if (weekStart.getMonth() === weekEnd.getMonth()) {
+        label = `${weekStart.toLocaleDateString([], { month: 'long' })} ${weekStart.getDate()} – ${weekEnd.getDate()}, ${weekStart.getFullYear()}`;
+      } else {
+        label = `${weekStart.toLocaleDateString([], { month: 'short' })} ${weekStart.getDate()} – ${weekEnd.toLocaleDateString([], { month: 'short' })} ${weekEnd.getDate()}`;
+      }
+      setVisibleDateLabel(label);
+    }
+  }
+
+  // Scroll to today on mount
+  useEffect(() => {
+    const scrollContainer = document.getElementById('cal-scroll-container');
+    if (scrollContainer && todayScrollIndex >= 0) {
+      const dayWidth = 140;
+      // Center today in the viewport
+      const containerWidth = scrollContainer.clientWidth;
+      const scrollTarget = (todayScrollIndex * dayWidth) - (containerWidth / 2) + (dayWidth / 2);
+      scrollContainer.scrollLeft = Math.max(0, scrollTarget);
+      // Set initial label
+      handleCalendarScroll({ target: scrollContainer });
+    }
+  }, [activeSection]); // re-run when switching to calendar view
+
+  function scrollToToday() {
+    const scrollContainer = document.getElementById('cal-scroll-container');
+    if (scrollContainer && todayScrollIndex >= 0) {
+      const dayWidth = 140;
+      const containerWidth = scrollContainer.clientWidth;
+      const scrollTarget = (todayScrollIndex * dayWidth) - (containerWidth / 2) + (dayWidth / 2);
+      scrollContainer.scrollTo({ left: Math.max(0, scrollTarget), behavior: 'smooth' });
+    }
   }
 
   // Calendar data (uses course-filtered versions)
@@ -953,71 +1007,6 @@ export default function StudentDashboard() {
               <strong>Date Changes ({dateNotifications.length})</strong> — Your instructor updated due dates for some assignments.
             </div>
           )}
-
-          {/* Focus Mode Toggle */}
-          <div id="focus" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '20px 0', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <button
-                onClick={() => {
-                  setFocusMode(!focusMode);
-                  trackFocusMode(focusMode ? 'disabled' : 'enabled');
-                }}
-                style={{
-                  padding: '8px 16px',
-                  background: focusMode ? '#5D0022' : '#E2E8F0',
-                  color: focusMode ? '#FFFFFF' : '#1E293B',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontWeight: '600',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-                className={focusMode ? 'focus-mode-active' : ''}
-              >
-                {focusMode ? '🎯 Focus Mode ON' : '🎯 Focus Mode'}
-              </button>
-              {focusMode && (
-                <span style={{ fontSize: '12px', color: '#5D0022', fontWeight: '500' }}>
-                  {effectiveFocusTimeframe === 'week' ? "Showing this week's tasks" : "Showing today's tasks only"}
-                </span>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => setShowManualEventModal(true)}
-                style={{
-                  padding: '8px 16px',
-                  background: '#059669',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontWeight: '600',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                }}
-              >
-                + Add Event
-              </button>
-              {calendarView === 'week' && (
-                <button
-                  onClick={handleExportWeek}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#7C3AED',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontWeight: '600',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  📋 Export Week
-                </button>
-              )}
-            </div>
-          </div>
 
           {/* Manual Event Modal */}
           <ManualEventModal
@@ -1292,181 +1281,99 @@ export default function StudentDashboard() {
           {/* CALENDAR VIEW */}
           {/* ============================================================ */}
           {activeSection === 'calendar' && (
-          <div id="calendar" className="card">
-            <div className="calendar-header">
-              <h2 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                <span style={{ fontSize: '20px' }}>&#128197;</span>
-                <span className="calendar-title-label">{getCalendarLabel()}</span>
-              </h2>
-              <div className="calendar-view-toggle">
-                <button className={`cal-view-btn ${calendarView === 'today' ? 'active' : ''}`}
-                  onClick={() => { setCalendarView('today'); setCalendarDate(new Date()); }}>Day</button>
-                <button className={`cal-view-btn ${calendarView === 'week' ? 'active' : ''}`}
-                  onClick={() => setCalendarView('week')}>Week</button>
-                <button className={`cal-view-btn ${calendarView === 'month' ? 'active' : ''}`}
-                  onClick={() => setCalendarView('month')}>Month</button>
+          <div id="calendar" className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            {/* Sticky date header */}
+            <div className="scroll-cal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h2 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                  <span style={{ fontSize: '20px' }}>&#128197;</span>
+                  <span>{visibleDateLabel || 'Calendar'}</span>
+                </h2>
+                <button onClick={scrollToToday} style={{
+                  padding: '4px 12px', border: '1px solid #E2E8F0', borderRadius: '6px',
+                  background: 'white', fontSize: '12px', fontWeight: '600', color: '#5D0022',
+                  cursor: 'pointer', transition: 'all 0.15s',
+                }}>Today</button>
+                <button onClick={() => setShowManualEventModal(true)} style={{
+                  padding: '4px 12px', border: '1px solid #A7F3D0', borderRadius: '6px',
+                  background: '#ECFDF5', fontSize: '12px', fontWeight: '600', color: '#059669',
+                  cursor: 'pointer', transition: 'all 0.15s',
+                }}>+ Add Event</button>
               </div>
-            </div>
-
-            <div className="calendar-nav">
-              <button className="cal-nav-btn" onClick={() => navigateCalendar(-1)}>&lsaquo;</button>
-              <button className="cal-nav-today" onClick={goToToday}>Today</button>
-              <button className="cal-nav-btn" onClick={() => navigateCalendar(1)}>&rsaquo;</button>
-              <span key={calendarNavKey} className="cal-nav-date-label" style={{
-                fontSize: '13px', fontWeight: '600', color: '#475569', marginLeft: '8px',
-                animation: 'calFadeIn 0.3s ease-out',
-              }}>
-                {getCalendarLabel()}
-              </span>
-            </div>
-
-            {/* Course Filter */}
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px solid #E2E8F0' }}>
-              <button className={`email-filter-btn ${courseFilter === 'all' ? 'active' : ''}`}
-                onClick={() => setCourseFilter('all')} style={{ fontSize: '11px' }}>All Classes</button>
-              {uniqueCourses.map(course => (
-                <button key={course} className={`email-filter-btn ${courseFilter === course ? 'active' : ''}`}
-                  onClick={() => setCourseFilter(course)} style={{ fontSize: '11px', borderLeft: `3px solid ${DEFAULT_COURSE_COLORS[course] || '#6B7280'}` }}>
-                  {course}
-                </button>
-              ))}
-            </div>
-
-            {/* TODAY VIEW */}
-            {calendarView === 'today' && (
-              <div>
-                {todayEvents.length === 0 && todayTasksForCalendar.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '24px 16px', color: '#94A3B8', fontSize: '14px' }}>
-                    No events or assignments for this day.
-                  </div>
-                )}
-                {todayEvents.map(event => (
-                  <div key={event.id} className="task-item" style={{ background: event.courseName ? undefined : '#DBEAFE', borderLeft: event.courseName ? `3px solid ${event.courseColor || DEFAULT_COURSE_COLORS[event.courseName] || '#6B7280'}` : undefined }}>
-                    {!event.courseName && <div className="task-dot outlook"></div>}
-                    <div className="task-info">
-                      <div className="task-name">{event.name}</div>
-                      <div className="task-meta">
-                        {event.courseName && <span style={{ color: event.courseColor || DEFAULT_COURSE_COLORS[event.courseName] || '#6B7280', fontWeight: '600' }}>{event.courseName} · </span>}
-                        {!event.courseName && <span style={{ color: '#64748B', fontWeight: '600' }}>General · </span>}
-                        {formatTime(event.start)} — {formatTime(event.end)}
-                      </div>
-                    </div>
-                    <span className="badge badge-outlook">{event.source === 'manual' ? 'Added' : 'Outlook'}</span>
-                  </div>
+              {/* Course Filter */}
+              <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '8px' }}>
+                <button className={`email-filter-btn ${courseFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => setCourseFilter('all')} style={{ fontSize: '11px' }}>All Classes</button>
+                {uniqueCourses.map(course => (
+                  <button key={course} className={`email-filter-btn ${courseFilter === course ? 'active' : ''}`}
+                    onClick={() => setCourseFilter(course)} style={{ fontSize: '11px', borderLeft: `3px solid ${DEFAULT_COURSE_COLORS[course] || '#6B7280'}` }}>
+                    {course}
+                  </button>
                 ))}
-                {todayTasksForCalendar.map(task => {
-                  const submittable = isSubmittableType(task.type);
-                  return (
-                  <div key={task.id} className="task-item" style={{ borderLeft: `3px solid ${task.courseColor}`, opacity: submittable ? 1 : 0.75 }}>
-                    {task.unread && <span className="unread-dot"></span>}
-                    <span style={{ fontSize: '14px', flexShrink: 0 }}>{getItemTypeIcon(task.type)}</span>
-                    <div className="task-info">
-                      <div className="task-name">{task.name}</div>
-                      <div className="task-meta">
-                        <span style={{ color: task.courseColor, fontWeight: '600' }}>{task.courseName}</span>
-                        {submittable && task.dueDate && <> · <span style={{ fontWeight: '600' }}>Due {formatTime(task.manualDate || task.dueDate)}</span></>}
-                        {!submittable && <> · <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>No submission required</span></>}
-                        {task.points && ` · ${task.points} pts`}
-                      </div>
+              </div>
+            </div>
+
+            {/* Horizontal scrolling day columns */}
+            <div
+              id="cal-scroll-container"
+              className="scroll-cal-container"
+              onScroll={handleCalendarScroll}
+            >
+              {scrollCalendarDays.map((day, i) => {
+                const dayEvents = getEventsForDay(calendarFilteredEvents, day);
+                const dayTasks = getTasksForDay(calendarFilteredTasks, day);
+                const isToday = isSameDay(day, new Date());
+                const isPast = day < new Date() && !isToday;
+                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                const isWeekStart = day.getDay() === 0;
+                const totalItems = dayEvents.length + dayTasks.length;
+
+                return (
+                  <div key={i} className={`scroll-cal-day ${isToday ? 'scroll-cal-today' : ''} ${isPast ? 'scroll-cal-past' : ''} ${isWeekStart && i > 0 ? 'scroll-cal-week-start' : ''}`}>
+                    <div className="scroll-cal-day-header">
+                      <span className="scroll-cal-day-name">{dayNames[day.getDay()]}</span>
+                      <span className={`scroll-cal-day-num ${isToday ? 'scroll-cal-today-num' : ''}`}>
+                        {day.getDate()}
+                      </span>
+                      {day.getDate() === 1 && (
+                        <span className="scroll-cal-month-label">
+                          {day.toLocaleDateString([], { month: 'short' })}
+                        </span>
+                      )}
                     </div>
-                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
-                      {task.submitted && <span className="badge badge-submitted">Submitted</span>}
-                      {task.graded && <span className="badge badge-graded">Graded</span>}
-                      {!submittable && <span className="badge" style={{ background: '#F1F5F9', color: '#64748B', fontSize: '10px' }}>Info</span>}
-                      {submittable && !task.submitted && <span className={`badge badge-${getPriorityLevel(task)}`}>
-                        {getPriorityLevel(task) === 'high' ? 'Urgent' : getPriorityLevel(task) === 'medium' ? 'Soon' : 'Upcoming'}
-                      </span>}
+                    <div className="scroll-cal-day-body">
+                      {totalItems === 0 && (
+                        <div className="scroll-cal-empty">—</div>
+                      )}
+                      {dayEvents.map(e => (
+                        <div key={e.id} className="scroll-cal-chip scroll-cal-chip-event" title={`${e.name}\n${formatTime(e.start)} – ${formatTime(e.end)}`}>
+                          <div className="scroll-cal-chip-time">{formatTime(e.start)}</div>
+                          <div className="scroll-cal-chip-name">{e.name}</div>
+                        </div>
+                      ))}
+                      {dayTasks.map(t => {
+                        const sub = isSubmittableType(t.type);
+                        return (
+                          <div key={t.id}
+                            className={`scroll-cal-chip ${!sub ? 'scroll-cal-chip-info' : ''}`}
+                            style={{ background: t.courseColor + '18', borderLeftColor: t.courseColor }}
+                            title={`${t.courseName} — ${t.name}${sub && t.dueDate ? '\nDue ' + formatTime(t.manualDate || t.dueDate) : ''}`}
+                          >
+                            <div className="scroll-cal-chip-course" style={{ color: t.courseColor }}>{t.courseName}</div>
+                            <div className="scroll-cal-chip-name">
+                              {getItemTypeIcon(t.type)} {t.name}
+                            </div>
+                            {sub && t.dueDate && (
+                              <div className="scroll-cal-chip-time">Due {formatTime(t.manualDate || t.dueDate)}{t.points ? ` · ${t.points} pts` : ''}</div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* WEEK VIEW */}
-            {calendarView === 'week' && (
-              <div className="week-view">
-                {getWeekDays(calendarDate).map((day, i) => {
-                  const dayEvents = getEventsForDay(calendarFilteredEvents, day);
-                  const dayTasks = getTasksForDay(calendarFilteredTasks, day);
-                  const isToday = isSameDay(day, new Date());
-                  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                  return (
-                    <div key={i} className={`week-day-col ${isToday ? 'today' : ''}`}
-                      onClick={() => { setCalendarView('today'); setCalendarDate(day); }}>
-                      <div className="week-day-header">
-                        <span className="week-day-name">{dayNames[i]}</span>
-                        <span className={`week-day-num ${isToday ? 'today-num' : ''}`}>{day.getDate()}</span>
-                      </div>
-                      <div className="week-day-events">
-                        {dayEvents.map(e => (
-                          <div key={e.id} className="week-event-chip outlook-chip" title={e.courseName || 'General'}>
-                            <div style={{ fontSize: '9px', fontWeight: '700', opacity: 0.7, marginBottom: '1px' }}>{e.courseName || 'General'}</div>
-                            {formatTime(e.start)} {e.name.length > 18 ? e.name.slice(0, 18) + '...' : e.name}
-                          </div>
-                        ))}
-                        {dayTasks.map(t => {
-                          const sub = isSubmittableType(t.type);
-                          return (
-                          <div key={t.id} className="week-event-chip" style={{ background: t.courseColor + (sub ? '22' : '11'), borderLeft: `3px solid ${t.courseColor}`, color: '#1E293B', opacity: sub ? 1 : 0.7 }} title={`${t.courseName}${sub && t.dueDate ? ' · Due ' + formatTime(t.manualDate || t.dueDate) : ''}`}>
-                            <div style={{ fontSize: '9px', fontWeight: '700', color: t.courseColor, marginBottom: '1px' }}>{t.courseName}{sub && t.dueDate ? <span style={{ color: '#64748B', fontWeight: '600' }}> · {formatTime(t.manualDate || t.dueDate)}</span> : !sub ? <span style={{ color: '#94A3B8' }}> · Info</span> : ''}</div>
-                            {getItemTypeIcon(t.type)} {t.name.length > 16 ? t.name.slice(0, 16) + '...' : t.name}
-                          </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* MONTH VIEW */}
-            {calendarView === 'month' && (
-              <div className="month-view">
-                <div className="month-header-row">
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                    <div key={d} className="month-header-cell">{d}</div>
-                  ))}
-                </div>
-                <div className="month-grid">
-                  {getMonthDays(calendarDate).map((day, i) => {
-                    const isCurrentMonth = day.getMonth() === calendarDate.getMonth();
-                    const isToday = isSameDay(day, new Date());
-                    const dayEvents = getEventsForDay(calendarFilteredEvents, day);
-                    const dayTasks = getTasksForDay(calendarFilteredTasks, day);
-                    const hasItems = dayEvents.length + dayTasks.length > 0;
-                    return (
-                      <div key={i}
-                        className={`month-day-cell ${isCurrentMonth ? '' : 'other-month'} ${isToday ? 'today-cell' : ''} ${hasItems ? 'has-items' : ''}`}
-                        onClick={() => { setCalendarView('today'); setCalendarDate(day); }}>
-                        <span className={`month-day-num ${isToday ? 'today-num' : ''}`}>{day.getDate()}</span>
-                        {dayEvents.length > 0 && (
-                          <div className="month-dot-row">
-                            {dayEvents.slice(0, 3).map((e, j) => (
-                              <span key={j} className="month-dot outlook-dot"></span>
-                            ))}
-                          </div>
-                        )}
-                        {dayTasks.length > 0 && (
-                          <div className="month-dot-row">
-                            {dayTasks.slice(0, 3).map((t, j) => (
-                              <span key={j} className="month-dot" style={{ background: t.courseColor }}></span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="month-legend">
-                  <span className="legend-item"><span className="month-dot outlook-dot"></span> Outlook</span>
-                  {Object.entries(DEFAULT_COURSE_COLORS).map(([name, color]) => (
-                    <span key={name} className="legend-item"><span className="month-dot" style={{ background: color }}></span> {name}</span>
-                  ))}
-                </div>
-              </div>
-            )}
+                );
+              })}
+            </div>
           </div>
           )}
 

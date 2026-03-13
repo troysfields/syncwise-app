@@ -359,8 +359,11 @@ export async function notifyFeedbackSubmission({ userEmail, userRole, feedback }
     timestamp,
   }).catch(() => {});
 
-  // Build checklist items from the boolean fields
-  const checks = [
+  // Detect freetext vs structured feedback
+  const isFreetext = feedback.type === 'feature_request' || feedback.type === 'issue' || feedback.type === 'suggestion';
+
+  // Build checklist items from the boolean fields (structured form only)
+  const checks = isFreetext ? [] : [
     feedback.easyToNavigate && 'Easy to navigate',
     feedback.aiSuggestionsHelpful && 'AI suggestions helpful',
     feedback.emailScanningUseful && 'Email scanning useful',
@@ -370,15 +373,19 @@ export async function notifyFeedbackSubmission({ userEmail, userRole, feedback }
     feedback.wouldRecommend && 'Would recommend',
   ].filter(Boolean);
 
-  const checksHtml = checks.length > 0
-    ? checks.map(c => `<span style="display:inline-block;background:#ECFDF5;color:#065F46;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;margin:2px 4px;">${c}</span>`).join('')
-    : '<span style="color:#6B7280;font-size:13px;">No checkboxes selected</span>';
+  const checksHtml = isFreetext
+    ? `<span style="display:inline-block;background:#DBEAFE;color:#1E40AF;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;margin:2px 4px;">${feedback.type === 'issue' ? 'Bug Report' : feedback.type === 'suggestion' ? 'Suggestion' : 'Feature Request'}</span>`
+    : checks.length > 0
+      ? checks.map(c => `<span style="display:inline-block;background:#ECFDF5;color:#065F46;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;margin:2px 4px;">${c}</span>`).join('')
+      : '<span style="color:#6B7280;font-size:13px;">No checkboxes selected</span>';
 
-  const openResponses = [
-    feedback.mostUsefulThing && { label: 'Most useful thing', value: feedback.mostUsefulThing },
-    feedback.wishDifferently && { label: 'Wish was different', value: feedback.wishDifferently },
-    feedback.additionalFeedback && { label: 'Additional feedback', value: feedback.additionalFeedback },
-  ].filter(Boolean);
+  const openResponses = isFreetext
+    ? [{ label: 'Message', value: feedback.message }]
+    : [
+        feedback.mostUsefulThing && { label: 'Most useful thing', value: feedback.mostUsefulThing },
+        feedback.wishDifferently && { label: 'Wish was different', value: feedback.wishDifferently },
+        feedback.additionalFeedback && { label: 'Additional feedback', value: feedback.additionalFeedback },
+      ].filter(Boolean);
 
   const openResponsesHtml = openResponses.length > 0
     ? openResponses.map(r => `

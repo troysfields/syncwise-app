@@ -24,7 +24,21 @@ export async function POST(req) {
   try {
     const body = await req.json();
 
-    const entry = {
+    // Support two formats:
+    // 1. Structured form (FeedbackPanel) — checkboxes, usage frequency, open responses
+    // 2. Freetext (Future Updates page, chatbot) — type + message string
+    const isFreetext = body.type === 'feature_request' || body.type === 'issue' || body.type === 'suggestion' || body.message;
+
+    const entry = isFreetext ? {
+      type: body.type || 'feature_request',
+      userEmail: body.user || sessionEmail,
+      userRole: sessionRole,
+      message: body.message || '',
+      page: body.pageUrl || 'unknown',
+      pageUrl: body.pageUrl || '',
+      userAgent: body.userAgent || '',
+      status: 'new',
+    } : {
       type: 'form_feedback',
       userEmail: body.user || sessionEmail,
       userRole: sessionRole,

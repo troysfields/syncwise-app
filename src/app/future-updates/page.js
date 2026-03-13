@@ -126,7 +126,7 @@ export default function FutureUpdatesPage() {
             <p style={{ fontSize: '14px', lineHeight: '1.6' }}>
               We're pushing for CMU to give us limited API access to D2L Brightspace. That would unlock
               significantly more powerful features for both students and instructors with way more intuition
-              than what we can do with calendar feeds alone. The more students using this, the harder it is to ignore — so spread the word.
+              than what we can do with calendar feeds alone.
             </p>
           </div>
 

@@ -369,6 +369,11 @@ export default function StudentDashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [semesterView, setSemesterView] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null); // clicked calendar item for detail modal
+  const [selectedItemType, setSelectedItemType] = useState(null); // 'task' or 'event'
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [detailEditDate, setDetailEditDate] = useState('');
+  const [detailEditingDate, setDetailEditingDate] = useState(false);
 
   // Detect fullscreen mode (wide enough window = "fullscreen")
   useEffect(() => {
@@ -803,6 +808,56 @@ export default function StudentDashboard() {
 
   function handleDismissGrade(gradeId) {
     setDismissedGrades(prev => [...prev, gradeId]);
+  }
+
+  function openItemDetail(item, itemType) {
+    setSelectedItem(item);
+    setSelectedItemType(itemType);
+    setShowDeleteConfirm(false);
+    setDetailEditingDate(false);
+    setDetailEditDate(item.manualDate || item.dueDate || item.start || '');
+  }
+
+  function closeItemDetail() {
+    setSelectedItem(null);
+    setSelectedItemType(null);
+    setShowDeleteConfirm(false);
+    setDetailEditingDate(false);
+  }
+
+  function handleDetailSaveDate() {
+    if (!detailEditDate || !selectedItem) return;
+    if (selectedItemType === 'task') {
+      setTasks(prev => prev.map(t =>
+        t.id === selectedItem.id ? { ...t, manualDate: detailEditDate, confirmedNoDate: true } : t
+      ));
+      setSelectedItem(prev => ({ ...prev, manualDate: detailEditDate }));
+      showToast({ type: 'success', message: 'Date updated', duration: 3000 });
+    }
+    setDetailEditingDate(false);
+  }
+
+  function handleDetailDelete() {
+    if (!selectedItem) return;
+    if (selectedItemType === 'task') {
+      setTasks(prev => prev.map(t =>
+        t.id === selectedItem.id ? { ...t, status: 'hidden' } : t
+      ));
+      showToast({ type: 'info', message: 'Removed from calendar', duration: 3000 });
+    } else if (selectedItemType === 'event') {
+      setManualEvents(prev => prev.filter(e => e.id !== selectedItem.id));
+      showToast({ type: 'info', message: 'Event removed', duration: 3000 });
+    }
+    closeItemDetail();
+  }
+
+  function handleDetailMarkComplete() {
+    if (!selectedItem || selectedItemType !== 'task') return;
+    setTasks(prev => prev.map(t =>
+      t.id === selectedItem.id ? { ...t, status: 'completed', submitted: true } : t
+    ));
+    showToast({ type: 'success', message: 'Marked as completed', duration: 3000 });
+    closeItemDetail();
   }
 
   // Calendar scroll-based navigation
@@ -1395,7 +1450,8 @@ export default function StudentDashboard() {
                         <div className="scroll-cal-empty">—</div>
                       )}
                       {dayEvents.map(e => (
-                        <div key={e.id} className={`scroll-cal-chip scroll-cal-chip-event ${totalItems >= 3 ? 'scroll-cal-chip-sm' : ''}`} title={`${e.name}\n${formatTime(e.start)} – ${formatTime(e.end)}`}>
+                        <div key={e.id} className={`scroll-cal-chip scroll-cal-chip-event ${totalItems >= 3 ? 'scroll-cal-chip-sm' : ''}`} title={`${e.name}\n${formatTime(e.start)} – ${formatTime(e.end)}`}
+                          onClick={(ev) => { ev.stopPropagation(); openItemDetail(e, 'event'); }} style={{ cursor: 'pointer' }}>
                           {totalItems < 3 && <div className="scroll-cal-chip-time">{formatTime(e.start)}</div>}
                           <div className="scroll-cal-chip-name">{totalItems >= 3 ? e.name.slice(0, 20) + (e.name.length > 20 ? '…' : '') : e.name}</div>
                         </div>
@@ -1406,8 +1462,9 @@ export default function StudentDashboard() {
                         return (
                           <div key={t.id}
                             className={`scroll-cal-chip ${!sub ? 'scroll-cal-chip-info' : ''} ${compact ? 'scroll-cal-chip-sm' : ''}`}
-                            style={{ background: t.courseColor + '18', borderLeftColor: t.courseColor }}
+                            style={{ background: t.courseColor + '18', borderLeftColor: t.courseColor, cursor: 'pointer' }}
                             title={`${t.courseName} — ${t.name}${sub && t.dueDate ? '\nDue ' + formatTime(t.manualDate || t.dueDate) : ''}${t.points ? '\n' + t.points + ' pts' : ''}`}
+                            onClick={(ev) => { ev.stopPropagation(); openItemDetail(t, 'task'); }}
                           >
                             {!compact && <div className="scroll-cal-chip-course" style={{ color: t.courseColor }}>{t.courseName}</div>}
                             <div className="scroll-cal-chip-name">
@@ -1452,14 +1509,16 @@ export default function StudentDashboard() {
                               <span className="semester-day-label">{dayNames[di]}{day.getDate()}</span>
                               {dayTasks.map(t => (
                                 <div key={t.id} className="semester-bar"
-                                  style={{ background: t.courseColor || '#6B7280', width: `${Math.min(100, Math.max(30, (t.points || 10) * 2))}%` }}
+                                  style={{ background: t.courseColor || '#6B7280', width: `${Math.min(100, Math.max(30, (t.points || 10) * 2))}%`, cursor: 'pointer' }}
                                   title={`${t.courseName}: ${t.name}${t.points ? ' (' + t.points + ' pts)' : ''}`}
+                                  onClick={() => openItemDetail(t, 'task')}
                                 />
                               ))}
                               {dayEvents.map(e => (
                                 <div key={e.id} className="semester-bar"
-                                  style={{ background: '#3B82F6', width: '40%' }}
+                                  style={{ background: '#3B82F6', width: '40%', cursor: 'pointer' }}
                                   title={e.name}
+                                  onClick={() => openItemDetail(e, 'event')}
                                 />
                               ))}
                             </div>
@@ -1655,6 +1714,154 @@ export default function StudentDashboard() {
         </div>
         )}
       </div>
+      {/* ============================================================ */}
+      {/* ITEM DETAIL MODAL — click any calendar chip to open */}
+      {/* ============================================================ */}
+      {selectedItem && (
+        <div className="detail-modal-overlay" onClick={closeItemDetail}>
+          <div className="detail-modal" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="detail-modal-header" style={{ borderLeft: `4px solid ${selectedItem.courseColor || '#3B82F6'}` }}>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em', color: selectedItem.courseColor || '#3B82F6', marginBottom: '4px' }}>
+                  {selectedItemType === 'task' ? getItemTypeLabel(selectedItem.type) : 'Event'}
+                  {selectedItem.courseName && ` · ${selectedItem.courseName}`}
+                </div>
+                <h3 style={{ fontSize: '18px', fontWeight: '700', margin: 0, lineHeight: 1.3 }}>{selectedItem.name}</h3>
+              </div>
+              <button onClick={closeItemDetail} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#94A3B8', padding: '4px' }}>✕</button>
+            </div>
+
+            {/* Details grid */}
+            <div className="detail-modal-body">
+              {selectedItemType === 'task' ? (
+                <>
+                  <div className="detail-row">
+                    <span className="detail-label">Course</span>
+                    <span className="detail-value" style={{ color: selectedItem.courseColor, fontWeight: '600' }}>{selectedItem.courseName || 'N/A'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Type</span>
+                    <span className="detail-value">{getItemTypeIcon(selectedItem.type)} {getItemTypeLabel(selectedItem.type)}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Due Date</span>
+                    <span className="detail-value">
+                      {selectedItem.manualDate || selectedItem.dueDate
+                        ? new Date(selectedItem.manualDate || selectedItem.dueDate).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+                          + ' at ' + formatTime(selectedItem.manualDate || selectedItem.dueDate)
+                        : 'No due date'}
+                      {selectedItem.manualDate && <span style={{ fontSize: '11px', color: '#D97706', marginLeft: '6px' }}>✏️ Custom</span>}
+                    </span>
+                  </div>
+                  {selectedItem.points != null && selectedItem.points > 0 && (
+                    <div className="detail-row">
+                      <span className="detail-label">Points</span>
+                      <span className="detail-value" style={{ fontWeight: '700', fontSize: '16px' }}>{selectedItem.points} pts</span>
+                    </div>
+                  )}
+                  <div className="detail-row">
+                    <span className="detail-label">Status</span>
+                    <span className="detail-value">
+                      {selectedItem.submitted ? <span className="badge badge-submitted">Submitted</span>
+                        : selectedItem.status === 'completed' ? <span className="badge badge-submitted">Completed</span>
+                        : <span className="badge badge-medium">Not submitted</span>}
+                      {selectedItem.graded && selectedItem.grade && (
+                        <span style={{ marginLeft: '8px', fontWeight: '700', color: selectedItem.grade.percentage >= 80 ? '#059669' : '#D97706' }}>
+                          {selectedItem.grade.percentage}% ({selectedItem.grade.earned}/{selectedItem.grade.outOf})
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  {selectedItem.isRecurring && (
+                    <div className="detail-row">
+                      <span className="detail-label">Recurring</span>
+                      <span className="detail-value">{selectedItem.recurringLabel || 'Yes'}</span>
+                    </div>
+                  )}
+                  <div className="detail-row">
+                    <span className="detail-label">Source</span>
+                    <span className="detail-value">{selectedItem.source === 'd2l' ? 'D2L Calendar Feed' : selectedItem.source === 'manual' ? 'Manually Added' : selectedItem.source || 'Unknown'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Urgency</span>
+                    <span className="detail-value">
+                      {(() => {
+                        const p = getPriorityLevel(selectedItem);
+                        return p === 'high' ? <span className="badge badge-high">Urgent</span>
+                          : p === 'medium' ? <span className="badge badge-medium">Soon</span>
+                          : <span className="badge badge-low">Upcoming</span>;
+                      })()}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="detail-row">
+                    <span className="detail-label">Time</span>
+                    <span className="detail-value">
+                      {selectedItem.start && formatTime(selectedItem.start)}
+                      {selectedItem.end && ` – ${formatTime(selectedItem.end)}`}
+                    </span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Date</span>
+                    <span className="detail-value">
+                      {selectedItem.start && new Date(selectedItem.start).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Source</span>
+                    <span className="detail-value">{selectedItem.source === 'manual' ? 'Manually Added' : 'Outlook'}</span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="detail-modal-actions">
+              {/* Edit date */}
+              {selectedItemType === 'task' && (
+                detailEditingDate ? (
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flex: 1 }}>
+                    <input type="datetime-local" value={detailEditDate}
+                      onChange={e => setDetailEditDate(e.target.value)}
+                      style={{ fontSize: '13px', padding: '6px 10px', border: '1px solid #CBD5E1', borderRadius: '6px', flex: 1 }}
+                    />
+                    <button onClick={handleDetailSaveDate} className="detail-btn detail-btn-save">Save</button>
+                    <button onClick={() => setDetailEditingDate(false)} className="detail-btn detail-btn-cancel">Cancel</button>
+                  </div>
+                ) : (
+                  <button onClick={() => { setDetailEditingDate(true); setDetailEditDate(selectedItem.manualDate || selectedItem.dueDate || ''); }} className="detail-btn detail-btn-edit">
+                    📅 Edit Date
+                  </button>
+                )
+              )}
+
+              {/* Mark complete */}
+              {selectedItemType === 'task' && !selectedItem.submitted && selectedItem.status !== 'completed' && isSubmittableType(selectedItem.type) && (
+                <button onClick={handleDetailMarkComplete} className="detail-btn detail-btn-complete">
+                  ✓ Mark Complete
+                </button>
+              )}
+
+              {/* Delete / Remove */}
+              {showDeleteConfirm ? (
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '13px', color: '#DC2626', fontWeight: '600' }}>Remove from calendar?</span>
+                  <button onClick={handleDetailDelete} className="detail-btn detail-btn-delete">Yes, remove</button>
+                  <button onClick={() => setShowDeleteConfirm(false)} className="detail-btn detail-btn-cancel">Cancel</button>
+                </div>
+              ) : (
+                <button onClick={() => setShowDeleteConfirm(true)} className="detail-btn detail-btn-remove">
+                  ✕ Remove
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       </main>
     </div>
   );

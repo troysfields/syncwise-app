@@ -137,7 +137,7 @@ export default function FutureUpdatesPage() {
               {/* In Development Section */}
               <div style={{ marginBottom: '40px' }}>
                 <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '16px' }}>
-                  In the Oven
+                  Shipping Soon
                 </h2>
                 <div style={{ display: 'grid', gap: '16px' }}>
                   {[
@@ -182,7 +182,7 @@ export default function FutureUpdatesPage() {
               {/* On the Roadmap Section */}
               <div style={{ marginBottom: '40px' }}>
                 <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '16px' }}>
-                  On the Whiteboard
+                  On Deck
                 </h2>
                 <div style={{ display: 'grid', gap: '16px' }}>
                   {[
@@ -232,7 +232,7 @@ export default function FutureUpdatesPage() {
               {/* For Instructors Section */}
               <div style={{ marginBottom: '40px' }}>
                 <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '16px' }}>
-                  For Instructors
+                  Meanwhile, on the Teacher Side
                 </h2>
                 <div
                   style={{
@@ -259,7 +259,7 @@ export default function FutureUpdatesPage() {
               {/* In Development Section */}
               <div style={{ marginBottom: '40px' }}>
                 <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '16px' }}>
-                  In the Oven
+                  Shipping Soon
                 </h2>
                 <div style={{ display: 'grid', gap: '16px' }}>
                   {[
@@ -304,7 +304,7 @@ export default function FutureUpdatesPage() {
               {/* On the Roadmap Section */}
               <div style={{ marginBottom: '40px' }}>
                 <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '16px' }}>
-                  On the Whiteboard
+                  On Deck
                 </h2>
                 <div style={{ display: 'grid', gap: '16px' }}>
                   {[
@@ -406,7 +406,7 @@ export default function FutureUpdatesPage() {
               {/* For Students Section */}
               <div style={{ marginBottom: '40px' }}>
                 <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '16px' }}>
-                  For Students
+                  Meanwhile, on the Student Side
                 </h2>
                 <div
                   style={{

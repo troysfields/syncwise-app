@@ -290,6 +290,32 @@ function getTasksForDay(tasks, day) {
 }
 
 // ============================================================
+// CMU ACADEMIC CALENDAR — auto-imported for @mavs.coloradomesa.edu accounts
+// Official Spring 2026 dates from coloradomesa.edu/registrar
+// ============================================================
+
+function getCMUAcademicCalendar(year) {
+  return [
+    { date: `${year}-01-19`, name: 'MLK Jr Day — No Classes', type: 'holiday' },
+    { date: `${year}-01-20`, name: 'Semester Begins', type: 'academic' },
+    { date: `${year}-02-04`, name: 'Last Day Add/Drop', type: 'deadline' },
+    { date: `${year}-03-13`, name: 'First Module Ends', type: 'academic' },
+    { date: `${year}-03-16`, name: 'Midterm Break', type: 'holiday' },
+    { date: `${year}-03-17`, name: 'Midterm Break', type: 'holiday' },
+    { date: `${year}-03-18`, name: 'Midterm Break', type: 'holiday' },
+    { date: `${year}-03-19`, name: 'Midterm Break', type: 'holiday' },
+    { date: `${year}-03-20`, name: 'Midterm Break', type: 'holiday' },
+    { date: `${year}-03-23`, name: 'Second Module Begins', type: 'academic' },
+    { date: `${year}-04-06`, name: 'Last Day to Withdraw', type: 'deadline' },
+    { date: `${year}-05-11`, name: 'Finals Begin', type: 'academic' },
+    { date: `${year}-05-12`, name: 'Finals', type: 'academic' },
+    { date: `${year}-05-13`, name: 'Finals', type: 'academic' },
+    { date: `${year}-05-14`, name: 'Last Day of Semester', type: 'academic' },
+    { date: `${year}-05-16`, name: 'Commencement', type: 'academic' },
+  ];
+}
+
+// ============================================================
 // NEEDS ATTENTION — Smart list of items that need action
 // ============================================================
 
@@ -369,6 +395,7 @@ export default function StudentDashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [semesterView, setSemesterView] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [academicCalendarEvents, setAcademicCalendarEvents] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null); // clicked calendar item for detail modal
   const [selectedItemType, setSelectedItemType] = useState(null); // 'task' or 'event'
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -462,6 +489,21 @@ export default function StudentDashboard() {
     }
 
     loadUserData();
+
+    // Load CMU academic calendar for @mavs.coloradomesa.edu accounts
+    function loadAcademicCalendar() {
+      let email = '';
+      try {
+        const raw = localStorage.getItem('syncwise_settings');
+        if (raw) email = JSON.parse(raw).studentEmail || '';
+      } catch {}
+      // Auto-import academic calendar for CMU students
+      if (email.endsWith('@mavs.coloradomesa.edu') || email.endsWith('@coloradomesa.edu')) {
+        const year = new Date().getFullYear();
+        setAcademicCalendarEvents(getCMUAcademicCalendar(year));
+      }
+    }
+    loadAcademicCalendar();
 
     // Auto-refresh every 10 minutes
     const refreshInterval = setInterval(() => {
@@ -922,26 +964,31 @@ export default function StudentDashboard() {
     }
   }, [activeSection]); // re-run when switching to calendar view
 
-  // Generate semester weeks (now through end of semester ~May 10)
-  function getSemesterWeeks() {
+  // Generate semester months — returns array of { month, year, label, days[] }
+  // Only includes months that haven't fully passed yet
+  function getSemesterMonths() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const startDate = new Date(today);
-    startDate.setDate(startDate.getDate() - startDate.getDay()); // align to Sunday
-    // End of semester: roughly May 10 of current academic year
-    const semesterEnd = new Date(today.getFullYear(), 4, 10); // May 10
-    if (semesterEnd < today) semesterEnd.setFullYear(semesterEnd.getFullYear() + 1);
-    const weeks = [];
-    const cursor = new Date(startDate);
-    while (cursor <= semesterEnd) {
-      const week = [];
-      for (let d = 0; d < 7; d++) {
-        week.push(new Date(cursor));
-        cursor.setDate(cursor.getDate() + 1);
+    const year = today.getFullYear();
+    // Spring semester: March through May (earlier months already done by March)
+    const semesterMonths = [
+      { month: 2, year, label: 'March' },
+      { month: 3, year, label: 'April' },
+      { month: 4, year, label: 'May' },
+    ];
+    // Filter out months that are fully in the past
+    const activeMonths = semesterMonths.filter(m => {
+      const lastDay = new Date(m.year, m.month + 1, 0); // last day of month
+      return lastDay >= today;
+    });
+    return activeMonths.map(m => {
+      const daysInMonth = new Date(m.year, m.month + 1, 0).getDate();
+      const days = [];
+      for (let d = 1; d <= daysInMonth; d++) {
+        days.push(new Date(m.year, m.month, d));
       }
-      weeks.push(week);
-    }
-    return weeks;
+      return { ...m, days };
+    });
   }
 
   function scrollToToday() {
@@ -1483,54 +1530,66 @@ export default function StudentDashboard() {
             </div>
             )}
 
-            {/* SEMESTER VIEW — zoomed-out rest of semester */}
-            {semesterView && (
-            <div className="semester-view-wrap" style={{ padding: '8px 4px' }}>
-              <div className="semester-view-container">
-                {getSemesterWeeks().map((week, wi) => {
-                  const weekStart = week[0];
-                  const weekEnd = week[6];
-                  const isCurrentWeek = week.some(d => isSameDay(d, new Date()));
-                  const weekLabel = `${weekStart.toLocaleDateString([], { month: 'short' })} ${weekStart.getDate()}`;
-                  return (
-                    <div key={wi} className="semester-week-col">
-                      <div className={`semester-week-header ${isCurrentWeek ? 'semester-current-week' : ''}`}>
-                        {weekLabel}
-                      </div>
-                      <div className="semester-day-row">
-                        {week.map((day, di) => {
-                          const dayTasks = getTasksForDay(calendarFilteredTasks, day);
-                          const dayEvents = getEventsForDay(calendarFilteredEvents, day);
-                          const isToday = isSameDay(day, new Date());
-                          const isPast = day < new Date() && !isToday;
-                          const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-                          return (
-                            <div key={di} className={`semester-day ${isToday ? 'semester-today' : ''}`} style={{ opacity: isPast ? 0.4 : 1 }}>
-                              <span className="semester-day-label">{dayNames[di]}{day.getDate()}</span>
-                              {dayTasks.map(t => (
-                                <div key={t.id} className="semester-bar"
-                                  style={{ background: t.courseColor || '#6B7280', width: `${Math.min(100, Math.max(30, (t.points || 10) * 2))}%`, cursor: 'pointer' }}
+            {/* SEMESTER VIEW — month rows with day boxes */}
+            {semesterView && (() => {
+              const months = getSemesterMonths();
+              const monthCount = months.length;
+              // Adaptive height: fewer months = taller boxes
+              const boxHeight = monthCount === 1 ? 80 : monthCount === 2 ? 60 : 46;
+              return (
+              <div className="semester-view-wrap" style={{ padding: '12px 8px' }}>
+                {months.map((m, mi) => (
+                  <div key={mi} className="semester-month-row">
+                    <div className="semester-month-label">{m.label}</div>
+                    <div className="semester-month-days">
+                      {m.days.map((day, di) => {
+                        const dayTasks = getTasksForDay(calendarFilteredTasks, day);
+                        const dayEvents = getEventsForDay(calendarFilteredEvents, day);
+                        const isToday = isSameDay(day, new Date());
+                        const isPast = day < new Date() && !isToday;
+                        const totalItems = dayTasks.length + dayEvents.length;
+                        const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                        // Check for academic calendar events
+                        const acadEvents = (academicCalendarEvents || []).filter(ae => isSameDay(new Date(ae.date), day));
+                        return (
+                          <div key={di}
+                            className={`semester-day-box ${isToday ? 'semester-box-today' : ''} ${isPast ? 'semester-box-past' : ''} ${isWeekend ? 'semester-box-weekend' : ''}`}
+                            style={{ height: `${boxHeight}px` }}
+                          >
+                            <div className="semester-box-date">{day.getDate()}</div>
+                            {acadEvents.length > 0 && (
+                              <div className="semester-box-acad" title={acadEvents.map(ae => ae.name).join(', ')}>
+                                {acadEvents[0].name.slice(0, 12)}{acadEvents[0].name.length > 12 ? '…' : ''}
+                              </div>
+                            )}
+                            <div className="semester-box-items">
+                              {dayTasks.slice(0, boxHeight > 55 ? 4 : 2).map(t => (
+                                <div key={t.id} className="semester-box-bar"
+                                  style={{ background: t.courseColor || '#6B7280', cursor: 'pointer' }}
                                   title={`${t.courseName}: ${t.name}${t.points ? ' (' + t.points + ' pts)' : ''}`}
                                   onClick={() => openItemDetail(t, 'task')}
                                 />
                               ))}
-                              {dayEvents.map(e => (
-                                <div key={e.id} className="semester-bar"
-                                  style={{ background: '#3B82F6', width: '40%', cursor: 'pointer' }}
+                              {dayEvents.slice(0, 1).map(e => (
+                                <div key={e.id} className="semester-box-bar"
+                                  style={{ background: '#3B82F6', cursor: 'pointer' }}
                                   title={e.name}
                                   onClick={() => openItemDetail(e, 'event')}
                                 />
                               ))}
+                              {totalItems > (boxHeight > 55 ? 5 : 3) && (
+                                <div className="semester-box-more">+{totalItems - (boxHeight > 55 ? 5 : 3)}</div>
+                              )}
                             </div>
-                          );
-                        })}
-                      </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
-            </div>
-            )}
+              );
+            })()}
           </div>
           )}
 

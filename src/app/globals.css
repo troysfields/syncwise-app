@@ -621,90 +621,127 @@ body {
   text-overflow: ellipsis;
 }
 
-/* --- SEMESTER VIEW --- */
-.semester-toggle-bar {
-  display: none;
-  align-items: center;
-  gap: 8px;
-  padding: 0 20px;
-  margin-bottom: 4px;
-}
-.semester-toggle-bar.semester-visible {
-  display: flex;
-}
+/* --- SEMESTER VIEW (month rows) --- */
 .semester-view-wrap {
   padding: 0;
   overflow: hidden;
 }
-.semester-view-container {
+.semester-month-row {
   display: flex;
-  overflow-x: hidden;
-  padding: 0 0 8px;
+  align-items: stretch;
+  border-bottom: 1px solid var(--gray-200);
+  padding: 0;
 }
-.semester-week-col {
+.semester-month-row:last-child {
+  border-bottom: none;
+}
+.semester-month-label {
+  width: 60px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--gray-50);
+  border-right: 1px solid var(--gray-200);
+}
+.semester-month-days {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+.semester-day-box {
   flex: 1;
   min-width: 0;
   border-right: 1px solid var(--gray-100);
+  padding: 2px 1px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  transition: background 0.15s;
 }
-.semester-week-col:last-child {
+.semester-day-box:last-child {
   border-right: none;
 }
-.semester-week-header {
-  text-align: center;
-  padding: 6px 2px 4px;
-  border-bottom: 1px solid var(--gray-100);
+.semester-day-box:hover {
+  background: var(--gray-50);
+}
+.semester-box-today {
+  background: var(--primary-light) !important;
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  border-radius: 3px;
+  z-index: 1;
+}
+.semester-box-past {
+  opacity: 0.4;
+}
+.semester-box-weekend {
+  background: var(--gray-50);
+}
+.semester-box-date {
   font-size: 9px;
   font-weight: 700;
   color: var(--gray-500);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  text-align: center;
+  margin-bottom: 1px;
+  line-height: 1;
 }
-.semester-week-header.semester-current-week {
+.semester-box-today .semester-box-date {
   color: var(--primary);
-  background: var(--primary-light);
+  font-weight: 800;
 }
-.semester-day-row {
+.semester-box-acad {
+  font-size: 7px;
+  font-weight: 700;
+  color: #7C3AED;
+  background: #EDE9FE;
+  border-radius: 2px;
+  padding: 1px 2px;
+  text-align: center;
+  line-height: 1.2;
+  margin-bottom: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.semester-box-items {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  padding: 3px 2px;
   flex: 1;
 }
-.semester-day {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 1px 2px;
-  min-height: 14px;
-  border-radius: 2px;
+.semester-box-bar {
+  height: 4px;
+  border-radius: 1px;
+  width: 100%;
+  transition: transform 0.1s;
 }
-.semester-day.semester-today {
-  background: var(--primary-light);
-  outline: 1.5px solid var(--primary);
-  border-radius: 3px;
+.semester-box-bar:hover {
+  transform: scaleY(1.8);
 }
-.semester-day-label {
+.semester-box-more {
   font-size: 7px;
   font-weight: 700;
   color: var(--gray-400);
-  min-width: 12px;
-  text-align: right;
-  flex-shrink: 0;
-}
-.semester-bar {
-  height: 5px;
-  border-radius: 2px;
-  flex-shrink: 0;
+  text-align: center;
+  line-height: 1;
 }
 
 /* Dark mode semester */
-[data-theme="dark"] .semester-week-header { color: #94A3B8; border-color: #334155; }
-[data-theme="dark"] .semester-week-col { border-color: #334155; }
-[data-theme="dark"] .semester-week-header.semester-current-week { background: #1a0810; color: #C4506A; }
-[data-theme="dark"] .semester-day-label { color: #64748B; }
-[data-theme="dark"] .semester-day.semester-today { background: #1a0810; outline-color: #C4506A; }
+[data-theme="dark"] .semester-month-label { background: #0F172A; color: #C4506A; border-color: #334155; }
+[data-theme="dark"] .semester-month-row { border-color: #334155; }
+[data-theme="dark"] .semester-day-box { border-color: #1E293B; }
+[data-theme="dark"] .semester-day-box:hover { background: #1E293B; }
+[data-theme="dark"] .semester-box-today { background: #1a0810 !important; outline-color: #C4506A; }
+[data-theme="dark"] .semester-box-weekend { background: #0F172A; }
+[data-theme="dark"] .semester-box-date { color: #94A3B8; }
+[data-theme="dark"] .semester-box-today .semester-box-date { color: #C4506A; }
+[data-theme="dark"] .semester-box-acad { background: #2E1065; color: #C4B5FD; }
 
 /* --- ITEM DETAIL MODAL --- */
 .detail-modal-overlay {

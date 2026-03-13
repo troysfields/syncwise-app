@@ -16,6 +16,15 @@ const DEFAULT_COURSE_COLORS = {
   'ENTR 343': '#D97706',
   'BUS 201': '#DC2626',
   'CSCI 110': '#7C3AED',
+  'MANG 471': '#0891B2',
+  'MANG 491': '#6D28D9',
+  'MANG 499': '#BE185D',
+  'ENGR 353': '#EA580C',
+  // Sample courses for demo mode
+  'COURSE 101': '#5D0022',
+  'COURSE 102': '#DC2626',
+  'COURSE 201': '#059669',
+  'COURSE 301': '#D97706',
 };
 
 // ============================================================
@@ -23,208 +32,37 @@ const DEFAULT_COURSE_COLORS = {
 // ============================================================
 
 const DEMO_ITEMS = [
-  // ENTR 450 - Assignments
-  {
-    id: 'd2l-asgn-1',
-    type: 'assignment',
-    name: 'Section IV-A Market Analysis',
-    courseName: 'ENTR 450',
-    courseColor: DEFAULT_COURSE_COLORS['ENTR 450'],
-    dueDate: '2026-03-11T23:59:00',
-    points: 50,
-    source: 'd2l',
-  },
-  {
-    id: 'd2l-asgn-2',
-    type: 'assignment',
-    name: 'Idea Journal #3',
-    courseName: 'ENTR 343',
-    courseColor: DEFAULT_COURSE_COLORS['ENTR 343'],
-    dueDate: '2026-03-13T23:59:00',
-    points: 25,
-    source: 'd2l',
-  },
-  {
-    id: 'd2l-asgn-3',
-    type: 'assignment',
-    name: 'Case Study Write-up',
-    courseName: 'BUS 201',
-    courseColor: DEFAULT_COURSE_COLORS['BUS 201'],
-    dueDate: '2026-03-14T23:59:00',
-    points: 40,
-    source: 'd2l',
-  },
-  {
-    id: 'd2l-asgn-4',
-    type: 'assignment',
-    name: 'Financial Projections',
-    courseName: 'ENTR 450',
-    courseColor: DEFAULT_COURSE_COLORS['ENTR 450'],
-    dueDate: '2026-03-18T23:59:00',
-    points: 75,
-    source: 'd2l',
-  },
-  {
-    id: 'd2l-asgn-5',
-    type: 'assignment',
-    name: 'Accounting Problem Set',
-    courseName: 'ACCT 301',
-    courseColor: DEFAULT_COURSE_COLORS['ACCT 301'],
-    dueDate: '2026-03-12T17:00:00',
-    points: 30,
-    source: 'd2l',
-  },
-  {
-    id: 'd2l-asgn-6',
-    type: 'assignment',
-    name: 'Code Review Assignment',
-    courseName: 'CSCI 110',
-    courseColor: DEFAULT_COURSE_COLORS['CSCI 110'],
-    dueDate: '2026-03-15T23:59:00',
-    points: 100,
-    source: 'd2l',
-  },
+  // Assignments
+  { id: 'd2l-asgn-1', type: 'assignment', name: '(Sample) Research Paper Draft', courseName: 'COURSE 101', courseColor: DEFAULT_COURSE_COLORS['COURSE 101'], dueDate: '2026-03-11T23:59:00', points: 50, source: 'd2l' },
+  { id: 'd2l-asgn-2', type: 'assignment', name: '(Sample) Reflection Journal #3', courseName: 'COURSE 301', courseColor: DEFAULT_COURSE_COLORS['COURSE 301'], dueDate: '2026-03-13T23:59:00', points: 25, source: 'd2l' },
+  { id: 'd2l-asgn-3', type: 'assignment', name: '(Sample) Case Study Write-up', courseName: 'COURSE 102', courseColor: DEFAULT_COURSE_COLORS['COURSE 102'], dueDate: '2026-03-14T23:59:00', points: 40, source: 'd2l' },
+  { id: 'd2l-asgn-4', type: 'assignment', name: '(Sample) Final Project Proposal', courseName: 'COURSE 101', courseColor: DEFAULT_COURSE_COLORS['COURSE 101'], dueDate: '2026-03-18T23:59:00', points: 75, source: 'd2l' },
+  { id: 'd2l-asgn-5', type: 'assignment', name: '(Sample) Problem Set 4', courseName: 'COURSE 201', courseColor: DEFAULT_COURSE_COLORS['COURSE 201'], dueDate: '2026-03-12T17:00:00', points: 30, source: 'd2l' },
 
   // Quizzes
-  {
-    id: 'd2l-quiz-1',
-    type: 'quiz',
-    name: 'Chapter 8 Quiz',
-    courseName: 'ACCT 301',
-    courseColor: DEFAULT_COURSE_COLORS['ACCT 301'],
-    dueDate: '2026-03-11T17:00:00',
-    points: 10,
-    source: 'd2l',
-  },
-  {
-    id: 'd2l-quiz-2',
-    type: 'quiz',
-    name: 'Venture Fundamentals Quiz',
-    courseName: 'ENTR 450',
-    courseColor: DEFAULT_COURSE_COLORS['ENTR 450'],
-    dueDate: '2026-03-13T23:59:00',
-    points: 15,
-    source: 'd2l',
-  },
-  {
-    id: 'd2l-quiz-3',
-    type: 'quiz',
-    name: 'Intro to Business Quiz',
-    courseName: 'BUS 201',
-    courseColor: DEFAULT_COURSE_COLORS['BUS 201'],
-    dueDate: '2026-03-12T23:59:00',
-    points: 20,
-    source: 'd2l',
-  },
+  { id: 'd2l-quiz-1', type: 'quiz', name: '(Sample) Chapter 8 Quiz', courseName: 'COURSE 201', courseColor: DEFAULT_COURSE_COLORS['COURSE 201'], dueDate: '2026-03-11T17:00:00', points: 10, source: 'd2l' },
+  { id: 'd2l-quiz-2', type: 'quiz', name: '(Sample) Ethics Quiz', courseName: 'COURSE 101', courseColor: DEFAULT_COURSE_COLORS['COURSE 101'], dueDate: '2026-03-13T23:59:00', points: 15, source: 'd2l' },
+  { id: 'd2l-quiz-3', type: 'quiz', name: '(Sample) Midterm Review Quiz', courseName: 'COURSE 102', courseColor: DEFAULT_COURSE_COLORS['COURSE 102'], dueDate: '2026-03-12T23:59:00', points: 20, source: 'd2l' },
 
   // Discussions
-  {
-    id: 'd2l-disc-1',
-    type: 'discussion',
-    name: 'Week 3: Competitive Analysis Discussion',
-    courseName: 'ENTR 450',
-    courseColor: DEFAULT_COURSE_COLORS['ENTR 450'],
-    dueDate: '2026-03-14T23:59:00',
-    source: 'd2l',
-  },
-  {
-    id: 'd2l-disc-2',
-    type: 'discussion',
-    name: 'GAAP Standards Discussion',
-    courseName: 'ACCT 301',
-    courseColor: DEFAULT_COURSE_COLORS['ACCT 301'],
-    dueDate: '2026-03-15T23:59:00',
-    source: 'd2l',
-  },
-  {
-    id: 'd2l-disc-3',
-    type: 'discussion',
-    name: 'Business Ethics Case Study',
-    courseName: 'BUS 201',
-    courseColor: DEFAULT_COURSE_COLORS['BUS 201'],
-    dueDate: '2026-03-13T23:59:00',
-    source: 'd2l',
-  },
+  { id: 'd2l-disc-1', type: 'discussion', name: '(Sample) Week 3 Discussion Response', courseName: 'COURSE 101', courseColor: DEFAULT_COURSE_COLORS['COURSE 101'], dueDate: '2026-03-14T23:59:00', source: 'd2l' },
+  { id: 'd2l-disc-2', type: 'discussion', name: '(Sample) Case Analysis Discussion', courseName: 'COURSE 201', courseColor: DEFAULT_COURSE_COLORS['COURSE 201'], dueDate: '2026-03-15T23:59:00', source: 'd2l' },
 
   // Announcements
-  {
-    id: 'd2l-announce-1',
-    type: 'announcement',
-    name: 'Upcoming Exam Schedule',
-    courseName: 'ACCT 301',
-    courseColor: DEFAULT_COURSE_COLORS['ACCT 301'],
-    postedDate: '2026-03-10T08:00:00',
-    source: 'd2l',
-  },
-  {
-    id: 'd2l-announce-2',
-    type: 'announcement',
-    name: 'Office Hours Extended Thursday',
-    courseName: 'ENTR 450',
-    courseColor: DEFAULT_COURSE_COLORS['ENTR 450'],
-    postedDate: '2026-03-09T14:30:00',
-    source: 'd2l',
-  },
-  {
-    id: 'd2l-announce-3',
-    type: 'announcement',
-    name: 'Guest Speaker Next Week',
-    courseName: 'BUS 201',
-    courseColor: DEFAULT_COURSE_COLORS['BUS 201'],
-    postedDate: '2026-03-08T10:00:00',
-    source: 'd2l',
-  },
+  { id: 'd2l-announce-1', type: 'announcement', name: '(Sample) Upcoming Exam Schedule', courseName: 'COURSE 201', courseColor: DEFAULT_COURSE_COLORS['COURSE 201'], postedDate: '2026-03-10T08:00:00', source: 'd2l' },
+  { id: 'd2l-announce-2', type: 'announcement', name: '(Sample) Office Hours Updated', courseName: 'COURSE 101', courseColor: DEFAULT_COURSE_COLORS['COURSE 101'], postedDate: '2026-03-09T14:30:00', source: 'd2l' },
+  { id: 'd2l-announce-3', type: 'announcement', name: '(Sample) Guest Speaker Next Week', courseName: 'COURSE 301', courseColor: DEFAULT_COURSE_COLORS['COURSE 301'], postedDate: '2026-03-08T10:00:00', source: 'd2l' },
 
   // Content & Checklists
-  {
-    id: 'd2l-content-1',
-    type: 'content',
-    name: 'Module 4: Market Analysis Framework',
-    courseName: 'ENTR 450',
-    courseColor: DEFAULT_COURSE_COLORS['ENTR 450'],
-    dueDate: '2026-03-11T23:59:00',
-    source: 'd2l',
-  },
-  {
-    id: 'd2l-check-1',
-    type: 'checklist',
-    name: 'Chapter 7 Reading Checklist',
-    courseName: 'ACCT 301',
-    courseColor: DEFAULT_COURSE_COLORS['ACCT 301'],
-    dueDate: '2026-03-12T23:59:00',
-    source: 'd2l',
-  },
+  { id: 'd2l-content-1', type: 'content', name: '(Sample) Module 4 — Lecture Slides', courseName: 'COURSE 101', courseColor: DEFAULT_COURSE_COLORS['COURSE 101'], dueDate: '2026-03-11T23:59:00', source: 'd2l' },
+  { id: 'd2l-check-1', type: 'checklist', name: '(Sample) Weekly Reading Checklist', courseName: 'COURSE 201', courseColor: DEFAULT_COURSE_COLORS['COURSE 201'], dueDate: '2026-03-12T23:59:00', source: 'd2l' },
 ];
 
 const DEMO_CALENDAR_EVENTS = [
-  {
-    id: 'evt-1',
-    title: 'Section IV Due',
-    courseName: 'ENTR 450',
-    courseColor: DEFAULT_COURSE_COLORS['ENTR 450'],
-    date: '2026-03-11',
-  },
-  {
-    id: 'evt-2',
-    title: 'Chapter 8 Quiz Due',
-    courseName: 'ACCT 301',
-    courseColor: DEFAULT_COURSE_COLORS['ACCT 301'],
-    date: '2026-03-11',
-  },
-  {
-    id: 'evt-3',
-    title: 'Case Study Due',
-    courseName: 'BUS 201',
-    courseColor: DEFAULT_COURSE_COLORS['BUS 201'],
-    date: '2026-03-14',
-  },
-  {
-    id: 'evt-4',
-    title: 'Financial Projections Due',
-    courseName: 'ENTR 450',
-    courseColor: DEFAULT_COURSE_COLORS['ENTR 450'],
-    date: '2026-03-18',
-  },
+  { id: 'evt-1', title: '(Sample) Paper Draft Due', courseName: 'COURSE 101', courseColor: DEFAULT_COURSE_COLORS['COURSE 101'], date: '2026-03-11' },
+  { id: 'evt-2', title: '(Sample) Chapter 8 Quiz Due', courseName: 'COURSE 201', courseColor: DEFAULT_COURSE_COLORS['COURSE 201'], date: '2026-03-11' },
+  { id: 'evt-3', title: '(Sample) Case Study Due', courseName: 'COURSE 102', courseColor: DEFAULT_COURSE_COLORS['COURSE 102'], date: '2026-03-14' },
+  { id: 'evt-4', title: '(Sample) Final Proposal Due', courseName: 'COURSE 101', courseColor: DEFAULT_COURSE_COLORS['COURSE 101'], date: '2026-03-18' },
 ];
 
 // ============================================================
@@ -657,7 +495,7 @@ export default function InstructorDashboard() {
               </p>
               {conflicts.slice(0, 5).map(conflict => (
                 <div key={conflict.id} style={{ background: '#FFF', borderRadius: '8px', padding: '12px', marginBottom: '8px', border: '1px solid #FECACA' }}>
-                  <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '6px' }}>{conflict.itemName || 'Unknown Item'}</div>
+                  <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '6px', color: '#111827' }}>{conflict.itemName || 'Unknown Item'}</div>
                   <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>{conflict.courseName}</div>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     <button onClick={() => resolveConflict(conflict.id, 'resolve', { chosenDate: conflict.icalDate, chosenSource: 'ical' })}
@@ -884,12 +722,12 @@ export default function InstructorDashboard() {
                     borderRadius: '10px',
                     marginBottom: '8px',
                     borderLeft: '3px solid ' + item.courseColor,
-                    background: '#FAFAFA',
+                    background: 'var(--gray-50, #FAFAFA)',
                     transition: 'all 0.2s',
                     opacity: submittable ? 1 : 0.75,
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#F1F5F9'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = '#FAFAFA'}>
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--gray-100, #F1F5F9)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'var(--gray-50, #FAFAFA)'}>
                     <span style={{ fontSize: '18px' }}>{typeIcon(item.type)}</span>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: '13px', fontWeight: '600' }}>{item.name}</div>

@@ -4,20 +4,29 @@
 // Storage: Redis (persistent) — replaces old file-based storage that got wiped on Vercel cold starts
 
 import { NextResponse } from 'next/server';
-import { requireAuth, requireAdmin } from '@/lib/auth';
+import { requireAuth } from '@/lib/auth';
 import { saveFeedback, getAllFeedback } from '@/lib/db';
 
 export async function POST(req) {
-  const session = requireAuth(req);
-  if (session instanceof NextResponse) return session;
+  // No auth required — feedback should work for everyone, including unauthenticated users.
+  // We still try to get session info for context, but don't block on it.
+  let sessionEmail = 'anonymous';
+  let sessionRole = 'unknown';
+  try {
+    const session = requireAuth(req);
+    if (!(session instanceof NextResponse)) {
+      sessionEmail = session.email || session.sub || 'anonymous';
+      sessionRole = session.role || 'student';
+    }
+  } catch { /* no session — that's fine */ }
 
   try {
     const body = await req.json();
 
     const entry = {
       type: 'form_feedback',
-      userEmail: body.user || session.email || session.sub || 'anonymous',
-      userRole: session.role || 'student',
+      userEmail: body.user || sessionEmail,
+      userRole: sessionRole,
       // Checkbox ratings
       easyToNavigate: body.easyToNavigate || false,
       aiSuggestionsHelpful: body.aiSuggestionsHelpful || false,
@@ -49,9 +58,29 @@ export async function POST(req) {
 }
 
 export async function GET(request) {
-  // Admin only — feedback data contains user info
-  const adminCheck = requireAdmin(request);
-  if (adminCheck instanceof NextResponse) return adminCheck;
+  // Admin only — feedback data contains user info.
+  // Accept either: x-admin-secret header (API clients) OR admin_authenticated cookie (admin UI).
+  const headerSecret = request.headers.get('x-admin-secret');
+  const cookieHeader = request.headers.get('cookie') || '';
+  const cookies = Object.fromEntries(
+    cookieHeader.split(';').map(c => {
+      const [key, ...val] = c.trim().split('=');
+      return [key, val.join('=')];
+    })
+  );
+  const adminCookie = cookies['admin_authenticated'];
+  const ADMIN_SECRET = process.env.ADMIN_SECRET || null;
+
+  if (!ADMIN_SECRET) {
+    return NextResponse.json({ error: 'Admin access not configured.' }, { status: 403 });
+  }
+
+  const isAuthorized = headerSecret === ADMIN_SECRET ||
+    (adminCookie && decodeURIComponent(adminCookie) === ADMIN_SECRET);
+
+  if (!isAuthorized) {
+    return NextResponse.json({ error: 'Unauthorized — admin credentials required.' }, { status: 401 });
+  }
 
   try {
     const allEntries = await getAllFeedback();

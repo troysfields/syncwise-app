@@ -189,7 +189,7 @@ export default function FutureUpdatesPage() {
                     {
                       title: 'Canvas LMS Support',
                       description:
-                        'Not everyone uses D2L. We get it. Canvas support is coming so this isn\'t just a CMU thing.',
+                        'Not everyone uses D2L. We get it. Canvas support is coming so it doesn\'t have to be just a CMU thing.',
                     },
                     {
                       title: 'Smart Study Planner',

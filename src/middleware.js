@@ -145,14 +145,13 @@ export function middleware(request) {
 
   // ─── Protected Page Routes — require session cookie ───
   // If the user hits /dashboard, /settings, /instructor, /future-updates
-  // without a valid session cookie, redirect to /login.
+  // without a valid session cookie, send them to the landing page.
+  // They've never logged in on this browser — show them what the product is first.
   const isProtectedPage = PROTECTED_PAGE_ROUTES.some(route => pathname.startsWith(route));
   if (isProtectedPage) {
     const sessionCookie = request.cookies.get('syncwise_session')?.value;
     if (!sessionCookie) {
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(loginUrl);
+      return NextResponse.redirect(new URL('https://syncwise-landing.vercel.app'));
     }
   }
 

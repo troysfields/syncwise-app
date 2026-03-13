@@ -23,48 +23,53 @@ const DEFAULT_COURSE_COLORS = {
   'MANG 491': '#6D28D9',
   'MANG 499': '#BE185D',
   'ENGR 353': '#EA580C',
+  // Sample courses for demo mode
+  'COURSE 101': '#5D0022',
+  'COURSE 102': '#DC2626',
+  'COURSE 201': '#059669',
+  'COURSE 301': '#D97706',
 };
 
 const DEMO_TASKS = [
-  { id: 'd2l-asgn-1', type: 'assignment', name: 'Section IV-A Market Analysis', courseName: 'ENTR 450', courseColor: '#5D0022', dueDate: '2026-03-11T23:59:00', points: 50, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
-  { id: 'd2l-quiz-1', type: 'quiz', name: 'Chapter 8 Quiz', courseName: 'ACCT 301', courseColor: '#059669', dueDate: '2026-03-11T17:00:00', points: 10, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
-  { id: 'd2l-asgn-2', type: 'assignment', name: 'Idea Journal #3', courseName: 'ENTR 343', courseColor: '#D97706', dueDate: '2026-03-13T23:59:00', points: 25, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
-  { id: 'd2l-asgn-3', type: 'assignment', name: 'Case Study Write-up', courseName: 'BUS 201', courseColor: '#DC2626', dueDate: '2026-03-14T23:59:00', points: 40, source: 'd2l', hasDueDate: true, submitted: true, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
-  { id: 'd2l-disc-1', type: 'discussion', name: 'Discussion 5 — Market Entry Strategies', courseName: 'ENTR 450', courseColor: '#5D0022', dueDate: '2026-03-12T23:59:00', points: 15, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: true, isRecurring: true, recurringLabel: 'Weekly', status: 'active', manualDate: null },
-  { id: 'd2l-quiz-2', type: 'quiz', name: 'Accounting Ethics Quiz', courseName: 'ACCT 301', courseColor: '#059669', dueDate: '2026-03-16T23:59:00', points: 20, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
-  { id: 'd2l-ann-1', type: 'announcement', name: 'Midterm Study Guide Posted', courseName: 'ACCT 301', courseColor: '#059669', dueDate: null, points: null, source: 'd2l', hasDueDate: false, submitted: false, graded: false, grade: null, unread: true, isRecurring: false, status: 'active', manualDate: null },
-  { id: 'd2l-ann-2', type: 'announcement', name: 'Guest Speaker Next Week — Bring Questions', courseName: 'ENTR 343', courseColor: '#D97706', dueDate: null, points: null, source: 'd2l', hasDueDate: false, submitted: false, graded: false, grade: null, unread: true, isRecurring: false, status: 'active', manualDate: null },
-  { id: 'd2l-check-1', type: 'checklist', name: 'Week 8 Checklist — Read Ch. 9', courseName: 'BUS 201', courseColor: '#DC2626', dueDate: '2026-03-15T23:59:00', points: null, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
-  { id: 'd2l-content-1', type: 'content', name: 'Module 7 — Financial Projections (Lecture Slides)', courseName: 'ENTR 450', courseColor: '#5D0022', dueDate: null, points: null, source: 'd2l', hasDueDate: false, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-asgn-1', type: 'assignment', name: '(Sample) Research Paper Draft', courseName: 'COURSE 101', courseColor: '#5D0022', dueDate: '2026-03-11T23:59:00', points: 50, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-quiz-1', type: 'quiz', name: '(Sample) Chapter 8 Quiz', courseName: 'COURSE 201', courseColor: '#059669', dueDate: '2026-03-11T17:00:00', points: 10, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-asgn-2', type: 'assignment', name: '(Sample) Reflection Journal #3', courseName: 'COURSE 301', courseColor: '#D97706', dueDate: '2026-03-13T23:59:00', points: 25, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-asgn-3', type: 'assignment', name: '(Sample) Case Study Write-up', courseName: 'COURSE 102', courseColor: '#DC2626', dueDate: '2026-03-14T23:59:00', points: 40, source: 'd2l', hasDueDate: true, submitted: true, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-disc-1', type: 'discussion', name: '(Sample) Discussion 5 — Topic Response', courseName: 'COURSE 101', courseColor: '#5D0022', dueDate: '2026-03-12T23:59:00', points: 15, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: true, isRecurring: true, recurringLabel: 'Weekly', status: 'active', manualDate: null },
+  { id: 'd2l-quiz-2', type: 'quiz', name: '(Sample) Ethics Quiz', courseName: 'COURSE 201', courseColor: '#059669', dueDate: '2026-03-16T23:59:00', points: 20, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-ann-1', type: 'announcement', name: '(Sample) Midterm Study Guide Posted', courseName: 'COURSE 201', courseColor: '#059669', dueDate: null, points: null, source: 'd2l', hasDueDate: false, submitted: false, graded: false, grade: null, unread: true, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-ann-2', type: 'announcement', name: '(Sample) Guest Speaker Next Week', courseName: 'COURSE 301', courseColor: '#D97706', dueDate: null, points: null, source: 'd2l', hasDueDate: false, submitted: false, graded: false, grade: null, unread: true, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-check-1', type: 'checklist', name: '(Sample) Weekly Checklist — Read Ch. 9', courseName: 'COURSE 102', courseColor: '#DC2626', dueDate: '2026-03-15T23:59:00', points: null, source: 'd2l', hasDueDate: true, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
+  { id: 'd2l-content-1', type: 'content', name: '(Sample) Module 7 — Lecture Slides', courseName: 'COURSE 101', courseColor: '#5D0022', dueDate: null, points: null, source: 'd2l', hasDueDate: false, submitted: false, graded: false, grade: null, unread: false, isRecurring: false, status: 'active', manualDate: null },
 ];
 
 // Demo grade alerts — newly graded items
 const DEMO_GRADE_ALERTS = [
-  { id: 'grade-1', name: 'Discussion 4 — Competitive Analysis', courseName: 'ENTR 450', courseColor: '#5D0022', grade: { earned: 14, outOf: 15, percentage: 93 }, type: 'discussion' },
-  { id: 'grade-2', name: 'Chapter 7 Quiz', courseName: 'ACCT 301', courseColor: '#059669', grade: { earned: 9, outOf: 10, percentage: 90 }, type: 'quiz' },
+  { id: 'grade-1', name: '(Sample) Discussion 4 Response', courseName: 'COURSE 101', courseColor: '#5D0022', grade: { earned: 14, outOf: 15, percentage: 93 }, type: 'discussion' },
+  { id: 'grade-2', name: '(Sample) Chapter 7 Quiz', courseName: 'COURSE 201', courseColor: '#059669', grade: { earned: 9, outOf: 10, percentage: 90 }, type: 'quiz' },
 ];
 
 // Demo course progress (completion %)
 const DEMO_COURSE_PROGRESS = [
-  { courseName: 'ENTR 450', courseColor: '#5D0022', completed: 18, total: 26 },
-  { courseName: 'ACCT 301', courseColor: '#059669', completed: 14, total: 22 },
-  { courseName: 'ENTR 343', courseColor: '#D97706', completed: 10, total: 18 },
-  { courseName: 'BUS 201', courseColor: '#DC2626', completed: 12, total: 20 },
+  { courseName: 'COURSE 101', courseColor: '#5D0022', completed: 18, total: 26 },
+  { courseName: 'COURSE 201', courseColor: '#059669', completed: 14, total: 22 },
+  { courseName: 'COURSE 301', courseColor: '#D97706', completed: 10, total: 18 },
+  { courseName: 'COURSE 102', courseColor: '#DC2626', completed: 12, total: 20 },
 ];
 
 const DEMO_EVENTS = [
-  { id: 1, name: 'Team Meeting — Marketing Group', start: '2026-03-11T14:00:00', end: '2026-03-11T15:00:00', source: 'outlook' },
-  { id: 2, name: 'Office Hours — Prof. Jouflas', start: '2026-03-11T15:30:00', end: '2026-03-11T16:30:00', source: 'outlook' },
-  { id: 3, name: 'IT Director Meeting — Mike', start: '2026-03-12T10:00:00', end: '2026-03-12T10:30:00', source: 'outlook' },
-  { id: 4, name: 'ENTR 450 Group Presentation Prep', start: '2026-03-13T11:00:00', end: '2026-03-13T12:00:00', source: 'outlook' },
-  { id: 5, name: 'Career Fair', start: '2026-03-18T10:00:00', end: '2026-03-18T14:00:00', source: 'outlook' },
-  { id: 6, name: 'Study Session — ACCT 301 Midterm', start: '2026-03-15T14:00:00', end: '2026-03-15T16:00:00', source: 'outlook' },
+  { id: 1, name: '(Sample) Group Project Meeting', start: '2026-03-11T14:00:00', end: '2026-03-11T15:00:00', source: 'outlook' },
+  { id: 2, name: '(Sample) Office Hours', start: '2026-03-11T15:30:00', end: '2026-03-11T16:30:00', source: 'outlook' },
+  { id: 3, name: '(Sample) Advisor Check-in', start: '2026-03-12T10:00:00', end: '2026-03-12T10:30:00', source: 'outlook' },
+  { id: 4, name: '(Sample) Presentation Prep', start: '2026-03-13T11:00:00', end: '2026-03-13T12:00:00', source: 'outlook' },
+  { id: 5, name: '(Sample) Career Fair', start: '2026-03-18T10:00:00', end: '2026-03-18T14:00:00', source: 'outlook' },
+  { id: 6, name: '(Sample) Study Session', start: '2026-03-15T14:00:00', end: '2026-03-15T16:00:00', source: 'outlook' },
 ];
 
 const DEMO_SUGGESTIONS = [
-  { type: 'action', text: 'Start with ENTR 450 Market Analysis — it\'s worth 50 points and due tonight. The Chapter 8 Quiz is only 10 points, so save that for after.' },
-  { type: 'reminder', text: 'You have 5 assignments due this week. Block 2 hours tomorrow morning for ENTR 343 Idea Journal.' },
-  { type: 'planning', text: 'Your IT meeting with Mike is tomorrow at 10 AM. Review the Beta API Request doc tonight so you\'re ready.' },
+  { type: 'action', text: 'This is sample data — sign in and connect your D2L calendar to see real suggestions based on your actual assignments.' },
+  { type: 'reminder', text: 'Once connected, SyncWise will track your deadlines, suggest priorities, and help you stay on top of your week.' },
+  { type: 'planning', text: 'Your calendar events, grade alerts, and course progress will all update automatically once you complete setup.' },
 ];
 
 // ============================================================

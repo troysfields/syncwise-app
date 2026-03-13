@@ -76,9 +76,16 @@ export default function NotificationPreferencesPage() {
   function updatePreferences(updater) {
     setPreferences(prev => {
       const updated = typeof updater === 'function' ? updater(prev) : { ...prev, ...updater };
+      // Auto-save to localStorage on every change
+      try {
+        localStorage.setItem('syncwise_notification_prefs', JSON.stringify(updated));
+      } catch (e) { /* ignore */ }
       return updated;
     });
-    setSaved(false);
+    // Show "Saved" confirmation briefly
+    setSaved(true);
+    clearTimeout(window._notifSaveTimeout);
+    window._notifSaveTimeout = setTimeout(() => setSaved(false), 1500);
   }
 
   function applyPreset(presetKey) {
@@ -131,18 +138,7 @@ export default function NotificationPreferencesPage() {
     setPushPermission(result);
   }
 
-  function handleSave() {
-    // Persist to localStorage
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('syncwise_notification_prefs', JSON.stringify(preferences));
-      } catch (e) {
-        console.error('Failed to save notification preferences:', e);
-      }
-    }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  }
+  // Save is now automatic — preferences persist to localStorage on every change
 
   return (
     <div>
@@ -401,16 +397,23 @@ export default function NotificationPreferencesPage() {
               ))}
             </div>
 
-            {/* Save Button */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginBottom: '40px' }}>
-              {saved && (
-                <span style={{ color: '#059669', fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  Saved
-                </span>
-              )}
-              <button className="btn btn-primary" onClick={handleSave}>
-                Save Preferences
-              </button>
+            {/* Auto-save indicator */}
+            <div style={{ marginBottom: '40px', textAlign: 'center' }}>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 20px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: '600',
+                background: saved ? '#ECFDF5' : '#F1F5F9',
+                color: saved ? '#059669' : '#94A3B8',
+                border: saved ? '1px solid #A7F3D0' : '1px solid #E2E8F0',
+                transition: 'all 0.3s',
+              }}>
+                {saved ? '✓ Preferences saved' : 'Changes save automatically'}
+              </div>
             </div>
           </div>
         </main>

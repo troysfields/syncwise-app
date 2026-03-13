@@ -348,10 +348,10 @@ export default function ChatWidget() {
           max-width: calc(100vw - 48px);
           height: 540px;
           max-height: calc(100vh - 120px);
-          background: #FAFAFA;
+          background: #1a1a2e;
           border-radius: 20px;
-          border: 2px solid #E5E7EB;
-          box-shadow: 0 12px 48px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+          border: 2px solid #2d2d44;
+          box-shadow: 0 12px 48px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.1);
           display: flex;
           flex-direction: column;
           z-index: 9998;
@@ -443,6 +443,7 @@ export default function ChatWidget() {
           flex-direction: column;
           gap: 10px;
           scroll-behavior: smooth;
+          background: #1a1a2e;
         }
         .chat-msg {
           display: flex;
@@ -484,11 +485,11 @@ export default function ChatWidget() {
 
         /* Comic-inspired speech bubble for AI */
         .chat-bubble-ai {
-          background: #FFFFFF;
-          color: #1a1a2e;
-          border: 2px solid #D1D5DB;
+          background: #2d2d44;
+          color: #E5E7EB;
+          border: 2px solid #3d3d55;
           border-radius: 18px 18px 18px 4px;
-          box-shadow: 2px 2px 0px #D1D5DB;
+          box-shadow: 2px 2px 0px #13132a;
           position: relative;
         }
 
@@ -511,7 +512,7 @@ export default function ChatWidget() {
           width: 8px;
           height: 8px;
           border-radius: 50%;
-          background: #5D0022;
+          background: #FBCE04;
           display: inline-block;
           animation: chatTypingBounce 1.4s infinite ease-in-out;
         }
@@ -527,29 +528,29 @@ export default function ChatWidget() {
           display: flex;
           gap: 6px;
           padding: 10px 14px;
-          border-top: 1px solid #E5E7EB;
-          background: #FAFAFA;
+          border-top: 1px solid #2d2d44;
+          background: #1a1a2e;
         }
         .chat-quick-btn {
           flex: 1;
           padding: 7px 8px;
           font-size: 12px;
-          background: #FDF2F4;
-          color: #5D0022;
-          border: 2px solid #E8B4BF;
+          background: #2d2d44;
+          color: #FBCE04;
+          border: 2px solid #3d3d55;
           border-radius: 10px;
           cursor: pointer;
           font-weight: 600;
           font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
           transition: all 0.15s;
-          box-shadow: 1px 1px 0px #E8B4BF;
+          box-shadow: 1px 1px 0px #13132a;
         }
         .chat-quick-btn:hover {
-          background: #5D0022;
-          color: #fff;
-          border-color: #5D0022;
+          background: #FBCE04;
+          color: #1a1a2e;
+          border-color: #FBCE04;
           transform: translateY(-1px);
-          box-shadow: 2px 2px 0px rgba(93, 0, 34, 0.3);
+          box-shadow: 2px 2px 0px rgba(251, 206, 4, 0.3);
         }
 
         /* ── Input Area ── */
@@ -557,23 +558,27 @@ export default function ChatWidget() {
           display: flex;
           gap: 8px;
           padding: 12px 14px;
-          border-top: 2px solid #E5E7EB;
-          background: #fff;
+          border-top: 2px solid #2d2d44;
+          background: #1a1a2e;
         }
         .chat-input {
           flex: 1;
           padding: 10px 14px;
-          border: 2px solid #D1D5DB;
+          border: 2px solid #3d3d55;
           border-radius: 12px;
           font-size: 13.5px;
           outline: none;
           font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
           transition: border-color 0.15s;
-          background: #FAFAFA;
+          background: #2d2d44;
+          color: #E5E7EB;
+        }
+        .chat-input::placeholder {
+          color: #94A3B8;
         }
         .chat-input:focus {
-          border-color: #5D0022;
-          background: #fff;
+          border-color: #FBCE04;
+          background: #2d2d44;
         }
         .chat-send-btn {
           width: 40px;
@@ -596,24 +601,7 @@ export default function ChatWidget() {
           box-shadow: 3px 3px 0px rgba(93, 0, 34, 0.3);
         }
 
-        /* ── Dark Mode ── */
-        [data-theme="dark"] .chat-window {
-          background: #1a1a2e;
-          border-color: #2d2d44;
-        }
-        [data-theme="dark"] .chat-bubble-ai {
-          background: #2d2d44;
-          color: #E5E7EB;
-          border-color: #3d3d55;
-          box-shadow: 2px 2px 0px #1a1a2e;
-        }
-        [data-theme="dark"] .chat-messages { background: #1a1a2e; }
-        [data-theme="dark"] .chat-input-area { background: #1a1a2e; border-color: #2d2d44; }
-        [data-theme="dark"] .chat-input { background: #2d2d44; border-color: #3d3d55; color: #E5E7EB; }
-        [data-theme="dark"] .chat-input:focus { border-color: #FBCE04; }
-        [data-theme="dark"] .chat-quick-actions { background: #1a1a2e; border-color: #2d2d44; }
-        [data-theme="dark"] .chat-quick-btn { background: #2d2d44; color: #FBCE04; border-color: #3d3d55; }
-        [data-theme="dark"] .chat-quick-btn:hover { background: #FBCE04; color: #1a1a2e; }
+        /* Chat is always dark themed — no separate dark mode needed */
 
         /* ── Mobile ── */
         @media (max-width: 480px) {

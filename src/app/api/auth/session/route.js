@@ -84,11 +84,11 @@ export async function POST(request) {
     const cleanName = sanitizeString(name, 100);
     const userRole = role === 'instructor' ? 'instructor' : 'student';
 
-    // Instructor email verification — must be @coloradomesa.edu
+    // Instructor email verification — must be @mavs.coloradomesa.edu
     if (userRole === 'instructor') {
-      if (!cleanEmail.endsWith('@coloradomesa.edu')) {
+      if (!cleanEmail.endsWith('@mavs.coloradomesa.edu')) {
         return NextResponse.json(
-          { error: 'Instructor accounts require a @coloradomesa.edu email address.' },
+          { error: 'Instructor accounts require a @mavs.coloradomesa.edu email address.' },
           { status: 403 }
         );
       }

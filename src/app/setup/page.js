@@ -21,6 +21,8 @@ export default function SetupPage() {
   const [icalData, setIcalData] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // ─── Validation helpers ───
   const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
@@ -28,8 +30,8 @@ export default function SetupPage() {
   const validateStep2 = () => {
     if (!name.trim()) { setError('Please enter your name.'); return false; }
     if (!email.trim() || !isValidEmail(email)) { setError('Please enter a valid email address.'); return false; }
-    if (role === 'instructor' && !email.trim().toLowerCase().endsWith('@coloradomesa.edu')) {
-      setError('Instructor accounts require a @coloradomesa.edu email address.');
+    if (role === 'instructor' && !email.trim().toLowerCase().endsWith('@mavs.coloradomesa.edu')) {
+      setError('Instructor accounts require a @mavs.coloradomesa.edu email address.');
       return false;
     }
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return false; }
@@ -223,13 +225,13 @@ export default function SetupPage() {
             <div style={styles.field}>
               <label style={styles.fieldLabel}>
                 Email
-                {role === 'instructor' && <span style={styles.required}> (must be @coloradomesa.edu)</span>}
+                {role === 'instructor' && <span style={styles.required}> (must be @mavs.coloradomesa.edu)</span>}
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={e => { setEmail(e.target.value); setError(''); }}
-                placeholder={role === 'instructor' ? 'you@coloradomesa.edu' : 'you@email.com'}
+                placeholder={role === 'instructor' ? 'you@mavs.coloradomesa.edu' : 'you@email.com'}
                 style={styles.input}
                 autoComplete="email"
               />
@@ -237,26 +239,48 @@ export default function SetupPage() {
 
             <div style={styles.field}>
               <label style={styles.fieldLabel}>Create Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => { setPassword(e.target.value); setError(''); }}
-                placeholder="At least 8 characters"
-                style={styles.input}
-                autoComplete="new-password"
-              />
+              <div style={styles.passwordWrap}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setError(''); }}
+                  placeholder="At least 8 characters"
+                  style={{ ...styles.input, paddingRight: '44px' }}
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={styles.eyeBtn}
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
             </div>
 
             <div style={styles.field}>
               <label style={styles.fieldLabel}>Confirm Password</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={e => { setConfirmPassword(e.target.value); setError(''); }}
-                placeholder="Re-enter your password"
-                style={styles.input}
-                autoComplete="new-password"
-              />
+              <div style={styles.passwordWrap}>
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={e => { setConfirmPassword(e.target.value); setError(''); }}
+                  placeholder="Re-enter your password"
+                  style={{ ...styles.input, paddingRight: '44px' }}
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={styles.eyeBtn}
+                  tabIndex={-1}
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
             </div>
 
             <div style={styles.buttonRow}>
@@ -567,6 +591,22 @@ const styles = {
     color: '#DC2626',
     fontSize: '0.8rem',
     fontWeight: '400',
+  },
+  passwordWrap: {
+    position: 'relative',
+  },
+  eyeBtn: {
+    position: 'absolute',
+    right: '12px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'none',
+    border: 'none',
+    fontSize: '18px',
+    cursor: 'pointer',
+    padding: '2px',
+    lineHeight: 1,
+    opacity: 0.7,
   },
   input: {
     width: '100%',

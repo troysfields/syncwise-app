@@ -20,6 +20,7 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // ─── Login handler ───
   const handleLogin = async (role) => {
@@ -43,8 +44,8 @@ function LoginForm() {
     }
 
     // Instructor email check
-    if (role === 'instructor' && !email.trim().toLowerCase().endsWith('@coloradomesa.edu')) {
-      setError('Instructor accounts require a @coloradomesa.edu email address.');
+    if (role === 'instructor' && !email.trim().toLowerCase().endsWith('@mavs.coloradomesa.edu')) {
+      setError('Instructor accounts require a @mavs.coloradomesa.edu email address.');
       setLoading(false);
       return;
     }
@@ -154,7 +155,7 @@ function LoginForm() {
 
   // ─── Forgot Password View ───
   if (view === 'forgot') {
-    const returnView = email.trim().toLowerCase().endsWith('@coloradomesa.edu') ? 'login-instructor' : 'login-student';
+    const returnView = email.trim().toLowerCase().endsWith('@mavs.coloradomesa.edu') ? 'login-instructor' : 'login-student';
     return (
       <div style={styles.container}>
         <div style={styles.card}>
@@ -218,7 +219,7 @@ function LoginForm() {
 
         {isInstructor && (
           <p style={styles.instructorNote}>
-            Instructor accounts require a <strong>@coloradomesa.edu</strong> email address.
+            Instructor accounts require a <strong>@mavs.coloradomesa.edu</strong> email address.
           </p>
         )}
 
@@ -230,7 +231,7 @@ function LoginForm() {
             type="email"
             value={email}
             onChange={e => { setEmail(e.target.value); setError(''); }}
-            placeholder={isInstructor ? 'you@coloradomesa.edu' : 'you@email.com'}
+            placeholder={isInstructor ? 'you@mavs.coloradomesa.edu' : 'you@email.com'}
             style={styles.input}
             autoComplete="email"
           />
@@ -238,15 +239,26 @@ function LoginForm() {
 
         <div style={styles.field}>
           <label style={styles.label}>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={e => { setPassword(e.target.value); setError(''); }}
-            placeholder="Enter your password"
-            style={styles.input}
-            autoComplete="current-password"
-            onKeyDown={e => { if (e.key === 'Enter') handleLogin(isInstructor ? 'instructor' : 'student'); }}
-          />
+          <div style={styles.passwordWrap}>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={e => { setPassword(e.target.value); setError(''); }}
+              placeholder="Enter your password"
+              style={{ ...styles.input, paddingRight: '44px' }}
+              autoComplete="current-password"
+              onKeyDown={e => { if (e.key === 'Enter') handleLogin(isInstructor ? 'instructor' : 'student'); }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              style={styles.eyeBtn}
+              tabIndex={-1}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? '🙈' : '👁️'}
+            </button>
+          </div>
         </div>
 
         <button
@@ -389,6 +401,22 @@ const styles = {
     fontWeight: '500',
     color: '#374151',
     marginBottom: '6px',
+  },
+  passwordWrap: {
+    position: 'relative',
+  },
+  eyeBtn: {
+    position: 'absolute',
+    right: '12px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'none',
+    border: 'none',
+    fontSize: '18px',
+    cursor: 'pointer',
+    padding: '2px',
+    lineHeight: 1,
+    opacity: 0.7,
   },
   input: {
     width: '100%',

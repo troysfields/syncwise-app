@@ -8,6 +8,8 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleReset = async () => {
     setError('');
@@ -74,27 +76,49 @@ export default function ResetPasswordPage() {
 
             <div style={styles.field}>
               <label style={styles.label}>New Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => { setPassword(e.target.value); setError(''); }}
-                placeholder="At least 4 characters"
-                style={styles.input}
-                autoComplete="new-password"
-              />
+              <div style={styles.passwordWrap}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setError(''); }}
+                  placeholder="At least 4 characters"
+                  style={{ ...styles.input, paddingRight: '44px' }}
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={styles.eyeBtn}
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
             </div>
 
             <div style={styles.field}>
               <label style={styles.label}>Confirm New Password</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={e => { setConfirmPassword(e.target.value); setError(''); }}
-                placeholder="Re-enter your password"
-                style={styles.input}
-                autoComplete="new-password"
-                onKeyDown={e => { if (e.key === 'Enter') handleReset(); }}
-              />
+              <div style={styles.passwordWrap}>
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={e => { setConfirmPassword(e.target.value); setError(''); }}
+                  placeholder="Re-enter your password"
+                  style={{ ...styles.input, paddingRight: '44px' }}
+                  autoComplete="new-password"
+                  onKeyDown={e => { if (e.key === 'Enter') handleReset(); }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={styles.eyeBtn}
+                  tabIndex={-1}
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
             </div>
 
             <button
@@ -163,6 +187,22 @@ const styles = {
     fontWeight: '500',
     color: '#374151',
     marginBottom: '6px',
+  },
+  passwordWrap: {
+    position: 'relative',
+  },
+  eyeBtn: {
+    position: 'absolute',
+    right: '12px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'none',
+    border: 'none',
+    fontSize: '18px',
+    cursor: 'pointer',
+    padding: '2px',
+    lineHeight: 1,
+    opacity: 0.7,
   },
   input: {
     width: '100%',

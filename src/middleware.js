@@ -73,6 +73,15 @@ function isPublicRoute(pathname) {
   return PUBLIC_ROUTES.some(route => pathname.startsWith(route));
 }
 
+// ─── Page routes that require a valid session ───
+// Any page route NOT in this list is considered public (login, setup, welcome, privacy, etc.)
+const PROTECTED_PAGE_ROUTES = [
+  '/dashboard',
+  '/settings',
+  '/instructor',
+  '/future-updates',
+];
+
 // ─── Main Middleware ───
 export function middleware(request) {
   const { pathname } = request.nextUrl;
@@ -131,6 +140,19 @@ export function middleware(request) {
         { error: 'Unauthorized — admin credentials required.' },
         { status: 401 }
       );
+    }
+  }
+
+  // ─── Protected Page Routes — require session cookie ───
+  // If the user hits /dashboard, /settings, /instructor, /future-updates
+  // without a valid session cookie, redirect to /login.
+  const isProtectedPage = PROTECTED_PAGE_ROUTES.some(route => pathname.startsWith(route));
+  if (isProtectedPage) {
+    const sessionCookie = request.cookies.get('syncwise_session')?.value;
+    if (!sessionCookie) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
     }
   }
 

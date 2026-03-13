@@ -1,8 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={styles.container}><div style={styles.card}><p>Loading...</p></div></div>}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || null;
   const [view, setView] = useState('pick-role'); // 'pick-role', 'login-student', 'login-instructor', 'forgot'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -47,9 +58,11 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (data.success) {
-        // Redirect based on role
+        // Redirect to where they were trying to go, or default by role
         const user = data.user;
-        if (user.role === 'instructor') {
+        if (redirectTo && redirectTo.startsWith('/')) {
+          window.location.href = redirectTo;
+        } else if (user.role === 'instructor') {
           window.location.href = '/instructor';
         } else {
           window.location.href = '/dashboard';

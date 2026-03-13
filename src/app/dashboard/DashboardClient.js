@@ -155,20 +155,20 @@ function generateSmartSuggestions(tasks) {
     return scoreA - scoreB;
   });
 
-  // 1. Overdue items — urgent call to action
-  const overdue = sorted.filter(t => t.hoursLeft <= 0);
-  if (overdue.length > 0) {
-    const top = overdue[0];
-    const overduePts = overdue.reduce((sum, t) => sum + t.points, 0);
-    if (overdue.length === 1) {
+  // 1. Recently overdue items (past 3 days only — older items are likely already submitted)
+  const recentOverdue = sorted.filter(t => t.hoursLeft <= 0 && t.hoursLeft > -72);
+  if (recentOverdue.length > 0) {
+    const top = recentOverdue[0];
+    const overduePts = recentOverdue.reduce((sum, t) => sum + t.points, 0);
+    if (recentOverdue.length === 1) {
       suggestions.push({
         type: 'action',
-        text: `${top.name} (${top.courseName}) is overdue${top.points ? ` — worth ${top.points} pts` : ''}. Submit it ASAP to minimize any late penalty.`,
+        text: `${top.name} (${top.courseName}) is overdue${top.points ? ` — worth ${top.points} pts` : ''}. If you haven't submitted it yet, do it ASAP to minimize any late penalty.`,
       });
     } else {
       suggestions.push({
         type: 'action',
-        text: `You have ${overdue.length} overdue items worth a combined ${overduePts} pts. Prioritize ${top.name} (${top.courseName}) first — it's the highest value.`,
+        text: `${recentOverdue.length} item${recentOverdue.length > 1 ? 's' : ''} recently passed ${recentOverdue.length > 1 ? 'their' : 'its'} due date (${overduePts} pts). If you haven't submitted ${top.name} (${top.courseName}) yet, prioritize it first.`,
       });
     }
   }
@@ -512,16 +512,30 @@ export default function StudentDashboard() {
           }));
         } catch { /* ignore storage errors */ }
 
-        // Set course progress from stats
-        if (data.courses) {
-          const progress = Object.entries(data.courses).map(([name, info]) => ({
-            courseName: name,
-            courseColor: info.color || DEFAULT_COURSE_COLORS[name] || '#6B7280',
-            completed: info.completed || 0,
-            total: info.total || 0,
-          }));
-          setCourseProgress(progress);
-        }
+        // Calculate course progress from live task data
+        // Since D2L iCal doesn't track submissions, we estimate:
+        // "completed" = submittable items past their due date (likely done)
+        // "total" = all submittable items in the course
+        const courseProgressMap = {};
+        liveTasks.forEach(t => {
+          const course = t.courseName || 'Unknown';
+          if (!courseProgressMap[course]) {
+            courseProgressMap[course] = { total: 0, completed: 0, color: t.courseColor };
+          }
+          if (isSubmittableType(t.type)) {
+            courseProgressMap[course].total++;
+            if (t.submitted || t.status === 'completed' || (t.dueDate && new Date(t.dueDate) < new Date())) {
+              courseProgressMap[course].completed++;
+            }
+          }
+        });
+        const progress = Object.entries(courseProgressMap).map(([name, info]) => ({
+          courseName: name,
+          courseColor: info.color || DEFAULT_COURSE_COLORS[name] || '#6B7280',
+          completed: info.completed,
+          total: info.total,
+        }));
+        setCourseProgress(progress);
 
         // Generate smart suggestions from live task data
         const smartSuggestions = generateSmartSuggestions(liveTasks);

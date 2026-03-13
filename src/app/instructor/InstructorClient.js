@@ -236,6 +236,7 @@ export default function InstructorDashboard() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedTypeFilter, setSelectedTypeFilter] = useState('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all');
+  const [showAllItems, setShowAllItems] = useState(false);
   const [showManualEventModal, setShowManualEventModal] = useState(false);
   const [showStudentView, setShowStudentView] = useState(false);
   const [actionLog, setActionLog] = useState([]);
@@ -872,7 +873,7 @@ export default function InstructorDashboard() {
                   </div>
                 </div>
 
-                {filteredItems.map(item => {
+                {(showAllItems ? filteredItems : filteredItems.slice(0, 5)).map(item => {
                   const submittable = isSubmittableType(item.type);
                   return (
                   <div key={item.id} style={{
@@ -926,6 +927,29 @@ export default function InstructorDashboard() {
                   </div>
                   );
                 })}
+
+                {filteredItems.length > 5 && (
+                  <button
+                    onClick={() => setShowAllItems(!showAllItems)}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      marginTop: '8px',
+                      background: 'none',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: '8px',
+                      color: '#5D0022',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#FDF2F4'; e.currentTarget.style.borderColor = '#5D0022'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = '#E2E8F0'; }}
+                  >
+                    {showAllItems ? 'Show less' : `Show all ${filteredItems.length} items`}
+                  </button>
+                )}
               </div>
             </div>
 

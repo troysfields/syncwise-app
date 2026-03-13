@@ -241,6 +241,7 @@ export default function StudentDashboard() {
   const [calendarView, setCalendarView] = useState('week');
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [courseFilter, setCourseFilter] = useState('all'); // 'all' or specific course name
+  const [showAllItems, setShowAllItems] = useState(false); // All Items list collapse
 
   // New feature state variables
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -1309,7 +1310,7 @@ export default function StudentDashboard() {
               </div>
             )}
 
-            {sortedTasks.map(task => {
+            {(showAllItems ? sortedTasks : sortedTasks.slice(0, 5)).map(task => {
               const priority = getPriorityLevel(task);
               const dateToShow = task.manualDate || task.dueDate;
               const submittable = isSubmittableType(task.type);
@@ -1375,6 +1376,29 @@ export default function StudentDashboard() {
                 </div>
               );
             })}
+
+            {sortedTasks.length > 5 && (
+              <button
+                onClick={() => setShowAllItems(!showAllItems)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  marginTop: '8px',
+                  background: 'none',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '8px',
+                  color: '#5D0022',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#FDF2F4'; e.currentTarget.style.borderColor = '#5D0022'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = '#E2E8F0'; }}
+              >
+                {showAllItems ? `Show less` : `Show all ${sortedTasks.length} items`}
+              </button>
+            )}
           </div>
         </div>
         )}

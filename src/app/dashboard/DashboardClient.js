@@ -123,6 +123,121 @@ function isSubmittableType(type) {
 }
 
 // ============================================================
+// SMART SUGGESTION ENGINE — generates personalized suggestions from live task data
+// ============================================================
+
+function generateSmartSuggestions(tasks) {
+  const now = new Date();
+  const suggestions = [];
+
+  // Filter to active, submittable tasks with due dates
+  const activeTasks = tasks.filter(t =>
+    t.status === 'active' && !t.submitted && isSubmittableType(t.type) && (t.manualDate || t.dueDate)
+  );
+
+  if (activeTasks.length === 0) {
+    suggestions.push({ type: 'action', text: 'You\'re all caught up! No active assignments right now. Use this time to review past material or get ahead on readings.' });
+    return suggestions;
+  }
+
+  // Sort by urgency (hours until due, weighted by points)
+  const sorted = activeTasks.map(t => {
+    const due = new Date(t.manualDate || t.dueDate);
+    const hoursLeft = (due - now) / (1000 * 60 * 60);
+    const points = t.points || 10;
+    return { ...t, hoursLeft, points, due };
+  }).sort((a, b) => {
+    // Overdue first, then by urgency score (time * inverse points)
+    if (a.hoursLeft <= 0 && b.hoursLeft > 0) return -1;
+    if (b.hoursLeft <= 0 && a.hoursLeft > 0) return 1;
+    const scoreA = a.hoursLeft - (a.points / 10);
+    const scoreB = b.hoursLeft - (b.points / 10);
+    return scoreA - scoreB;
+  });
+
+  // 1. Overdue items — urgent call to action
+  const overdue = sorted.filter(t => t.hoursLeft <= 0);
+  if (overdue.length > 0) {
+    const top = overdue[0];
+    const overduePts = overdue.reduce((sum, t) => sum + t.points, 0);
+    if (overdue.length === 1) {
+      suggestions.push({
+        type: 'action',
+        text: `${top.name} (${top.courseName}) is overdue${top.points ? ` — worth ${top.points} pts` : ''}. Submit it ASAP to minimize any late penalty.`,
+      });
+    } else {
+      suggestions.push({
+        type: 'action',
+        text: `You have ${overdue.length} overdue items worth a combined ${overduePts} pts. Prioritize ${top.name} (${top.courseName}) first — it's the highest value.`,
+      });
+    }
+  }
+
+  // 2. Due today — what to focus on right now
+  const dueToday = sorted.filter(t => t.hoursLeft > 0 && t.hoursLeft <= 24);
+  if (dueToday.length > 0 && suggestions.length < 3) {
+    const highest = dueToday.sort((a, b) => b.points - a.points)[0];
+    if (dueToday.length === 1) {
+      suggestions.push({
+        type: 'action',
+        text: `${highest.name} is due today${highest.points ? ` (${highest.points} pts)` : ''} for ${highest.courseName}. ${highest.hoursLeft <= 6 ? 'Wrap it up now — you\'ve got ' + Math.round(highest.hoursLeft) + ' hours.' : 'Plan to finish it this afternoon.'}`,
+      });
+    } else {
+      const totalPts = dueToday.reduce((sum, t) => sum + t.points, 0);
+      suggestions.push({
+        type: 'action',
+        text: `${dueToday.length} items due today (${totalPts} pts total). Start with ${highest.name} (${highest.courseName}, ${highest.points} pts) — it carries the most weight.`,
+      });
+    }
+  }
+
+  // 3. Due tomorrow — plan ahead
+  const dueTomorrow = sorted.filter(t => t.hoursLeft > 24 && t.hoursLeft <= 48);
+  if (dueTomorrow.length > 0 && suggestions.length < 3) {
+    const top = dueTomorrow.sort((a, b) => b.points - a.points)[0];
+    suggestions.push({
+      type: 'reminder',
+      text: `Tomorrow: ${top.name} (${top.courseName}${top.points ? `, ${top.points} pts` : ''})${dueTomorrow.length > 1 ? ` + ${dueTomorrow.length - 1} more` : ''}. Get a head start tonight so you're not rushing.`,
+    });
+  }
+
+  // 4. Week overview — workload awareness
+  const dueThisWeek = sorted.filter(t => t.hoursLeft > 0 && t.hoursLeft <= 168);
+  if (dueThisWeek.length > 3 && suggestions.length < 3) {
+    const totalPts = dueThisWeek.reduce((sum, t) => sum + t.points, 0);
+    const courseNames = [...new Set(dueThisWeek.map(t => t.courseName))];
+    suggestions.push({
+      type: 'planning',
+      text: `Heavy week ahead — ${dueThisWeek.length} items (${totalPts} pts) across ${courseNames.length} course${courseNames.length > 1 ? 's' : ''}: ${courseNames.slice(0, 3).join(', ')}${courseNames.length > 3 ? '...' : ''}. Space these out and don't leave them all for the last day.`,
+    });
+  }
+
+  // 5. High-value upcoming item
+  const highValue = sorted.filter(t => t.hoursLeft > 48 && t.points >= 40);
+  if (highValue.length > 0 && suggestions.length < 3) {
+    const top = highValue[0];
+    const daysLeft = Math.round(top.hoursLeft / 24);
+    suggestions.push({
+      type: 'planning',
+      text: `Big one coming: ${top.name} (${top.courseName}, ${top.points} pts) is due in ${daysLeft} days. Start outlining it now so you're not scrambling later.`,
+    });
+  }
+
+  // 6. Quiet day encouragement
+  if (dueToday.length === 0 && overdue.length === 0 && suggestions.length < 2) {
+    const nextUp = sorted.find(t => t.hoursLeft > 0);
+    if (nextUp) {
+      suggestions.push({
+        type: 'action',
+        text: `Nothing due today — solid chance to get ahead. Your next deadline is ${nextUp.name} (${nextUp.courseName}) in ${Math.round(nextUp.hoursLeft / 24)} day${Math.round(nextUp.hoursLeft / 24) !== 1 ? 's' : ''}.`,
+      });
+    }
+  }
+
+  return suggestions.slice(0, 3); // Max 3 suggestions
+}
+
+// ============================================================
 // CALENDAR VIEW HELPERS
 // ============================================================
 
@@ -408,8 +523,13 @@ export default function StudentDashboard() {
           setCourseProgress(progress);
         }
 
-        // Set AI suggestions if available
-        if (data.suggestions && data.suggestions.length > 0) {
+        // Generate smart suggestions from live task data
+        if (data.events && data.events.length > 0) {
+          const smartSuggestions = generateSmartSuggestions(data.events);
+          if (smartSuggestions.length > 0) {
+            setSuggestions(smartSuggestions);
+          }
+        } else if (data.suggestions && data.suggestions.length > 0) {
           setSuggestions(data.suggestions);
         }
 

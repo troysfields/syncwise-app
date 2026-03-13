@@ -1151,43 +1151,7 @@ export default function StudentDashboard() {
         {/* ============================================================ */}
         {!focusMode && (
         <div className="dash-sections" style={{ marginTop: '4px', padding: '0 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* AI Suggestions + Course Progress */}
-          <div className="card">
-            <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '20px' }}>&#129302;</span> AI Priority Suggestions
-            </h2>
-            {suggestions.map((s, i) => (
-              <div key={i} className="ai-suggestion">
-                <div className="ai-suggestion-label">
-                  {s.type === 'action' ? 'Recommended Action' : s.type === 'reminder' ? 'Smart Reminder' : 'Plan Ahead'}
-                </div>
-                <div className="ai-suggestion-text">{s.text}</div>
-              </div>
-            ))}
-
-            {/* Course Progress */}
-            <div style={{ marginTop: '20px', borderTop: '1px solid #E2E8F0', paddingTop: '16px' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '16px' }}>&#128200;</span> Course Progress
-              </h3>
-              {courseProgress.map(cp => {
-                const pct = cp.total > 0 ? Math.round((cp.completed / cp.total) * 100) : 0;
-                return (
-                  <div key={cp.courseName} className="course-progress" style={{ marginBottom: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                      <span style={{ fontWeight: '600', color: cp.courseColor }}>{cp.courseName}</span>
-                      <span style={{ color: '#64748B' }}>{cp.completed}/{cp.total} ({pct}%)</span>
-                    </div>
-                    <div className="course-progress-bar">
-                      <div className="course-progress-fill" style={{ width: `${pct}%`, background: cp.courseColor }}></div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Calendar — Own section for distinct scroll target */}
+          {/* Calendar — Primary view, shown first */}
           <div id="calendar" className="card">
             <div className="calendar-header">
               <h2 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
@@ -1357,6 +1321,42 @@ export default function StudentDashboard() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* AI Suggestions + Course Progress */}
+          <div className="card">
+            <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '20px' }}>&#129302;</span> AI Priority Suggestions
+            </h2>
+            {suggestions.map((s, i) => (
+              <div key={i} className="ai-suggestion">
+                <div className="ai-suggestion-label">
+                  {s.type === 'action' ? 'Recommended Action' : s.type === 'reminder' ? 'Smart Reminder' : 'Plan Ahead'}
+                </div>
+                <div className="ai-suggestion-text">{s.text}</div>
+              </div>
+            ))}
+
+            {/* Course Progress */}
+            <div style={{ marginTop: '20px', borderTop: '1px solid #E2E8F0', paddingTop: '16px' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '16px' }}>&#128200;</span> Course Progress
+              </h3>
+              {courseProgress.map(cp => {
+                const pct = cp.total > 0 ? Math.round((cp.completed / cp.total) * 100) : 0;
+                return (
+                  <div key={cp.courseName} className="course-progress" style={{ marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+                      <span style={{ fontWeight: '600', color: cp.courseColor }}>{cp.courseName}</span>
+                      <span style={{ color: '#64748B' }}>{cp.completed}/{cp.total} ({pct}%)</span>
+                    </div>
+                    <div className="course-progress-bar">
+                      <div className="course-progress-fill" style={{ width: `${pct}%`, background: cp.courseColor }}></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* ============================================================ */}

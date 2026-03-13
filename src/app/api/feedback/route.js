@@ -1,23 +1,11 @@
 // Feedback API — Stores student feedback for product improvement
 // GET: returns all feedback (admin)
 // POST: submits new feedback
+// Storage: Redis (persistent) — replaces old file-based storage that got wiped on Vercel cold starts
 
 import { NextResponse } from 'next/server';
 import { requireAuth, requireAdmin } from '@/lib/auth';
-import fs from 'fs';
-import path from 'path';
-
-// Vercel serverless: process.cwd() is read-only, but /tmp is writable
-const LOG_DIR = process.env.VERCEL ? '/tmp/logs' : path.join(process.cwd(), 'logs');
-const FEEDBACK_FILE = path.join(LOG_DIR, 'feedback.jsonl');
-
-try {
-  if (!fs.existsSync(LOG_DIR)) {
-    fs.mkdirSync(LOG_DIR, { recursive: true });
-  }
-} catch {
-  // Silently continue — feedback storage is best-effort on serverless
-}
+import { saveFeedback, getAllFeedback } from '@/lib/db';
 
 export async function POST(req) {
   const session = requireAuth(req);
@@ -27,8 +15,9 @@ export async function POST(req) {
     const body = await req.json();
 
     const entry = {
-      timestamp: new Date().toISOString(),
-      user: body.user || 'anonymous',
+      type: 'form_feedback',
+      userEmail: body.user || session.email || session.sub || 'anonymous',
+      userRole: session.role || 'student',
       // Checkbox ratings
       easyToNavigate: body.easyToNavigate || false,
       aiSuggestionsHelpful: body.aiSuggestionsHelpful || false,
@@ -44,11 +33,13 @@ export async function POST(req) {
       wishDifferently: body.wishDifferently || '',
       additionalFeedback: body.additionalFeedback || '',
       // Meta
+      page: 'feedback_form',
       pageUrl: body.pageUrl || '',
       userAgent: body.userAgent || '',
+      status: 'new',
     };
 
-    fs.appendFileSync(FEEDBACK_FILE, JSON.stringify(entry) + '\n');
+    await saveFeedback(entry);
 
     return NextResponse.json({ success: true, message: 'Feedback received — thank you!' });
   } catch (err) {
@@ -63,33 +54,38 @@ export async function GET(request) {
   if (adminCheck instanceof NextResponse) return adminCheck;
 
   try {
-    if (!fs.existsSync(FEEDBACK_FILE)) {
-      return NextResponse.json({ feedback: [], stats: {} });
-    }
+    const allEntries = await getAllFeedback();
 
-    const lines = fs.readFileSync(FEEDBACK_FILE, 'utf8').trim().split('\n');
-    const feedback = lines.map(line => JSON.parse(line)).reverse();
+    // Separate form feedback from chatbot feedback
+    const formFeedback = allEntries.filter(f => f.type === 'form_feedback');
+    const chatbotFeedback = allEntries.filter(f => f.type === 'issue' || f.type === 'suggestion');
 
-    // Aggregate stats
-    const total = feedback.length;
+    // Aggregate stats from form feedback
+    const total = formFeedback.length;
     const stats = {
       total,
-      easyToNavigate: feedback.filter(f => f.easyToNavigate).length,
-      aiSuggestionsHelpful: feedback.filter(f => f.aiSuggestionsHelpful).length,
-      emailScanningUseful: feedback.filter(f => f.emailScanningUseful).length,
-      calendarViewsWork: feedback.filter(f => f.calendarViewsWork).length,
-      ranIntoBugs: feedback.filter(f => f.ranIntoBugs).length,
-      somethingConfusing: feedback.filter(f => f.somethingConfusing).length,
-      wouldRecommend: feedback.filter(f => f.wouldRecommend).length,
+      easyToNavigate: formFeedback.filter(f => f.easyToNavigate).length,
+      aiSuggestionsHelpful: formFeedback.filter(f => f.aiSuggestionsHelpful).length,
+      emailScanningUseful: formFeedback.filter(f => f.emailScanningUseful).length,
+      calendarViewsWork: formFeedback.filter(f => f.calendarViewsWork).length,
+      ranIntoBugs: formFeedback.filter(f => f.ranIntoBugs).length,
+      somethingConfusing: formFeedback.filter(f => f.somethingConfusing).length,
+      wouldRecommend: formFeedback.filter(f => f.wouldRecommend).length,
       usageBreakdown: {},
     };
 
-    for (const f of feedback) {
+    for (const f of formFeedback) {
       stats.usageBreakdown[f.usageFrequency] = (stats.usageBreakdown[f.usageFrequency] || 0) + 1;
     }
 
-    return NextResponse.json({ feedback, stats });
+    return NextResponse.json({
+      feedback: allEntries,
+      formFeedback,
+      chatbotFeedback,
+      stats,
+    });
   } catch (err) {
-    return NextResponse.json({ feedback: [], stats: {} });
+    console.error('Feedback load failed:', err);
+    return NextResponse.json({ feedback: [], formFeedback: [], chatbotFeedback: [], stats: {} });
   }
 }

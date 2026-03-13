@@ -1,22 +1,37 @@
 // SyncWise Error Detection & Alerting System
 // Three tiers: Student-facing toasts, Admin email alerts, Claude-readable error logs
-// Logs every error with full context for fast debugging and future reference
+// Primary storage: Redis (persistent). Fallback: /tmp filesystem (ephemeral on Vercel).
 
 import fs from 'fs';
 import path from 'path';
 
-// Vercel serverless: process.cwd() is read-only, but /tmp is writable
+// Filesystem fallback (ephemeral on Vercel but useful for local dev)
 const LOG_DIR = process.env.VERCEL ? '/tmp/logs' : path.join(process.cwd(), 'logs');
 const ERROR_LOG = path.join(LOG_DIR, 'errors.jsonl');
 const HEALTH_LOG = path.join(LOG_DIR, 'health-checks.jsonl');
 
-// Safely create log directory — never crash on failure
 try {
   if (!fs.existsSync(LOG_DIR)) {
     fs.mkdirSync(LOG_DIR, { recursive: true });
   }
 } catch {
   // Silently continue — logging is best-effort
+}
+
+// Redis helper — lazy import to avoid build issues
+let _redis = null;
+async function getRedis() {
+  if (_redis) return _redis;
+  try {
+    const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+    const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+    if (!url || !token) return null;
+    const { Redis } = await import('@upstash/redis');
+    _redis = new Redis({ url, token });
+    return _redis;
+  } catch {
+    return null;
+  }
 }
 
 // ============================================================
@@ -99,6 +114,7 @@ const STUDENT_MESSAGES = {
 
 // ============================================================
 // LOG AN ERROR — Full context for debugging
+// Writes to Redis (persistent) + filesystem (fallback)
 // ============================================================
 
 export function logError({
@@ -130,6 +146,16 @@ export function logError({
     resolution: null,
   };
 
+  // Write to Redis (persistent, fire-and-forget)
+  const dateKey = new Date().toISOString().split('T')[0];
+  getRedis().then(redis => {
+    if (!redis) return;
+    redis.lpush(`errors:${dateKey}`, JSON.stringify(entry)).catch(() => {});
+    // Expire after 90 days
+    redis.expire(`errors:${dateKey}`, 90 * 24 * 60 * 60).catch(() => {});
+  }).catch(() => {});
+
+  // Also write to filesystem as fallback
   try {
     fs.appendFileSync(ERROR_LOG, JSON.stringify(entry) + '\n');
   } catch (err) {
@@ -152,6 +178,15 @@ export function logHealthCheck({ platform, endpoint, status, responseTimeMs }) {
     responseTimeMs,
   };
 
+  // Write to Redis
+  const dateKey = new Date().toISOString().split('T')[0];
+  getRedis().then(redis => {
+    if (!redis) return;
+    redis.lpush(`health:${dateKey}`, JSON.stringify(entry)).catch(() => {});
+    redis.expire(`health:${dateKey}`, 30 * 24 * 60 * 60).catch(() => {});
+  }).catch(() => {});
+
+  // Also write to filesystem as fallback
   try {
     fs.appendFileSync(HEALTH_LOG, JSON.stringify(entry) + '\n');
   } catch (err) {
@@ -170,10 +205,26 @@ export function getStudentMessage(errorCode) {
 }
 
 // ============================================================
-// GET RECENT ERRORS — For admin dashboard
+// GET RECENT ERRORS — For admin dashboard (reads from Redis first, falls back to filesystem)
 // ============================================================
 
-export function getRecentErrors(count = 100) {
+export async function getRecentErrors(count = 100) {
+  // Try Redis first
+  try {
+    const redis = await getRedis();
+    if (redis) {
+      const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      const todayErrors = await redis.lrange(`errors:${today}`, 0, count - 1) || [];
+      const yesterdayErrors = await redis.lrange(`errors:${yesterday}`, 0, count - 1) || [];
+      const all = [...todayErrors, ...yesterdayErrors]
+        .map(e => typeof e === 'string' ? JSON.parse(e) : e)
+        .slice(0, count);
+      if (all.length > 0) return all;
+    }
+  } catch {}
+
+  // Fallback to filesystem
   try {
     if (!fs.existsSync(ERROR_LOG)) return [];
     const lines = fs.readFileSync(ERROR_LOG, 'utf8').trim().split('\n');
@@ -188,23 +239,17 @@ export function getRecentErrors(count = 100) {
 // GET ERROR STATS — Aggregated for admin dashboard
 // ============================================================
 
-export function getErrorStats(hours = 24) {
+export async function getErrorStats(hours = 24) {
   try {
-    if (!fs.existsSync(ERROR_LOG)) {
-      return { total: 0, bySeverity: {}, byPlatform: {}, recentSpike: false };
-    }
-
+    const errors = await getRecentErrors(500);
     const since = new Date(Date.now() - hours * 60 * 60 * 1000);
-    const lines = fs.readFileSync(ERROR_LOG, 'utf8').trim().split('\n');
-    const errors = lines
-      .map(line => JSON.parse(line))
-      .filter(e => new Date(e.timestamp) >= since);
+    const filtered = errors.filter(e => new Date(e.timestamp) >= since);
 
     const bySeverity = {};
     const byPlatform = {};
     const byErrorCode = {};
 
-    for (const err of errors) {
+    for (const err of filtered) {
       bySeverity[err.severity] = (bySeverity[err.severity] || 0) + 1;
       byPlatform[err.platform] = (byPlatform[err.platform] || 0) + 1;
       byErrorCode[err.errorCode] = (byErrorCode[err.errorCode] || 0) + 1;
@@ -212,10 +257,10 @@ export function getErrorStats(hours = 24) {
 
     // Check for spike: >5 errors in last 10 minutes
     const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000);
-    const recentCount = errors.filter(e => new Date(e.timestamp) >= tenMinAgo).length;
+    const recentCount = filtered.filter(e => new Date(e.timestamp) >= tenMinAgo).length;
 
     return {
-      total: errors.length,
+      total: filtered.length,
       bySeverity,
       byPlatform,
       byErrorCode,
@@ -231,17 +276,31 @@ export function getErrorStats(hours = 24) {
 // GET HEALTH CHECK STATS
 // ============================================================
 
-export function getHealthStats(hours = 24) {
+export async function getHealthStats(hours = 24) {
   try {
-    if (!fs.existsSync(HEALTH_LOG)) {
-      return { checks: 0, platforms: {} };
+    const redis = await getRedis();
+    let checks = [];
+
+    if (redis) {
+      const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      const todayChecks = await redis.lrange(`health:${today}`, 0, 500) || [];
+      const yesterdayChecks = await redis.lrange(`health:${yesterday}`, 0, 500) || [];
+      checks = [...todayChecks, ...yesterdayChecks].map(c => typeof c === 'string' ? JSON.parse(c) : c);
+    }
+
+    // Fallback to filesystem if Redis empty
+    if (checks.length === 0) {
+      try {
+        if (fs.existsSync(HEALTH_LOG)) {
+          const lines = fs.readFileSync(HEALTH_LOG, 'utf8').trim().split('\n');
+          checks = lines.map(line => JSON.parse(line));
+        }
+      } catch {}
     }
 
     const since = new Date(Date.now() - hours * 60 * 60 * 1000);
-    const lines = fs.readFileSync(HEALTH_LOG, 'utf8').trim().split('\n');
-    const checks = lines
-      .map(line => JSON.parse(line))
-      .filter(c => new Date(c.timestamp) >= since);
+    checks = checks.filter(c => new Date(c.timestamp) >= since);
 
     const platforms = {};
     for (const check of checks) {
@@ -273,8 +332,8 @@ export function getHealthStats(hours = 24) {
 // CHECK IF ADMIN ALERT NEEDED — Spike detection
 // ============================================================
 
-export function shouldAlertAdmin() {
-  const stats = getErrorStats(1); // last hour
+export async function shouldAlertAdmin() {
+  const stats = await getErrorStats(1); // last hour
   // Alert if: spike detected, or any critical errors, or >10 errors in an hour
   return stats.recentSpike ||
     (stats.bySeverity?.critical || 0) > 0 ||

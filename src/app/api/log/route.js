@@ -20,11 +20,11 @@ export async function GET(request) {
 
   let logs;
   if (user) {
-    logs = getLogsByUser(user);
+    logs = await getLogsByUser(user);
   } else if (platform) {
-    logs = getLogsByPlatform(platform);
+    logs = await getLogsByPlatform(platform);
   } else {
-    logs = getRecentLogs(count);
+    logs = await getRecentLogs(count);
   }
 
   return NextResponse.json({

@@ -1,23 +1,36 @@
 // API Activity Logger
 // Logs every API call SyncWise makes — available to CMU IT on demand
-// Uses /tmp on Vercel (serverless-safe), falls back to process.cwd()/logs locally.
-// Note: /tmp is ephemeral on Vercel — logs persist only for the lifetime of the
-// serverless function instance. For durable logging, use the analytics system (Redis-backed).
+// Primary storage: Redis (persistent). Fallback: /tmp filesystem (ephemeral on Vercel).
 
 import fs from 'fs';
 import path from 'path';
 
-// Vercel serverless: process.cwd() is read-only, but /tmp is writable
+// Filesystem fallback (ephemeral on Vercel)
 const LOG_DIR = process.env.VERCEL ? '/tmp/logs' : path.join(process.cwd(), 'logs');
 const LOG_FILE = path.join(LOG_DIR, 'api-activity.jsonl');
 
-// Safely create log directory — never crash on failure
 try {
   if (!fs.existsSync(LOG_DIR)) {
     fs.mkdirSync(LOG_DIR, { recursive: true });
   }
 } catch {
-  // Silently continue — logging is best-effort, not mission-critical
+  // Silently continue — logging is best-effort
+}
+
+// Redis helper — lazy import
+let _redis = null;
+async function getRedis() {
+  if (_redis) return _redis;
+  try {
+    const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+    const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+    if (!url || !token) return null;
+    const { Redis } = await import('@upstash/redis');
+    _redis = new Redis({ url, token });
+    return _redis;
+  } catch {
+    return null;
+  }
 }
 
 export function logApiCall({ user, userRole, platform, action, endpoint, method, details, status }) {
@@ -33,6 +46,15 @@ export function logApiCall({ user, userRole, platform, action, endpoint, method,
     status: status || 'success',
   };
 
+  // Write to Redis (persistent, fire-and-forget)
+  const dateKey = new Date().toISOString().split('T')[0];
+  getRedis().then(redis => {
+    if (!redis) return;
+    redis.lpush(`apilogs:${dateKey}`, JSON.stringify(entry)).catch(() => {});
+    redis.expire(`apilogs:${dateKey}`, 90 * 24 * 60 * 60).catch(() => {});
+  }).catch(() => {});
+
+  // Also write to filesystem as fallback
   try {
     fs.appendFileSync(LOG_FILE, JSON.stringify(entry) + '\n');
   } catch {
@@ -42,7 +64,23 @@ export function logApiCall({ user, userRole, platform, action, endpoint, method,
   return entry;
 }
 
-export function getRecentLogs(count = 100) {
+export async function getRecentLogs(count = 100) {
+  // Try Redis first
+  try {
+    const redis = await getRedis();
+    if (redis) {
+      const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      const todayLogs = await redis.lrange(`apilogs:${today}`, 0, count - 1) || [];
+      const yesterdayLogs = await redis.lrange(`apilogs:${yesterday}`, 0, count - 1) || [];
+      const all = [...todayLogs, ...yesterdayLogs]
+        .map(e => typeof e === 'string' ? JSON.parse(e) : e)
+        .slice(0, count);
+      if (all.length > 0) return all;
+    }
+  } catch {}
+
+  // Fallback to filesystem
   try {
     if (!fs.existsSync(LOG_FILE)) return [];
     const lines = fs.readFileSync(LOG_FILE, 'utf8').trim().split('\n');
@@ -52,25 +90,19 @@ export function getRecentLogs(count = 100) {
   }
 }
 
-export function getLogsByUser(email) {
+export async function getLogsByUser(email) {
   try {
-    if (!fs.existsSync(LOG_FILE)) return [];
-    const lines = fs.readFileSync(LOG_FILE, 'utf8').trim().split('\n');
-    return lines
-      .map(line => JSON.parse(line))
-      .filter(entry => entry.user === email);
+    const logs = await getRecentLogs(500);
+    return logs.filter(entry => entry.user === email);
   } catch {
     return [];
   }
 }
 
-export function getLogsByPlatform(platform) {
+export async function getLogsByPlatform(platform) {
   try {
-    if (!fs.existsSync(LOG_FILE)) return [];
-    const lines = fs.readFileSync(LOG_FILE, 'utf8').trim().split('\n');
-    return lines
-      .map(line => JSON.parse(line))
-      .filter(entry => entry.platform === platform);
+    const logs = await getRecentLogs(500);
+    return logs.filter(entry => entry.platform === platform);
   } catch {
     return [];
   }

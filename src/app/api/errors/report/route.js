@@ -40,11 +40,11 @@ export async function POST(req) {
     const studentMessage = getStudentMessage(errorCode);
 
     // Check if we're in a spike
-    const alertAdmin = shouldAlertAdmin();
+    const alertAdmin = await shouldAlertAdmin();
     let stats = null;
 
     if (alertAdmin) {
-      stats = getErrorStats(1);
+      stats = await getErrorStats(1);
       console.error(`[SYNCWISE ALERT] Error spike detected — ${stats.recentCount} errors in last 10 min.`);
     }
 

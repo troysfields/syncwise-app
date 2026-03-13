@@ -1,5 +1,6 @@
 // API Route: /api/instructor/conflicts
 // Manages date conflicts and instructor date overrides
+// Storage: Redis (persistent) — replaces old in-memory Map that was lost on every deploy/cold start
 //
 // GET: List conflicts (filter by course, include/exclude resolved)
 // POST actions:
@@ -19,9 +20,41 @@ import {
 } from '@/lib/dedup-engine';
 import { logApiCall } from '@/lib/logger';
 import { requireAuth } from '@/lib/auth';
+import { saveConflicts, getAllConflicts } from '@/lib/db';
 
-// In-memory conflict store (swap for DB in production)
-const conflictStore = new Map();
+// ─── Redis-backed conflict store helpers ───
+
+async function getConflictMap() {
+  try {
+    const conflicts = await getAllConflicts();
+    const map = new Map();
+    for (const c of conflicts) {
+      map.set(c.id, c);
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+async function persistConflicts(conflictMap) {
+  try {
+    const conflicts = Array.from(conflictMap.values());
+    // Group by course and save
+    const byCourse = {};
+    for (const c of conflicts) {
+      const key = c.courseName || 'unknown';
+      if (!byCourse[key]) byCourse[key] = [];
+      byCourse[key].push(c);
+    }
+    for (const [courseName, courseConflicts] of Object.entries(byCourse)) {
+      const courseId = courseName.replace(/\s+/g, '-').toLowerCase();
+      await saveConflicts(courseId, courseConflicts);
+    }
+  } catch (err) {
+    console.error('Failed to persist conflicts:', err.message);
+  }
+}
 
 export async function GET(request) {
   const session = requireAuth(request);
@@ -34,9 +67,10 @@ export async function GET(request) {
 
   let response = {};
 
-  // Get conflicts
+  // Get conflicts from Redis
   if (!type || type === 'conflicts') {
-    let conflicts = Array.from(conflictStore.values());
+    const conflictMap = await getConflictMap();
+    let conflicts = Array.from(conflictMap.values());
 
     if (course) {
       conflicts = conflicts.filter(c => c.courseName === course);
@@ -60,8 +94,9 @@ export async function GET(request) {
     response.totalOverrides = overrides.length;
   }
 
+  const conflictMap = await getConflictMap();
   response.courses = [...new Set(
-    Array.from(conflictStore.values()).map(c => c.courseName)
+    Array.from(conflictMap.values()).map(c => c.courseName)
   )];
 
   return NextResponse.json(response);
@@ -81,9 +116,11 @@ export async function POST(request) {
     if (action === 'report') {
       const { conflicts } = body;
       if (conflicts && Array.isArray(conflicts)) {
+        const conflictMap = await getConflictMap();
         for (const conflict of conflicts) {
-          conflictStore.set(conflict.id, conflict);
+          conflictMap.set(conflict.id, conflict);
         }
+        await persistConflicts(conflictMap);
         return NextResponse.json({ success: true, stored: conflicts.length });
       }
       return NextResponse.json({ error: 'Missing conflicts array' }, { status: 400 });
@@ -102,7 +139,8 @@ export async function POST(request) {
         );
       }
 
-      const conflict = conflictStore.get(conflictId);
+      const conflictMap = await getConflictMap();
+      const conflict = conflictMap.get(conflictId);
       if (!conflict) {
         return NextResponse.json({ error: 'Conflict not found' }, { status: 404 });
       }
@@ -122,7 +160,8 @@ export async function POST(request) {
       conflict.resolvedBy = instructorId;
       conflict.resolvedDate = correctDate;
       conflict.resolvedAt = new Date().toISOString();
-      conflictStore.set(conflictId, conflict);
+      conflictMap.set(conflictId, conflict);
+      await persistConflicts(conflictMap);
 
       logApiCall({
         user: instructorId,
@@ -210,10 +249,11 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Missing course' }, { status: 400 });
       }
 
+      const conflictMap = await getConflictMap();
       let resolved = 0;
       const notifications = [];
 
-      for (const [id, conflict] of conflictStore) {
+      for (const [id, conflict] of conflictMap) {
         if (conflict.courseName === course && !conflict.resolved) {
           const { override, notification } = resolveConflict(id, {
             instructorId,
@@ -233,6 +273,8 @@ export async function POST(request) {
           resolved++;
         }
       }
+
+      await persistConflicts(conflictMap);
 
       logApiCall({
         user: instructorId,
@@ -258,9 +300,10 @@ export async function POST(request) {
     // ============================================================
     if (action === 'dismiss_all') {
       const { course } = body;
+      const conflictMap = await getConflictMap();
       let dismissed = 0;
 
-      for (const [id, conflict] of conflictStore) {
+      for (const [id, conflict] of conflictMap) {
         if (!course || conflict.courseName === course) {
           conflict.resolved = true;
           conflict.resolvedBy = instructorId;
@@ -269,6 +312,8 @@ export async function POST(request) {
           dismissed++;
         }
       }
+
+      await persistConflicts(conflictMap);
 
       return NextResponse.json({ success: true, dismissed });
     }

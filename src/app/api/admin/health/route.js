@@ -12,9 +12,9 @@ export async function GET(req) {
   const hours = parseInt(searchParams.get('hours') || '24');
   const format = searchParams.get('format') || 'json'; // 'json' or 'claude'
 
-  const errorStats = getErrorStats(hours);
-  const healthStats = getHealthStats(hours);
-  const recentErrors = getRecentErrors(50);
+  const errorStats = await getErrorStats(hours);
+  const healthStats = await getHealthStats(hours);
+  const recentErrors = await getRecentErrors(50);
 
   // Claude-readable format for AI debugging sessions
   if (format === 'claude') {

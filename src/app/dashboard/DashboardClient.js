@@ -524,13 +524,9 @@ export default function StudentDashboard() {
         }
 
         // Generate smart suggestions from live task data
-        if (data.events && data.events.length > 0) {
-          const smartSuggestions = generateSmartSuggestions(data.events);
-          if (smartSuggestions.length > 0) {
-            setSuggestions(smartSuggestions);
-          }
-        } else if (data.suggestions && data.suggestions.length > 0) {
-          setSuggestions(data.suggestions);
+        const smartSuggestions = generateSmartSuggestions(liveTasks);
+        if (smartSuggestions.length > 0) {
+          setSuggestions(smartSuggestions);
         }
 
         // Set date change notifications if available

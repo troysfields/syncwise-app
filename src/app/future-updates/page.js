@@ -152,9 +152,9 @@ export default function FutureUpdatesPage() {
                         'That group project meeting buried in a 47-reply email chain? We\'ll find it and throw it on your calendar before you forget it exists.',
                     },
                     {
-                      title: 'Syllabus Upload',
+                      title: 'Smart Priority Engine',
                       description:
-                        'Drop in your syllabus. We pull every date, exam, and deadline out of it automatically. Because nobody reads the whole syllabus — and now you don\'t have to.',
+                        'Right now we sort by due date. That\'s fine, but it\'s not smart. We\'re building a system that factors in grade weighting, assignment type, how long things actually take you, and what\'s worth the most to your GPA — so when we tell you what to work on first, it\'s not just "this is due soonest."',
                     },
                   ].map((feature, idx) => (
                     <div
@@ -274,9 +274,9 @@ export default function FutureUpdatesPage() {
                         'A grading queue sorted by urgency so you know exactly what needs attention first. Less time in D2L, more time doing literally anything else.',
                     },
                     {
-                      title: 'Syllabus Date Import',
+                      title: 'Weighted Grade Intelligence',
                       description:
-                        "Drop your syllabus in and we'll pull every assignment date out of it. Saves you 20 minutes of manual entry you shouldn't have to do.",
+                        "See which assignments actually move the needle on student grades. Know when a 10-point homework is drowning out a 200-point project in your students' attention. Helps you spot when the workload math isn't adding up.",
                     },
                   ].map((feature, idx) => (
                     <div

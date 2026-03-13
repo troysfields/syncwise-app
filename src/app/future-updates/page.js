@@ -320,7 +320,7 @@ export default function FutureUpdatesPage() {
                     {
                       title: 'Discussion Monitoring',
                       description:
-                        'See who\'s actually participating in discussions and get pinged when a student question goes unanswered. No more checking manually.',
+                        'See who\'s actually participating in discussions and get pinged when a student doesn\'t respond to other classmates\' discussions when assigned, as well as real-time analytics tailored to your preferences. No more checking manually.',
                     },
                     {
                       title: 'Canvas LMS Support',

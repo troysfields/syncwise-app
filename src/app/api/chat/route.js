@@ -130,17 +130,6 @@ export async function POST(request) {
     // Detect which capability was used
     const capability = detectCapability(sanitizedMessage, actionResult.action);
 
-    // Save chat history (fire-and-forget) — persist last 50 messages per user
-    const userEmail = session.email || session.sub;
-    if (userEmail) {
-      const updatedHistory = [
-        ...recentHistory,
-        { role: 'user', content: sanitizedMessage },
-        { role: 'assistant', content: assistantMessage },
-      ];
-      saveChatHistory(userEmail, updatedHistory).catch(() => {});
-    }
-
     // Track analytics (fire-and-forget)
     trackChatMessage({
       userEmail: session.email || session.sub,
@@ -154,6 +143,15 @@ export async function POST(request) {
       action: actionResult.action,
       responseTimeMs: Date.now() - startTime,
     }).catch(() => {});
+
+    // Save conversation to Redis (fire-and-forget)
+    const userEmail = session.email || session.sub || 'anonymous';
+    const updatedHistory = [
+      ...recentHistory,
+      { role: 'user', content: sanitizedMessage },
+      { role: 'assistant', content: assistantMessage },
+    ];
+    saveChatHistory(userEmail, updatedHistory).catch(() => {});
 
     return NextResponse.json({
       success: true,
@@ -238,13 +236,12 @@ export async function GET(request) {
   if (session instanceof NextResponse) return session;
 
   try {
-    const email = session.email || session.sub;
-    if (!email) return NextResponse.json({ messages: [] });
-    const messages = await getChatHistory(email);
-    return NextResponse.json({ messages });
+    const userEmail = session.email || session.sub || 'anonymous';
+    const history = await getChatHistory(userEmail);
+    return NextResponse.json({ success: true, history });
   } catch (error) {
     console.error('Chat history load error:', error);
-    return NextResponse.json({ messages: [] });
+    return NextResponse.json({ success: true, history: [] });
   }
 }
 
@@ -268,56 +265,52 @@ function getFallbackResponse(message) {
   const lower = message.toLowerCase();
 
   if (lower.includes('what can you') || lower.includes('capabilities') || lower.includes('help me with')) {
-    return 'I can help you with:\n• Setting up your D2L calendar connection\n• Reporting bugs or issues (I\'ll log them for the dev team)\n• Checking your workload ("how\'s my week looking?")\n• Drafting emails to professors\n• Giving feedback or suggesting features\n• Study planning and time management tips\n• Navigating dashboard features\n\nJust ask me anything!';
+    return 'I can check your workload and tell you what\'s coming up, draft emails to professors, report bugs for the dev team, help with study planning based on your actual assignments, and walk you through D2L setup or any platform features. Just ask away.';
   }
 
   if (lower.includes('report') && (lower.includes('issue') || lower.includes('bug') || lower.includes('problem'))) {
-    return 'I can help you report that! Tell me:\n1. What happened? (what you expected vs what you saw)\n2. What page or feature were you using?\n\nI\'ll log it for the dev team.';
+    return 'Yeah, tell me what happened and what page you were on. I\'ll log it for the dev team.';
   }
 
   if (lower.includes('email') && (lower.includes('professor') || lower.includes('draft') || lower.includes('write'))) {
-    return 'I can help you draft an email! Tell me:\n1. Who is the professor?\n2. What\'s the email about? (extension request, question about an assignment, office hours, etc.)\n\nI\'ll write a draft you can copy and send.';
+    return 'Sure — who\'s the professor and what\'s the email about? I\'ll write you a draft you can copy and send.';
   }
 
-  if (lower.includes('workload') || lower.includes('how') && lower.includes('week') || lower.includes('busy')) {
-    return 'I can check your workload! To give you the best analysis, make sure you\'re on the dashboard so I can see your upcoming assignments. Then ask me "how\'s my week looking?" and I\'ll break it down for you.';
+  if (lower.includes('workload') || (lower.includes('how') && lower.includes('week')) || lower.includes('busy')) {
+    return 'Make sure you\'re on the dashboard so I can see your assignments, then ask me again. I\'ll break down what\'s coming up and what to hit first.';
   }
 
   if (lower.includes('feedback') || lower.includes('suggest') || lower.includes('feature') || lower.includes('wish')) {
-    return 'I\'d love to hear your feedback! Tell me your suggestion or what you\'d like to see improved, and I\'ll log it for the dev team.';
+    return 'What\'s on your mind? Tell me your idea and I\'ll log it for the team.';
   }
 
   if (lower.includes('study') || lower.includes('plan') || lower.includes('schedule') || lower.includes('time')) {
-    return 'For study planning, I recommend the pomodoro technique: 25 min focused work, 5 min break, repeat. Tackle your highest-point assignments first during your peak focus hours. Want me to look at your upcoming deadlines and suggest a study schedule?';
+    return 'Want me to look at your upcoming deadlines and put together a plan? Head to the dashboard first so I can see what you\'ve got coming up.';
   }
 
   if (lower.includes('connect') || lower.includes('d2l') || lower.includes('calendar') || lower.includes('setup') || lower.includes('ical')) {
-    return 'To connect your D2L calendar:\n1. Log into D2L at d2l.coloradomesa.edu\n2. Go to Calendar → Settings (gear icon)\n3. Enable Calendar Feeds and click Save\n4. Click Subscribe to see your feed URL\n5. Copy the .ics URL\n6. Go to /setup and paste it in Step 2\n7. Click Test Connection\n\nNeed more help? Email troysfields@gmail.com';
+    return 'Log into D2L at d2l.coloradomesa.edu, go to Calendar, hit the Settings gear, enable Calendar Feeds, click Save, then Subscribe. Copy that .ics URL and paste it at syncwise-app.vercel.app/setup in Step 2. Hit Test Connection and you\'re good.';
   }
 
   if (lower.includes('dark mode') || lower.includes('theme')) {
-    return 'You can toggle dark mode using the moon/sun icon in the top-right corner of the dashboard. Your preference is saved automatically.';
+    return 'Hit the moon/sun icon in the top-right corner. It saves automatically.';
   }
 
   if (lower.includes('notification') || lower.includes('alert')) {
-    return 'Customize your notifications at Settings → Notifications. You can set alert timing, methods (push, bell, email), quiet hours, and per-course overrides. Try the presets: Minimal, Balanced, or Everything.';
+    return 'Go to Settings then Notifications. You can set timing, methods, quiet hours, and per-course overrides.';
   }
 
   if (lower.includes('focus') || lower.includes('mode')) {
-    return 'Focus Mode hides everything except your top priority tasks. Click the "Focus Mode" button on your dashboard to toggle it on/off.';
-  }
-
-  if (lower.includes('instructor') || lower.includes('teacher')) {
-    return 'The instructor dashboard lets teachers view assignments and due dates, manage date conflicts, override assignment dates, and see the calendar from a student perspective. Features like submission tracking, grading dashboards, and announcement posting are coming soon — we\'re working with CMU to get full D2L API access. Check out /future-updates for the full roadmap!';
+    return 'Focus Mode strips everything down to just your top priorities. Toggle it from the sidebar.';
   }
 
   if (lower.includes('safe') || lower.includes('privacy') || lower.includes('data') || lower.includes('secure')) {
-    return 'Your data is protected with HTTPS encryption, signed session cookies, and FERPA-compliant audit logging. Calendar data is processed in real-time and never permanently stored. See our full privacy policy at /privacy.';
+    return 'Everything\'s encrypted over HTTPS with signed session cookies. Calendar data is processed in real-time, not stored permanently. Full details at /privacy.';
   }
 
   if (lower.includes('canvas') || lower.includes('outlook') || lower.includes('email sync') || lower.includes('submission') || lower.includes('grading')) {
-    return 'That feature is on our roadmap! We\'re actively working with CMU to secure D2L API access, which will unlock a lot more functionality. Check out /future-updates to see everything we\'re building — and let us know what matters most to you. Your feedback helps us prioritize!';
+    return 'That\'s on the roadmap — we\'re working with CMU on getting the API access to make it happen. Check /future-updates for the full list of what\'s coming.';
   }
 
-  return 'I\'m the CMU AI Calendar assistant! I can help you navigate the platform, set up your D2L calendar, report issues, check your workload, draft emails to professors, or suggest study plans. This is a beta — check out /future-updates to see what\'s coming next! Ask me "what can you do?" for the full list.';
+  return 'Hey — I\'m your SyncWise assistant. I can check your workload, draft emails, report bugs, help with study planning, or walk you through anything on the platform. What do you need?';
 }

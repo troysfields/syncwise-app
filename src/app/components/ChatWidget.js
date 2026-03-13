@@ -8,43 +8,43 @@ import { useState, useRef, useEffect } from 'react';
 
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: 'Hey! I\'m the CMU AI Calendar assistant. I can help with D2L setup, check your workload, draft emails to professors, report issues, and more. Ask me "what can you do?" to see everything!',
-    },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Load saved chat history on first open
-  useEffect(() => {
-    if (isOpen && !historyLoaded) {
-      setHistoryLoaded(true);
-      fetch('/api/chat')
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data?.messages && data.messages.length > 0) {
-            setMessages([
-              {
-                role: 'assistant',
-                content: 'Hey! I\'m the CMU AI Calendar assistant. I can help with D2L setup, check your workload, draft emails to professors, report issues, and more. Ask me "what can you do?" to see everything!',
-              },
-              ...data.messages,
-            ]);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [isOpen, historyLoaded]);
+  const defaultGreeting = { role: 'assistant', content: 'Hey — I\'m your SyncWise assistant. Ask me about your workload, help drafting emails, reporting bugs, or anything about the platform.' };
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Load saved chat history when widget first opens
+  useEffect(() => {
+    if (isOpen && !historyLoaded) {
+      setHistoryLoaded(true);
+      fetch('/api/chat')
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.history && data.history.length > 0) {
+            // Show last 20 messages from history
+            const recent = data.history.slice(-20).map(m => ({
+              role: m.role,
+              content: m.content,
+            }));
+            setMessages(recent);
+          } else {
+            setMessages([defaultGreeting]);
+          }
+        })
+        .catch(() => {
+          setMessages([defaultGreeting]);
+        });
+    }
+  }, [isOpen, historyLoaded]);
 
   // Focus input when chat opens
   useEffect(() => {
@@ -142,9 +142,9 @@ export default function ChatWidget() {
 
   // Quick action buttons for common tasks
   const quickActions = [
-    { label: 'My Capabilities', message: 'What can you do?' },
-    { label: 'Setup D2L', message: 'How do I connect my D2L calendar?' },
-    { label: 'Report Issue', message: 'I want to report an issue' },
+    { label: 'How\'s my week?', message: 'How\'s my week looking?' },
+    { label: 'Draft an email', message: 'Help me draft an email to a professor' },
+    { label: 'Report a bug', message: 'I want to report an issue' },
   ];
 
   return (
@@ -169,10 +169,21 @@ export default function ChatWidget() {
           {/* Header */}
           <div style={styles.header}>
             <div>
-              <strong style={styles.headerTitle}>CMU AI Calendar</strong>
-              <span style={styles.headerSubtitle}>Your AI Assistant</span>
+              <strong style={styles.headerTitle}>SyncWise AI</strong>
+              <span style={styles.headerSubtitle}>Your assistant</span>
             </div>
-            <button onClick={() => setIsOpen(false)} style={styles.closeBtn}>✕</button>
+            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+              {messages.length > 1 && (
+                <button
+                  onClick={() => { setMessages([defaultGreeting]); setHistoryLoaded(true); }}
+                  style={{ ...styles.closeBtn, fontSize: '12px', opacity: 0.7 }}
+                  title="Clear chat"
+                >
+                  ↺
+                </button>
+              )}
+              <button onClick={() => setIsOpen(false)} style={styles.closeBtn}>✕</button>
+            </div>
           </div>
 
           {/* Messages */}

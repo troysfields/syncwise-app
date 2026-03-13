@@ -308,13 +308,15 @@ export default function SetupPage() {
             <div style={styles.instructions}>
               <p style={styles.instructionTitle}>How to get your calendar feed URL:</p>
               <ol style={styles.instructionList}>
-                <li>Log into <strong>D2L Brightspace</strong> at d2l.coloradomesa.edu</li>
-                <li>Go to the <strong>Calendar</strong> page</li>
-                <li>Click <strong>Settings</strong> (gear icon)</li>
-                <li>Check <strong>&quot;Enable Calendar Feeds&quot;</strong> and click Save</li>
-                <li>Click <strong>&quot;Subscribe&quot;</strong> to see the feed URL</li>
-                <li>Copy the URL that ends in <strong>.ics</strong> and paste it below</li>
+                <li>Log into <strong>D2L Brightspace</strong> at <a href="https://d2l.coloradomesa.edu" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'underline' }}>d2l.coloradomesa.edu</a></li>
+                <li>Click the <strong>grid/waffle icon</strong> (☰) in the top-left navbar, then select <strong>&quot;Calendar&quot;</strong> from the menu — or go directly to your course and click <strong>Calendar</strong> in the left sidebar</li>
+                <li>On the Calendar page, click the <strong>&quot;Subscribe&quot;</strong> button (look for it near the top of the calendar view)</li>
+                <li>A dialog will appear with your personal calendar feed link — it starts with <strong>https://d2l.coloradomesa.edu/d2l/le/calendar/feed/</strong> and ends in <strong>.ics</strong></li>
+                <li><strong>Copy the entire URL</strong> and paste it in the field below</li>
               </ol>
+              <p style={{ ...styles.instructionTitle, fontSize: '0.85rem', fontWeight: 'normal', marginTop: '0.5rem', opacity: 0.8 }}>
+                💡 Tip: If you don&apos;t see a Subscribe button, try clicking the <strong>Settings</strong> gear icon on the Calendar page first and enable <strong>&quot;Calendar Feeds&quot;</strong>, then the Subscribe option should appear.
+              </p>
             </div>
 
             <div style={styles.field}>

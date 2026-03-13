@@ -11,14 +11,16 @@ export default function FutureUpdatesPage() {
   const [feedbackText, setFeedbackText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
 
-  // Detect role from localStorage or cookies
+  // Detect role and email from localStorage settings
   useEffect(() => {
     const settings = localStorage.getItem('syncwise_settings');
     if (settings) {
       try {
         const parsed = JSON.parse(settings);
         if (parsed.role) setRole(parsed.role);
+        if (parsed.studentEmail) setUserEmail(parsed.studentEmail);
       } catch (e) {
         // Ignore parse errors
       }
@@ -48,7 +50,7 @@ export default function FutureUpdatesPage() {
         body: JSON.stringify({
           type: 'feature_request',
           message: feedbackText,
-          user: 'anonymous',
+          user: userEmail || undefined,
           pageUrl: window.location.pathname,
           userAgent: navigator.userAgent,
         }),

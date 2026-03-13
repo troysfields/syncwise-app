@@ -79,7 +79,7 @@ export default function FutureUpdatesPage() {
       <main className="main-content">
         {/* Top Navigation Bar */}
         <nav className="topnav">
-          <div style={{ fontSize: '16px', fontWeight: 600, color: '#1e293b' }}>
+          <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--gray-900)' }}>
             Future Updates
           </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -96,16 +96,16 @@ export default function FutureUpdatesPage() {
               style={{
                 fontSize: '32px',
                 fontWeight: 700,
-                color: '#5D0022',
+                color: 'var(--primary)',
                 marginBottom: '12px',
               }}
             >
-              {isStudent ? "What's Coming to CMU AI Calendar" : "What's Coming to CMU AI Calendar"}
+              What We're Cooking
             </h1>
-            <p style={{ fontSize: '16px', color: '#64748b', lineHeight: '1.6' }}>
+            <p style={{ fontSize: '16px', color: 'var(--gray-500)', lineHeight: '1.6' }}>
               {isStudent
-                ? "We're actively building new features based on student feedback. Here's what's on the way."
-                : "We're actively building new features based on instructor feedback. Here's what's on the way."}
+                ? "Stuff that's actually in the works — not vaporware. Built on what you've told us you need."
+                : "Real features, actively being built. No \"we'll look into it\" energy here."}
             </p>
           </div>
 
@@ -121,12 +121,12 @@ export default function FutureUpdatesPage() {
             }}
           >
             <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-              🔗 Official D2L API Access — Coming Soon
+              🔗 Official D2L API Access — Hopefully Coming Soon
             </div>
             <p style={{ fontSize: '14px', lineHeight: '1.6' }}>
-              We're currently working with CMU to secure official API access to D2L Brightspace. This will unlock
-              significantly more powerful features for both students and instructors. Your feedback helps us make the
-              case — let us know what matters most to you!
+              We're pushing for CMU to give us limited API access to D2L Brightspace. That would unlock
+              significantly more powerful features for both students and instructors with way more intuition
+              than what we can do with calendar feeds alone. The more students using this, the harder it is to ignore — so spread the word.
             </p>
           </div>
 
@@ -136,42 +136,42 @@ export default function FutureUpdatesPage() {
 
               {/* In Development Section */}
               <div style={{ marginBottom: '40px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b', marginBottom: '16px' }}>
-                  In Development
+                <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '16px' }}>
+                  In the Oven
                 </h2>
                 <div style={{ display: 'grid', gap: '16px' }}>
                   {[
                     {
                       title: 'Outlook Calendar Sync',
                       description:
-                        'Connect your Outlook calendar to see class schedules, meetings, and campus events alongside your D2L assignments. All in one view.',
+                        'Your D2L assignments and your Outlook schedule in the same place. No more "wait, did I have something at 2?" moments.',
                     },
                     {
                       title: 'Email Event Detection',
                       description:
-                        "We'll scan your inbox for calendar-worthy events — group project meetings, review sessions, career fairs — and suggest adding them to your calendar.",
+                        'That group project meeting buried in a 47-reply email chain? We\'ll find it and throw it on your calendar before you forget it exists.',
                     },
                     {
                       title: 'Syllabus Upload',
                       description:
-                        "Upload your course syllabus and we'll automatically extract key dates, exams, and deadlines.",
+                        'Drop in your syllabus. We pull every date, exam, and deadline out of it automatically. Because nobody reads the whole syllabus — and now you don\'t have to.',
                     },
                   ].map((feature, idx) => (
                     <div
                       key={idx}
                       style={{
-                        background: 'white',
-                        border: '1px solid #e2e8f0',
+                        background: 'var(--white)',
+                        border: '1px solid var(--gray-300)',
                         borderLeft: '4px solid #059669',
                         borderRadius: '12px',
                         padding: '20px',
                         boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                       }}
                     >
-                      <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>
+                      <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '8px' }}>
                         {feature.title}
                       </h3>
-                      <p style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.6' }}>
+                      <p style={{ fontSize: '14px', color: 'var(--gray-500)', lineHeight: '1.6' }}>
                         {feature.description}
                       </p>
                     </div>
@@ -181,47 +181,47 @@ export default function FutureUpdatesPage() {
 
               {/* On the Roadmap Section */}
               <div style={{ marginBottom: '40px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b', marginBottom: '16px' }}>
-                  On the Roadmap
+                <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '16px' }}>
+                  On the Whiteboard
                 </h2>
                 <div style={{ display: 'grid', gap: '16px' }}>
                   {[
                     {
                       title: 'Canvas LMS Support',
                       description:
-                        "We're building compatibility with Canvas so students at other institutions (or courses using Canvas) can use CMU AI Calendar too.",
+                        'Not everyone uses D2L. We get it. Canvas support is coming so this isn\'t just a CMU thing.',
                     },
                     {
                       title: 'Smart Study Planner',
                       description:
-                        'AI-generated study schedules based on your assignment load, difficulty, and personal patterns.',
+                        'AI that actually looks at your workload, knows what\'s worth more points, and builds you a study schedule that isn\'t delusional.',
                     },
                     {
                       title: 'Grade Predictions',
                       description:
-                        'See how your current pace might affect your final grade, with suggestions for where to focus.',
+                        'A brutally honest forecast of where your grade is headed based on your current pace. Think of it as a reality check that\'s actually trying to help.',
                     },
                     {
                       title: 'Mobile App (iOS & Android)',
                       description:
-                        'A native mobile app so you can check assignments, get push notifications, and manage your calendar on the go.',
+                        'Everything you see here, but in your pocket. Push notifications, calendar, the whole deal. For when you\'re not near a laptop — so, always.',
                     },
                   ].map((feature, idx) => (
                     <div
                       key={idx}
                       style={{
-                        background: 'white',
-                        border: '1px solid #e2e8f0',
+                        background: 'var(--white)',
+                        border: '1px solid var(--gray-300)',
                         borderLeft: '4px solid #3B82F6',
                         borderRadius: '12px',
                         padding: '20px',
                         boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                       }}
                     >
-                      <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>
+                      <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '8px' }}>
                         {feature.title}
                       </h3>
-                      <p style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.6' }}>
+                      <p style={{ fontSize: '14px', color: 'var(--gray-500)', lineHeight: '1.6' }}>
                         {feature.description}
                       </p>
                     </div>
@@ -231,24 +231,23 @@ export default function FutureUpdatesPage() {
 
               {/* For Instructors Section */}
               <div style={{ marginBottom: '40px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b', marginBottom: '16px' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '16px' }}>
                   For Instructors
                 </h2>
                 <div
                   style={{
-                    background: 'white',
-                    border: '1px solid #e2e8f0',
+                    background: 'var(--white)',
+                    border: '1px solid var(--gray-300)',
                     borderRadius: '12px',
                     padding: '20px',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                   }}
                 >
-                  <p style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.6' }}>
-                    On the instructor side, we're working on submission tracking and grading dashboards, class
-                    analytics, announcement posting directly to D2L, and tools to help identify students who may need
-                    extra support. Long-term, we envision instructors being able to create and assign coursework, manage
-                    announcements, and run their entire course through CMU AI Calendar. These features require the full
-                    D2L API access we're pursuing with CMU.
+                  <p style={{ fontSize: '14px', color: 'var(--gray-500)', lineHeight: '1.6' }}>
+                    Professors are getting their own upgrades too — submission tracking, grading dashboards, class
+                    analytics, and the ability to post announcements straight from here. The goal is for them to run
+                    their whole course through this instead of wrestling with D2L. More features for them means a
+                    better experience for you.
                   </p>
                 </div>
               </div>
@@ -259,42 +258,42 @@ export default function FutureUpdatesPage() {
 
               {/* In Development Section */}
               <div style={{ marginBottom: '40px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b', marginBottom: '16px' }}>
-                  In Development
+                <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '16px' }}>
+                  In the Oven
                 </h2>
                 <div style={{ display: 'grid', gap: '16px' }}>
                   {[
                     {
                       title: 'Submission Tracking',
                       description:
-                        "See real-time submission rates for every assignment. Know who's turned in work and who hasn't, without leaving the dashboard.",
+                        "Real-time view of who's turned in what. No more opening D2L, clicking through three menus, and squinting at a spreadsheet.",
                     },
                     {
                       title: 'Grading Dashboard',
                       description:
-                        'A dedicated grading queue that shows what needs grading, sorted by urgency. Grade directly or link to D2L.',
+                        'A grading queue sorted by urgency so you know exactly what needs attention first. Less time in D2L, more time doing literally anything else.',
                     },
                     {
                       title: 'Syllabus Date Import',
                       description:
-                        "Upload your syllabus and we'll extract all assignment dates automatically, then sync them with your D2L calendar.",
+                        "Drop your syllabus in and we'll pull every assignment date out of it. Saves you 20 minutes of manual entry you shouldn't have to do.",
                     },
                   ].map((feature, idx) => (
                     <div
                       key={idx}
                       style={{
-                        background: 'white',
-                        border: '1px solid #e2e8f0',
+                        background: 'var(--white)',
+                        border: '1px solid var(--gray-300)',
                         borderLeft: '4px solid #059669',
                         borderRadius: '12px',
                         padding: '20px',
                         boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                       }}
                     >
-                      <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>
+                      <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '8px' }}>
                         {feature.title}
                       </h3>
-                      <p style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.6' }}>
+                      <p style={{ fontSize: '14px', color: 'var(--gray-500)', lineHeight: '1.6' }}>
                         {feature.description}
                       </p>
                     </div>
@@ -304,51 +303,51 @@ export default function FutureUpdatesPage() {
 
               {/* On the Roadmap Section */}
               <div style={{ marginBottom: '40px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b', marginBottom: '16px' }}>
-                  On the Roadmap
+                <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '16px' }}>
+                  On the Whiteboard
                 </h2>
                 <div style={{ display: 'grid', gap: '16px' }}>
                   {[
                     {
                       title: 'Class Analytics',
                       description:
-                        'See participation trends, grade distributions, and identify students who may be falling behind — all in real-time.',
+                        'Participation trends, grade distributions, students falling behind — all visible at a glance instead of buried in D2L reports nobody opens.',
                     },
                     {
                       title: 'Announcement Posting',
-                      description: 'Draft and publish course announcements directly to D2L without leaving the dashboard.',
+                      description: 'Write and publish announcements to D2L without leaving this dashboard. One less tab to keep open.',
                     },
                     {
                       title: 'Discussion Monitoring',
                       description:
-                        'Track discussion board activity, see participation rates, and get alerts for unanswered student questions.',
+                        'See who\'s actually participating in discussions and get pinged when a student question goes unanswered. No more checking manually.',
                     },
                     {
                       title: 'Canvas LMS Support',
                       description:
-                        "We're building Canvas compatibility to support courses and institutions that use Canvas alongside or instead of D2L.",
+                        'Not every course runs on D2L. Canvas support is coming so this works wherever you teach.',
                     },
                     {
                       title: 'Mobile App (iOS & Android)',
                       description:
-                        'A native mobile app for instructors to manage courses, review assignments, and stay on top of deadlines from anywhere.',
+                        'Manage courses from your phone. Check submissions, review deadlines, stay on top of things without opening a laptop.',
                     },
                   ].map((feature, idx) => (
                     <div
                       key={idx}
                       style={{
-                        background: 'white',
-                        border: '1px solid #e2e8f0',
+                        background: 'var(--white)',
+                        border: '1px solid var(--gray-300)',
                         borderLeft: '4px solid #3B82F6',
                         borderRadius: '12px',
                         padding: '20px',
                         boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                       }}
                     >
-                      <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>
+                      <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '8px' }}>
                         {feature.title}
                       </h3>
-                      <p style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.6' }}>
+                      <p style={{ fontSize: '14px', color: 'var(--gray-500)', lineHeight: '1.6' }}>
                         {feature.description}
                       </p>
                     </div>
@@ -358,70 +357,69 @@ export default function FutureUpdatesPage() {
 
               {/* Long-Term Vision Section */}
               <div style={{ marginBottom: '40px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b', marginBottom: '16px' }}>
-                  Long-Term Vision
+                <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '16px' }}>
+                  The Endgame
                 </h2>
                 <div style={{ display: 'grid', gap: '16px' }}>
                   {[
                     {
-                      title: 'Create & Assign Directly from Dashboard',
+                      title: 'Create & Assign from Here',
                       description:
-                        "Build and publish assignments, quizzes, and discussions directly through CMU AI Calendar — no need to switch to D2L. Set due dates, point values, and submission types all in one place, and it syncs straight to your D2L course.",
+                        "Build assignments, quizzes, and discussions right here. Set due dates, points, submission types — it all syncs to D2L. No more switching back and forth between platforms for every little thing.",
                     },
                     {
                       title: 'Full Announcement Management',
                       description:
-                        "Draft, preview, and publish course announcements to D2L without ever leaving the dashboard. Schedule announcements in advance, target specific sections, and track which students have seen them.",
+                        "Draft, schedule, and publish announcements to D2L from this dashboard. Target specific sections, track who's seen them. Basically, D2L's announcement system but usable.",
                     },
                     {
-                      title: 'Unified Course Management Hub',
+                      title: 'One Dashboard to Rule Them All',
                       description:
-                        "A single platform where you can manage your entire course — assignments, grades, announcements, discussions, and student communication — all through one clean interface instead of juggling between D2L and other tools.",
+                        "Assignments, grades, announcements, discussions, student communication — all in one place. The dream is you never have to open D2L directly again. We're not there yet, but that's where this is going.",
                     },
                   ].map((feature, idx) => (
                     <div
                       key={idx}
                       style={{
-                        background: 'white',
-                        border: '1px solid #e2e8f0',
+                        background: 'var(--white)',
+                        border: '1px solid var(--gray-300)',
                         borderLeft: '4px solid #8B5CF6',
                         borderRadius: '12px',
                         padding: '20px',
                         boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                       }}
                     >
-                      <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>
+                      <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '8px' }}>
                         {feature.title}
                       </h3>
-                      <p style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.6' }}>
+                      <p style={{ fontSize: '14px', color: 'var(--gray-500)', lineHeight: '1.6' }}>
                         {feature.description}
                       </p>
                     </div>
                   ))}
                 </div>
-                <p style={{ fontSize: '13px', color: '#94a3b8', marginTop: '12px', fontStyle: 'italic' }}>
-                  These features represent our longer-term vision and depend on deeper D2L API integration. We're actively working with CMU to make this possible.
+                <p style={{ fontSize: '13px', color: 'var(--gray-500)', marginTop: '12px', fontStyle: 'italic' }}>
+                  These depend on full D2L API access. We're working on it — CMU knows we want in.
                 </p>
               </div>
 
               {/* For Students Section */}
               <div style={{ marginBottom: '40px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b', marginBottom: '16px' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '16px' }}>
                   For Students
                 </h2>
                 <div
                   style={{
-                    background: 'white',
-                    border: '1px solid #e2e8f0',
+                    background: 'var(--white)',
+                    border: '1px solid var(--gray-300)',
                     borderRadius: '12px',
                     padding: '20px',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                   }}
                 >
-                  <p style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.6' }}>
-                    On the student side, we're building Outlook calendar sync, email-based event detection, smart study
-                    planning, and grade predictions. These will help students stay on top of their schedules and plan
-                    ahead more effectively.
+                  <p style={{ fontSize: '14px', color: 'var(--gray-500)', lineHeight: '1.6' }}>
+                    Students are getting Outlook sync, email event detection, smart study planning, and grade predictions.
+                    The better they can manage their workload, the fewer "can I get an extension?" emails you get. Everybody wins.
                   </p>
                 </div>
               </div>
@@ -430,8 +428,8 @@ export default function FutureUpdatesPage() {
 
           {/* Feedback Section */}
           <div style={{ marginTop: '48px', paddingTop: '32px', borderTop: '1px solid #e2e8f0' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b', marginBottom: '16px' }}>
-              Share Your Feedback
+            <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '16px' }}>
+              Tell Us What to Build Next
             </h2>
             {submitted ? (
               <div
@@ -446,7 +444,7 @@ export default function FutureUpdatesPage() {
                   fontWeight: 500,
                 }}
               >
-                ✓ Thank you for your feedback! We appreciate your input.
+                ✓ Got it. Your feedback is logged and on our radar.
               </div>
             ) : (
               <form onSubmit={handleFeedbackSubmit}>
@@ -457,12 +455,11 @@ export default function FutureUpdatesPage() {
                       display: 'block',
                       fontSize: '14px',
                       fontWeight: 500,
-                      color: '#1e293b',
+                      color: 'var(--gray-900)',
                       marginBottom: '8px',
                     }}
                   >
-                    What feature would make the biggest difference for you? Your input directly shapes what we build
-                    next.
+                    What's missing? What's annoying? What would make this actually indispensable? We read every one of these.
                   </label>
                   <textarea
                     id="feedback-textarea"
@@ -474,12 +471,12 @@ export default function FutureUpdatesPage() {
                       minHeight: '120px',
                       padding: '12px',
                       fontSize: '14px',
-                      border: '1px solid #cbd5e1',
+                      border: '1px solid var(--gray-300)',
                       borderRadius: '8px',
                       fontFamily: 'inherit',
                       resize: 'vertical',
-                      color: '#1e293b',
-                      backgroundColor: 'white',
+                      color: 'var(--gray-900)',
+                      backgroundColor: 'var(--white)',
                     }}
                   />
                 </div>

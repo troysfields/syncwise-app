@@ -127,7 +127,7 @@ export function FeedbackPanel() {
           <div style={{ padding: '40px 24px', textAlign: 'center' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>&#128588;</div>
             <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '8px', color: '#059669' }}>Thanks for your feedback!</h3>
-            <p style={{ fontSize: '14px', color: '#64748B', lineHeight: '1.6', marginBottom: '20px' }}>
+            <p style={{ fontSize: '14px', color: 'var(--gray-500)', lineHeight: '1.6', marginBottom: '20px' }}>
               Your input directly shapes what we build next. Every response helps us make SyncWise better for you and your classmates.
             </p>
             <button

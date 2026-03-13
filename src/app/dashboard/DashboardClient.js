@@ -246,6 +246,7 @@ export default function StudentDashboard() {
   // New feature state variables
   const [activeSection, setActiveSection] = useState('dashboard');
   const [focusMode, setFocusMode] = useState(false);
+  const [focusTimeframe, setFocusTimeframe] = useState('today'); // 'today' or 'week'
   const [showManualEventModal, setShowManualEventModal] = useState(false);
   const [manualEvents, setManualEvents] = useState([]);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
@@ -552,10 +553,24 @@ export default function StudentDashboard() {
   const today = new Date();
   const todayTodayTasks = visibleTasks.filter(t => {
     const d = t.manualDate || t.dueDate;
-    return d && isSameDay(new Date(d), today);
+    return d && isSameDay(new Date(d), today) && !t.submitted && t.status !== 'completed';
   });
+
+  // Week tasks — next 7 days (including today), uncompleted only
+  const weekEnd = new Date(today);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  weekEnd.setHours(23, 59, 59, 999);
+  const weekTasks = visibleTasks.filter(t => {
+    const d = t.manualDate || t.dueDate;
+    if (!d || t.submitted || t.status === 'completed') return false;
+    const taskDate = new Date(d);
+    return taskDate >= new Date(today.getFullYear(), today.getMonth(), today.getDate()) && taskDate <= weekEnd;
+  });
+
+  // Auto-switch: if no uncompleted tasks due today, show week view
+  const effectiveFocusTimeframe = todayTodayTasks.length === 0 ? 'week' : focusTimeframe;
   const focusModeAttentionItems = focusMode ? attentionItems : null;
-  const focusModeTasks = focusMode ? todayTodayTasks : null;
+  const focusModeTasks = focusMode ? (effectiveFocusTimeframe === 'week' ? weekTasks : todayTodayTasks) : null;
 
   // Filter assignment list
   const filteredTasks = visibleTasks.filter(t => {
@@ -878,13 +893,85 @@ export default function StudentDashboard() {
           {/* Focus Mode View */}
           {focusMode && (
             <div className="card" style={{ margin: '16px 0 0', borderLeft: '4px solid #5D0022' }}>
-              <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '20px' }}>🎯</span> Today's Focus
-              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <h2 style={{ fontSize: '16px', fontWeight: '700', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '20px' }}>🎯</span> {effectiveFocusTimeframe === 'week' ? "This Week's Focus" : "Today's Focus"}
+                </h2>
+                {/* Today / Week toggle — only show if today has tasks (otherwise auto-locked to week) */}
+                {todayTodayTasks.length > 0 && (
+                  <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-tertiary, #1E293B)', borderRadius: '8px', padding: '2px' }}>
+                    <button onClick={() => setFocusTimeframe('today')} style={{
+                      padding: '4px 12px', borderRadius: '6px', border: 'none', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                      background: effectiveFocusTimeframe === 'today' ? '#5D0022' : 'transparent',
+                      color: effectiveFocusTimeframe === 'today' ? '#FFFFFF' : '#94A3B8',
+                    }}>Today</button>
+                    <button onClick={() => setFocusTimeframe('week')} style={{
+                      padding: '4px 12px', borderRadius: '6px', border: 'none', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                      background: effectiveFocusTimeframe === 'week' ? '#5D0022' : 'transparent',
+                      color: effectiveFocusTimeframe === 'week' ? '#FFFFFF' : '#94A3B8',
+                    }}>This Week</button>
+                  </div>
+                )}
+                {todayTodayTasks.length === 0 && (
+                  <span style={{ fontSize: '11px', color: '#94A3B8', fontStyle: 'italic' }}>Nothing due today — showing week</span>
+                )}
+              </div>
               {focusModeTasks && focusModeTasks.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '24px', color: '#94A3B8' }}>
-                  <p style={{ fontSize: '14px' }}>No tasks due today. Great work!</p>
+                  <p style={{ fontSize: '14px' }}>No upcoming tasks this week. You're all caught up!</p>
                 </div>
+              ) : effectiveFocusTimeframe === 'week' ? (
+                <>
+                  {/* Week view — group tasks by day */}
+                  {(() => {
+                    const dayGroups = {};
+                    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    (focusModeTasks || []).forEach(task => {
+                      const d = new Date(task.manualDate || task.dueDate);
+                      const key = d.toISOString().split('T')[0];
+                      if (!dayGroups[key]) dayGroups[key] = { date: d, tasks: [] };
+                      dayGroups[key].tasks.push(task);
+                    });
+                    const sortedDays = Object.entries(dayGroups).sort(([a], [b]) => a.localeCompare(b));
+                    return sortedDays.map(([dayKey, group]) => {
+                      const isToday = isSameDay(group.date, today);
+                      const isTomorrow = isSameDay(group.date, new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1));
+                      const dayLabel = isToday ? 'Today' : isTomorrow ? 'Tomorrow' : `${dayNames[group.date.getDay()]}, ${group.date.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+                      return (
+                        <div key={dayKey} style={{ marginBottom: '12px' }}>
+                          <h3 style={{ fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: isToday ? '#EF4444' : '#64748B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {dayLabel}
+                            <span style={{ fontSize: '11px', fontWeight: '400', color: '#475569' }}>({group.tasks.length})</span>
+                          </h3>
+                          {group.tasks.map(task => (
+                            <div key={task.id} className="task-item" style={{ borderLeft: `3px solid ${task.courseColor}` }}>
+                              {task.unread && <span className="unread-dot"></span>}
+                              <span style={{ fontSize: '16px', flexShrink: 0 }}>{getItemTypeIcon(task.type)}</span>
+                              <div className="task-info">
+                                <div className="task-name">{task.name}</div>
+                                <div className="task-meta">
+                                  <span style={{ color: task.courseColor, fontWeight: '600' }}>{task.courseName}</span>
+                                  {task.points && ` · ${task.points} pts`}
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
+                                {isToday && !task.submitted && <span className="badge badge-high">Urgent</span>}
+                              </div>
+                              <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                {!task.submitted && (
+                                  <button className="item-action-btn complete" onClick={() => handleMarkComplete(task.id)}
+                                    title="Mark as completed">✓</button>
+                                )}
+                                <button className="item-action-btn remove" onClick={() => handleRemoveItem(task.id)}
+                                  title="Hide from view">✕</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    });
+                  })()}
+                </>
               ) : (
                 <>
                   <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: '#64748B' }}>Due Today</h3>

@@ -1,10 +1,29 @@
 'use client';
 
-// SyncWise AI Chat Widget — Tier 1
-// Floating chat bubble in bottom-right corner
-// Provides platform guidance, D2L setup help, and feature navigation
+// SyncWise AI Chat Widget — Comic-inspired design
+// Floating chat bubble with speech-bubble styled messages
+// Auto-scrolls to bottom on open, strips markdown from AI responses
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+
+// Strip markdown formatting from AI responses as a safety net
+function stripMarkdown(text) {
+  if (!text) return '';
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '$1')     // **bold**
+    .replace(/\*(.*?)\*/g, '$1')          // *italic*
+    .replace(/__(.*?)__/g, '$1')          // __bold__
+    .replace(/_(.*?)_/g, '$1')            // _italic_
+    .replace(/#{1,6}\s+/g, '')            // ### headers
+    .replace(/^---+$/gm, '')              // --- horizontal rules
+    .replace(/^[\*\-]\s+/gm, '• ')       // bullet points → simple dots (if they sneak through)
+    .replace(/^\d+\.\s+/gm, '')           // numbered lists
+    .replace(/`([^`]+)`/g, '$1')          // `inline code`
+    .replace(/```[\s\S]*?```/g, '')       // code blocks
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [links](url)
+    .replace(/\n{3,}/g, '\n\n')           // excess newlines
+    .trim();
+}
 
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,17 +31,32 @@ export default function ChatWidget() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [bubblePulse, setBubblePulse] = useState(true);
   const messagesEndRef = useRef(null);
+  const messageAreaRef = useRef(null);
   const inputRef = useRef(null);
 
-  const defaultGreeting = { role: 'assistant', content: 'Hey — I\'m your SyncWise assistant. Ask me about your workload, help drafting emails, reporting bugs, or anything about the platform.' };
+  // Casual rotating greetings
+  const greetings = [
+    "What's up? I'm your SyncWise assistant — ask me about your workload, help drafting emails, or anything about the platform.",
+    "Hey! Need help with assignments, emails, or figuring something out? I'm here.",
+    "What are we working on? I can check your schedule, draft emails, or help you plan your week.",
+  ];
+  const defaultGreeting = { role: 'assistant', content: greetings[Math.floor(Math.random() * greetings.length)] };
 
-  // Auto-scroll to bottom on new messages
+  // Scroll to bottom helper
+  const scrollToBottom = useCallback((behavior = 'smooth') => {
+    if (messageAreaRef.current) {
+      messageAreaRef.current.scrollTop = messageAreaRef.current.scrollHeight;
+    }
+  }, []);
+
+  // Auto-scroll on new messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
 
-  // Load saved chat history when widget first opens
+  // Load saved chat history when widget first opens + scroll to bottom
   useEffect(() => {
     if (isOpen && !historyLoaded) {
       setHistoryLoaded(true);
@@ -30,53 +64,56 @@ export default function ChatWidget() {
         .then(r => r.json())
         .then(data => {
           if (data.success && data.history && data.history.length > 0) {
-            // Show last 20 messages from history
             const recent = data.history.slice(-20).map(m => ({
               role: m.role,
-              content: m.content,
+              content: m.role === 'assistant' ? stripMarkdown(m.content) : m.content,
             }));
             setMessages(recent);
           } else {
             setMessages([defaultGreeting]);
           }
+          // Force scroll to bottom after history loads
+          setTimeout(() => scrollToBottom('instant'), 50);
         })
         .catch(() => {
           setMessages([defaultGreeting]);
         });
+    }
+    // Always scroll to bottom when opening
+    if (isOpen) {
+      setTimeout(() => scrollToBottom('instant'), 100);
     }
   }, [isOpen, historyLoaded]);
 
   // Focus input when chat opens
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+      setBubblePulse(false);
+      setTimeout(() => inputRef.current?.focus(), 150);
     }
   }, [isOpen]);
 
-  // Pull task context from localStorage for workload checks
+  // Task context from localStorage
   const getTaskContext = () => {
     try {
       const cached = localStorage.getItem('syncwise_dashboard_data');
       if (cached) {
         const data = JSON.parse(cached);
         if (data.tasks && Array.isArray(data.tasks)) {
-          return { tasks: data.tasks.slice(0, 20) }; // Limit to 20 tasks
+          return { tasks: data.tasks.slice(0, 20) };
         }
       }
-      // Also try assignments key
       const assignments = localStorage.getItem('syncwise_assignments');
       if (assignments) {
         const parsed = JSON.parse(assignments);
-        if (Array.isArray(parsed)) {
-          return { tasks: parsed.slice(0, 20) };
-        }
+        if (Array.isArray(parsed)) return { tasks: parsed.slice(0, 20) };
       }
     } catch { /* ignore */ }
     return {};
   };
 
-  const sendMessage = async () => {
-    const trimmed = input.trim();
+  const sendMessage = async (messageText) => {
+    const trimmed = (messageText || input).trim();
     if (!trimmed || isLoading) return;
 
     const userMessage = { role: 'user', content: trimmed };
@@ -84,7 +121,6 @@ export default function ChatWidget() {
     setInput('');
     setIsLoading(true);
 
-    // Include task context for workload-related queries
     const context = getTaskContext();
 
     try {
@@ -103,24 +139,24 @@ export default function ChatWidget() {
       if (data.success) {
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: data.response,
+          content: stripMarkdown(data.response),
           model: data.model,
           isLiteMode: data.isLiteMode,
         }]);
       } else if (res.status === 401) {
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: 'You need to complete setup first before using the chat. Head to /setup to connect your D2L calendar!',
+          content: 'You need to complete setup first. Head to /setup to connect your D2L calendar!',
         }]);
       } else if (res.status === 429) {
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: 'You\'ve hit the chat limit for now. Give it a few minutes and try again!',
+          content: 'You\'ve hit the chat limit. Give it a minute and try again.',
         }]);
       } else {
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: 'Hmm, something went wrong. Try again in a sec?',
+          content: 'Something went wrong. Try again in a sec?',
         }]);
       }
     } catch (err) {
@@ -140,9 +176,8 @@ export default function ChatWidget() {
     }
   };
 
-  // Quick action buttons for common tasks
   const quickActions = [
-    { label: 'How\'s my week?', message: 'How\'s my week looking?' },
+    { label: "How's my week?", message: "How's my week looking?" },
     { label: 'Draft an email', message: 'Help me draft an email to a professor' },
     { label: 'Report a bug', message: 'I want to report an issue' },
   ];
@@ -152,51 +187,57 @@ export default function ChatWidget() {
       {/* Chat Bubble Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        style={styles.bubble}
-        aria-label={isOpen ? 'Close chat' : 'Open CMU AI Calendar chat'}
-        title="Chat with CMU AI Calendar"
+        className={`chat-bubble-btn ${bubblePulse ? 'chat-bubble-pulse' : ''}`}
+        aria-label={isOpen ? 'Close chat' : 'Open SyncWise chat'}
+        title="Chat with SyncWise AI"
       >
         {isOpen ? (
-          <span style={styles.bubbleIcon}>✕</span>
+          <span className="chat-bubble-icon">✕</span>
         ) : (
-          <span style={styles.bubbleIcon}>💬</span>
+          <span className="chat-bubble-icon">💬</span>
         )}
       </button>
 
       {/* Chat Window */}
       {isOpen && (
-        <div style={styles.window}>
+        <div className="chat-window">
           {/* Header */}
-          <div style={styles.header}>
-            <div>
-              <strong style={styles.headerTitle}>SyncWise AI</strong>
-              <span style={styles.headerSubtitle}>Your assistant</span>
+          <div className="chat-header">
+            <div className="chat-header-info">
+              <span className="chat-header-avatar">⚡</span>
+              <div>
+                <strong className="chat-header-title">SyncWise AI</strong>
+                <span className="chat-header-status">
+                  <span className="chat-status-dot" />
+                  Online
+                </span>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+            <div className="chat-header-actions">
               {messages.length > 1 && (
                 <button
                   onClick={() => { setMessages([defaultGreeting]); setHistoryLoaded(true); }}
-                  style={{ ...styles.closeBtn, fontSize: '12px', opacity: 0.7 }}
+                  className="chat-header-btn"
                   title="Clear chat"
                 >
                   ↺
                 </button>
               )}
-              <button onClick={() => setIsOpen(false)} style={styles.closeBtn}>✕</button>
+              <button onClick={() => setIsOpen(false)} className="chat-header-btn">✕</button>
             </div>
           </div>
 
           {/* Messages */}
-          <div style={styles.messageArea}>
+          <div className="chat-messages" ref={messageAreaRef}>
             {messages.map((msg, i) => (
               <div
                 key={i}
-                style={{
-                  ...styles.messageBubble,
-                  ...(msg.role === 'user' ? styles.userBubble : styles.assistantBubble),
-                }}
+                className={`chat-msg ${msg.role === 'user' ? 'chat-msg-user' : 'chat-msg-ai'}`}
               >
-                <div style={styles.messageText}>
+                {msg.role === 'assistant' && (
+                  <span className="chat-msg-avatar">⚡</span>
+                )}
+                <div className={`chat-msg-bubble ${msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'}`}>
                   {msg.content.split('\n').map((line, j) => (
                     <span key={j}>
                       {line}
@@ -204,52 +245,31 @@ export default function ChatWidget() {
                     </span>
                   ))}
                 </div>
-                {msg.isLiteMode && (
-                  <span style={styles.liteBadge}>lite mode</span>
-                )}
               </div>
             ))}
             {isLoading && (
-              <div style={{ ...styles.messageBubble, ...styles.assistantBubble }}>
-                <div style={styles.typing}>
-                  <span style={styles.dot}>●</span>
-                  <span style={{ ...styles.dot, animationDelay: '0.2s' }}>●</span>
-                  <span style={{ ...styles.dot, animationDelay: '0.4s' }}>●</span>
+              <div className="chat-msg chat-msg-ai">
+                <span className="chat-msg-avatar">⚡</span>
+                <div className="chat-bubble-ai chat-msg-bubble">
+                  <div className="chat-typing">
+                    <span className="chat-typing-dot" />
+                    <span className="chat-typing-dot" />
+                    <span className="chat-typing-dot" />
+                  </div>
                 </div>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Actions (shown when few messages) */}
+          {/* Quick Actions */}
           {messages.length <= 2 && (
-            <div style={styles.quickActions}>
+            <div className="chat-quick-actions">
               {quickActions.map((action, i) => (
                 <button
                   key={i}
-                  onClick={() => {
-                    setInput(action.message);
-                    setTimeout(() => sendMessage(), 0);
-                    setInput('');
-                    // Directly send
-                    const userMsg = { role: 'user', content: action.message };
-                    setMessages(prev => [...prev, userMsg]);
-                    setIsLoading(true);
-                    fetch('/api/chat', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ message: action.message, history: messages, context: getTaskContext() }),
-                    })
-                      .then(r => r.json())
-                      .then(data => {
-                        if (data.success) {
-                          setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
-                        }
-                      })
-                      .catch(() => {})
-                      .finally(() => setIsLoading(false));
-                  }}
-                  style={styles.quickBtn}
+                  onClick={() => sendMessage(action.message)}
+                  className="chat-quick-btn"
                 >
                   {action.label}
                 </button>
@@ -258,7 +278,7 @@ export default function ChatWidget() {
           )}
 
           {/* Input Area */}
-          <div style={styles.inputArea}>
+          <div className="chat-input-area">
             <input
               ref={inputRef}
               type="text"
@@ -266,17 +286,15 @@ export default function ChatWidget() {
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask me anything..."
-              style={styles.input}
+              className="chat-input"
               disabled={isLoading}
               maxLength={2000}
             />
             <button
-              onClick={sendMessage}
+              onClick={() => sendMessage()}
               disabled={!input.trim() || isLoading}
-              style={{
-                ...styles.sendBtn,
-                opacity: (!input.trim() || isLoading) ? 0.4 : 1,
-              }}
+              className="chat-send-btn"
+              style={{ opacity: (!input.trim() || isLoading) ? 0.4 : 1 }}
             >
               ↑
             </button>
@@ -284,172 +302,335 @@ export default function ChatWidget() {
         </div>
       )}
 
-      {/* Typing animation CSS */}
+      {/* All chat styles */}
       <style>{`
-        @keyframes chatDotPulse {
-          0%, 80%, 100% { opacity: 0.3; }
-          40% { opacity: 1; }
+        /* ── Chat Bubble Button ── */
+        .chat-bubble-btn {
+          position: fixed;
+          bottom: 24px;
+          right: 24px;
+          width: 60px;
+          height: 60px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #5D0022 0%, #8B0033 100%);
+          border: 3px solid #FBCE04;
+          cursor: pointer;
+          box-shadow: 0 4px 20px rgba(93, 0, 34, 0.5), 0 0 0 0 rgba(251, 206, 4, 0.4);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 9999;
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .chat-bubble-btn:hover {
+          transform: scale(1.08);
+          box-shadow: 0 6px 28px rgba(93, 0, 34, 0.6), 0 0 0 4px rgba(251, 206, 4, 0.2);
+        }
+        .chat-bubble-pulse {
+          animation: chatBubblePulse 2s ease-in-out infinite;
+        }
+        @keyframes chatBubblePulse {
+          0%, 100% { box-shadow: 0 4px 20px rgba(93, 0, 34, 0.5), 0 0 0 0 rgba(251, 206, 4, 0.4); }
+          50% { box-shadow: 0 4px 20px rgba(93, 0, 34, 0.5), 0 0 0 8px rgba(251, 206, 4, 0); }
+        }
+        .chat-bubble-icon {
+          font-size: 26px;
+          color: #fff;
+          line-height: 1;
+        }
+
+        /* ── Chat Window ── */
+        .chat-window {
+          position: fixed;
+          bottom: 96px;
+          right: 24px;
+          width: 390px;
+          max-width: calc(100vw - 48px);
+          height: 540px;
+          max-height: calc(100vh - 120px);
+          background: #FAFAFA;
+          border-radius: 20px;
+          border: 2px solid #E5E7EB;
+          box-shadow: 0 12px 48px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+          display: flex;
+          flex-direction: column;
+          z-index: 9998;
+          overflow: hidden;
+          animation: chatSlideIn 0.25s ease-out;
+        }
+        @keyframes chatSlideIn {
+          from { opacity: 0; transform: translateY(12px) scale(0.97); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* ── Header ── */
+        .chat-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 14px 18px;
+          background: linear-gradient(135deg, #5D0022 0%, #7A0030 100%);
+          color: #fff;
+          border-bottom: 3px solid #FBCE04;
+        }
+        .chat-header-info {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .chat-header-avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: rgba(251, 206, 4, 0.2);
+          border: 2px solid #FBCE04;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 18px;
+        }
+        .chat-header-title {
+          display: block;
+          font-size: 15px;
+          font-weight: 700;
+          letter-spacing: 0.3px;
+          font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        .chat-header-status {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 11px;
+          opacity: 0.85;
+        }
+        .chat-status-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #34D399;
+          display: inline-block;
+          animation: chatStatusPulse 2s ease-in-out infinite;
+        }
+        @keyframes chatStatusPulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+        .chat-header-actions {
+          display: flex;
+          gap: 2px;
+          align-items: center;
+        }
+        .chat-header-btn {
+          background: rgba(255,255,255,0.15);
+          border: none;
+          color: #fff;
+          font-size: 15px;
+          cursor: pointer;
+          padding: 4px 8px;
+          border-radius: 6px;
+          transition: background 0.15s;
+        }
+        .chat-header-btn:hover {
+          background: rgba(255,255,255,0.25);
+        }
+
+        /* ── Messages ── */
+        .chat-messages {
+          flex: 1;
+          overflow-y: auto;
+          padding: 16px 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          scroll-behavior: smooth;
+        }
+        .chat-msg {
+          display: flex;
+          align-items: flex-end;
+          gap: 8px;
+          max-width: 88%;
+          animation: chatMsgIn 0.2s ease-out;
+        }
+        @keyframes chatMsgIn {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .chat-msg-user {
+          align-self: flex-end;
+          flex-direction: row-reverse;
+        }
+        .chat-msg-ai {
+          align-self: flex-start;
+        }
+        .chat-msg-avatar {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #5D0022, #8B0033);
+          border: 2px solid #FBCE04;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 13px;
+          flex-shrink: 0;
+        }
+        .chat-msg-bubble {
+          padding: 10px 14px;
+          font-size: 13.5px;
+          line-height: 1.55;
+          word-break: break-word;
+          font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        /* Comic-inspired speech bubble for AI */
+        .chat-bubble-ai {
+          background: #FFFFFF;
+          color: #1a1a2e;
+          border: 2px solid #D1D5DB;
+          border-radius: 18px 18px 18px 4px;
+          box-shadow: 2px 2px 0px #D1D5DB;
+          position: relative;
+        }
+
+        /* User bubble */
+        .chat-bubble-user {
+          background: linear-gradient(135deg, #5D0022 0%, #7A0030 100%);
+          color: #fff;
+          border: 2px solid #5D0022;
+          border-radius: 18px 18px 4px 18px;
+          box-shadow: 2px 2px 0px rgba(93, 0, 34, 0.3);
+        }
+
+        /* ── Typing Indicator ── */
+        .chat-typing {
+          display: flex;
+          gap: 5px;
+          padding: 4px 2px;
+        }
+        .chat-typing-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #5D0022;
+          display: inline-block;
+          animation: chatTypingBounce 1.4s infinite ease-in-out;
+        }
+        .chat-typing-dot:nth-child(2) { animation-delay: 0.16s; }
+        .chat-typing-dot:nth-child(3) { animation-delay: 0.32s; }
+        @keyframes chatTypingBounce {
+          0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
+          40% { transform: scale(1); opacity: 1; }
+        }
+
+        /* ── Quick Actions ── */
+        .chat-quick-actions {
+          display: flex;
+          gap: 6px;
+          padding: 10px 14px;
+          border-top: 1px solid #E5E7EB;
+          background: #FAFAFA;
+        }
+        .chat-quick-btn {
+          flex: 1;
+          padding: 7px 8px;
+          font-size: 12px;
+          background: #FDF2F4;
+          color: #5D0022;
+          border: 2px solid #E8B4BF;
+          border-radius: 10px;
+          cursor: pointer;
+          font-weight: 600;
+          font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+          transition: all 0.15s;
+          box-shadow: 1px 1px 0px #E8B4BF;
+        }
+        .chat-quick-btn:hover {
+          background: #5D0022;
+          color: #fff;
+          border-color: #5D0022;
+          transform: translateY(-1px);
+          box-shadow: 2px 2px 0px rgba(93, 0, 34, 0.3);
+        }
+
+        /* ── Input Area ── */
+        .chat-input-area {
+          display: flex;
+          gap: 8px;
+          padding: 12px 14px;
+          border-top: 2px solid #E5E7EB;
+          background: #fff;
+        }
+        .chat-input {
+          flex: 1;
+          padding: 10px 14px;
+          border: 2px solid #D1D5DB;
+          border-radius: 12px;
+          font-size: 13.5px;
+          outline: none;
+          font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+          transition: border-color 0.15s;
+          background: #FAFAFA;
+        }
+        .chat-input:focus {
+          border-color: #5D0022;
+          background: #fff;
+        }
+        .chat-send-btn {
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
+          background: linear-gradient(135deg, #5D0022 0%, #8B0033 100%);
+          color: #fff;
+          border: 2px solid #5D0022;
+          cursor: pointer;
+          font-size: 17px;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: transform 0.15s;
+          box-shadow: 2px 2px 0px rgba(93, 0, 34, 0.3);
+        }
+        .chat-send-btn:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 3px 3px 0px rgba(93, 0, 34, 0.3);
+        }
+
+        /* ── Dark Mode ── */
+        [data-theme="dark"] .chat-window {
+          background: #1a1a2e;
+          border-color: #2d2d44;
+        }
+        [data-theme="dark"] .chat-bubble-ai {
+          background: #2d2d44;
+          color: #E5E7EB;
+          border-color: #3d3d55;
+          box-shadow: 2px 2px 0px #1a1a2e;
+        }
+        [data-theme="dark"] .chat-messages { background: #1a1a2e; }
+        [data-theme="dark"] .chat-input-area { background: #1a1a2e; border-color: #2d2d44; }
+        [data-theme="dark"] .chat-input { background: #2d2d44; border-color: #3d3d55; color: #E5E7EB; }
+        [data-theme="dark"] .chat-input:focus { border-color: #FBCE04; }
+        [data-theme="dark"] .chat-quick-actions { background: #1a1a2e; border-color: #2d2d44; }
+        [data-theme="dark"] .chat-quick-btn { background: #2d2d44; color: #FBCE04; border-color: #3d3d55; }
+        [data-theme="dark"] .chat-quick-btn:hover { background: #FBCE04; color: #1a1a2e; }
+
+        /* ── Mobile ── */
+        @media (max-width: 480px) {
+          .chat-window {
+            right: 8px;
+            bottom: 80px;
+            width: calc(100vw - 16px);
+            height: calc(100vh - 100px);
+          }
+          .chat-bubble-btn {
+            bottom: 16px;
+            right: 16px;
+            width: 52px;
+            height: 52px;
+          }
         }
       `}</style>
     </>
   );
 }
-
-const styles = {
-  bubble: {
-    position: 'fixed',
-    bottom: '24px',
-    right: '24px',
-    width: '56px',
-    height: '56px',
-    borderRadius: '50%',
-    backgroundColor: '#5D0022',
-    border: 'none',
-    cursor: 'pointer',
-    boxShadow: '0 4px 16px rgba(79, 70, 229, 0.4)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 9999,
-    transition: 'transform 0.2s, box-shadow 0.2s',
-  },
-  bubbleIcon: {
-    fontSize: '24px',
-    color: '#fff',
-    lineHeight: 1,
-  },
-  window: {
-    position: 'fixed',
-    bottom: '92px',
-    right: '24px',
-    width: '380px',
-    maxWidth: 'calc(100vw - 48px)',
-    height: '520px',
-    maxHeight: 'calc(100vh - 120px)',
-    backgroundColor: '#fff',
-    borderRadius: '16px',
-    boxShadow: '0 8px 40px rgba(0,0,0,0.15)',
-    display: 'flex',
-    flexDirection: 'column',
-    zIndex: 9998,
-    overflow: 'hidden',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '16px 20px',
-    backgroundColor: '#5D0022',
-    color: '#fff',
-  },
-  headerTitle: {
-    fontSize: '1rem',
-    display: 'block',
-  },
-  headerSubtitle: {
-    fontSize: '0.75rem',
-    opacity: 0.8,
-  },
-  closeBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#fff',
-    fontSize: '18px',
-    cursor: 'pointer',
-    padding: '4px 8px',
-    borderRadius: '4px',
-  },
-  messageArea: {
-    flex: 1,
-    overflowY: 'auto',
-    padding: '16px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-  },
-  messageBubble: {
-    maxWidth: '85%',
-    padding: '10px 14px',
-    borderRadius: '12px',
-    fontSize: '0.875rem',
-    lineHeight: '1.5',
-    wordBreak: 'break-word',
-  },
-  userBubble: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#5D0022',
-    color: '#fff',
-    borderBottomRightRadius: '4px',
-  },
-  assistantBubble: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#F3F4F6',
-    color: '#1F2937',
-    borderBottomLeftRadius: '4px',
-  },
-  messageText: {
-    margin: 0,
-  },
-  liteBadge: {
-    display: 'inline-block',
-    fontSize: '0.65rem',
-    color: '#9CA3AF',
-    marginTop: '4px',
-  },
-  typing: {
-    display: 'flex',
-    gap: '4px',
-    padding: '4px 0',
-  },
-  dot: {
-    fontSize: '12px',
-    color: '#9CA3AF',
-    animation: 'chatDotPulse 1.4s infinite',
-  },
-  quickActions: {
-    display: 'flex',
-    gap: '8px',
-    padding: '8px 16px',
-    borderTop: '1px solid #F3F4F6',
-  },
-  quickBtn: {
-    flex: 1,
-    padding: '6px 10px',
-    fontSize: '0.75rem',
-    backgroundColor: '#FDF2F4',
-    color: '#5D0022',
-    border: '1px solid #E8B4BF',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontWeight: '500',
-  },
-  inputArea: {
-    display: 'flex',
-    gap: '8px',
-    padding: '12px 16px',
-    borderTop: '1px solid #E5E7EB',
-  },
-  input: {
-    flex: 1,
-    padding: '10px 14px',
-    border: '1px solid #D1D5DB',
-    borderRadius: '10px',
-    fontSize: '0.875rem',
-    outline: 'none',
-    fontFamily: 'inherit',
-  },
-  sendBtn: {
-    width: '38px',
-    height: '38px',
-    borderRadius: '50%',
-    backgroundColor: '#5D0022',
-    color: '#fff',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: '16px',
-    fontWeight: '700',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-};

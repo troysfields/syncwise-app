@@ -367,6 +367,24 @@ export default function StudentDashboard() {
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [lastRefreshTime, setLastRefreshTime] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [semesterView, setSemesterView] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Detect fullscreen mode (wide enough window = "fullscreen")
+  useEffect(() => {
+    function checkFullscreen() {
+      // Consider fullscreen if window width >= 1400px (covers maximized browser windows)
+      setIsFullscreen(window.innerWidth >= 1400);
+    }
+    checkFullscreen();
+    window.addEventListener('resize', checkFullscreen);
+    return () => window.removeEventListener('resize', checkFullscreen);
+  }, []);
+
+  // Turn off semester view if user exits fullscreen
+  useEffect(() => {
+    if (!isFullscreen && semesterView) setSemesterView(false);
+  }, [isFullscreen]);
 
   // ============================================================
   // LIVE DATA FETCH — Pull from consent-data API if user completed setup
@@ -849,6 +867,28 @@ export default function StudentDashboard() {
     }
   }, [activeSection]); // re-run when switching to calendar view
 
+  // Generate semester weeks (now through end of semester ~May 10)
+  function getSemesterWeeks() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - startDate.getDay()); // align to Sunday
+    // End of semester: roughly May 10 of current academic year
+    const semesterEnd = new Date(today.getFullYear(), 4, 10); // May 10
+    if (semesterEnd < today) semesterEnd.setFullYear(semesterEnd.getFullYear() + 1);
+    const weeks = [];
+    const cursor = new Date(startDate);
+    while (cursor <= semesterEnd) {
+      const week = [];
+      for (let d = 0; d < 7; d++) {
+        week.push(new Date(cursor));
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      weeks.push(week);
+    }
+    return weeks;
+  }
+
   function scrollToToday() {
     const scrollContainer = document.getElementById('cal-scroll-container');
     if (scrollContainer && todayScrollIndex >= 0) {
@@ -1299,6 +1339,14 @@ export default function StudentDashboard() {
                   background: '#ECFDF5', fontSize: '12px', fontWeight: '600', color: '#059669',
                   cursor: 'pointer', transition: 'all 0.15s',
                 }}>+ Add Event</button>
+                {isFullscreen && (
+                  <button onClick={() => setSemesterView(!semesterView)} style={{
+                    padding: '4px 12px', border: semesterView ? '1px solid #5D0022' : '1px solid #E2E8F0', borderRadius: '6px',
+                    background: semesterView ? '#5D0022' : 'white', fontSize: '12px', fontWeight: '600',
+                    color: semesterView ? '#fff' : '#64748B',
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}>Semester</button>
+                )}
               </div>
               {/* Course Filter */}
               <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '8px' }}>
@@ -1314,6 +1362,7 @@ export default function StudentDashboard() {
             </div>
 
             {/* Horizontal scrolling day columns */}
+            {!semesterView && (
             <div
               id="cal-scroll-container"
               className="scroll-cal-container"
@@ -1341,29 +1390,30 @@ export default function StudentDashboard() {
                         </span>
                       )}
                     </div>
-                    <div className="scroll-cal-day-body">
+                    <div className={`scroll-cal-day-body ${totalItems >= 3 ? 'scroll-cal-compact' : ''}`}>
                       {totalItems === 0 && (
                         <div className="scroll-cal-empty">—</div>
                       )}
                       {dayEvents.map(e => (
-                        <div key={e.id} className="scroll-cal-chip scroll-cal-chip-event" title={`${e.name}\n${formatTime(e.start)} – ${formatTime(e.end)}`}>
-                          <div className="scroll-cal-chip-time">{formatTime(e.start)}</div>
-                          <div className="scroll-cal-chip-name">{e.name}</div>
+                        <div key={e.id} className={`scroll-cal-chip scroll-cal-chip-event ${totalItems >= 3 ? 'scroll-cal-chip-sm' : ''}`} title={`${e.name}\n${formatTime(e.start)} – ${formatTime(e.end)}`}>
+                          {totalItems < 3 && <div className="scroll-cal-chip-time">{formatTime(e.start)}</div>}
+                          <div className="scroll-cal-chip-name">{totalItems >= 3 ? e.name.slice(0, 20) + (e.name.length > 20 ? '…' : '') : e.name}</div>
                         </div>
                       ))}
                       {dayTasks.map(t => {
                         const sub = isSubmittableType(t.type);
+                        const compact = totalItems >= 3;
                         return (
                           <div key={t.id}
-                            className={`scroll-cal-chip ${!sub ? 'scroll-cal-chip-info' : ''}`}
+                            className={`scroll-cal-chip ${!sub ? 'scroll-cal-chip-info' : ''} ${compact ? 'scroll-cal-chip-sm' : ''}`}
                             style={{ background: t.courseColor + '18', borderLeftColor: t.courseColor }}
-                            title={`${t.courseName} — ${t.name}${sub && t.dueDate ? '\nDue ' + formatTime(t.manualDate || t.dueDate) : ''}`}
+                            title={`${t.courseName} — ${t.name}${sub && t.dueDate ? '\nDue ' + formatTime(t.manualDate || t.dueDate) : ''}${t.points ? '\n' + t.points + ' pts' : ''}`}
                           >
-                            <div className="scroll-cal-chip-course" style={{ color: t.courseColor }}>{t.courseName}</div>
+                            {!compact && <div className="scroll-cal-chip-course" style={{ color: t.courseColor }}>{t.courseName}</div>}
                             <div className="scroll-cal-chip-name">
-                              {getItemTypeIcon(t.type)} {t.name}
+                              {compact ? t.name.slice(0, 22) + (t.name.length > 22 ? '…' : '') : <>{getItemTypeIcon(t.type)} {t.name}</>}
                             </div>
-                            {sub && t.dueDate && (
+                            {!compact && sub && t.dueDate && (
                               <div className="scroll-cal-chip-time">Due {formatTime(t.manualDate || t.dueDate)}{t.points ? ` · ${t.points} pts` : ''}</div>
                             )}
                           </div>
@@ -1374,6 +1424,54 @@ export default function StudentDashboard() {
                 );
               })}
             </div>
+            )}
+
+            {/* SEMESTER VIEW — zoomed-out rest of semester */}
+            {semesterView && (
+            <div className="semester-view-wrap" style={{ padding: '8px 4px' }}>
+              <div className="semester-view-container">
+                {getSemesterWeeks().map((week, wi) => {
+                  const weekStart = week[0];
+                  const weekEnd = week[6];
+                  const isCurrentWeek = week.some(d => isSameDay(d, new Date()));
+                  const weekLabel = `${weekStart.toLocaleDateString([], { month: 'short' })} ${weekStart.getDate()}`;
+                  return (
+                    <div key={wi} className="semester-week-col">
+                      <div className={`semester-week-header ${isCurrentWeek ? 'semester-current-week' : ''}`}>
+                        {weekLabel}
+                      </div>
+                      <div className="semester-day-row">
+                        {week.map((day, di) => {
+                          const dayTasks = getTasksForDay(calendarFilteredTasks, day);
+                          const dayEvents = getEventsForDay(calendarFilteredEvents, day);
+                          const isToday = isSameDay(day, new Date());
+                          const isPast = day < new Date() && !isToday;
+                          const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+                          return (
+                            <div key={di} className={`semester-day ${isToday ? 'semester-today' : ''}`} style={{ opacity: isPast ? 0.4 : 1 }}>
+                              <span className="semester-day-label">{dayNames[di]}{day.getDate()}</span>
+                              {dayTasks.map(t => (
+                                <div key={t.id} className="semester-bar"
+                                  style={{ background: t.courseColor || '#6B7280', width: `${Math.min(100, Math.max(30, (t.points || 10) * 2))}%` }}
+                                  title={`${t.courseName}: ${t.name}${t.points ? ' (' + t.points + ' pts)' : ''}`}
+                                />
+                              ))}
+                              {dayEvents.map(e => (
+                                <div key={e.id} className="semester-bar"
+                                  style={{ background: '#3B82F6', width: '40%' }}
+                                  title={e.name}
+                                />
+                              ))}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            )}
           </div>
           )}
 

@@ -607,6 +607,105 @@ body {
   margin-top: 2px;
 }
 
+/* Compact mode for busy days (3+ items) */
+.scroll-cal-compact {
+  gap: 2px !important;
+}
+.scroll-cal-chip-sm {
+  padding: 3px 5px !important;
+}
+.scroll-cal-chip-sm .scroll-cal-chip-name {
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- SEMESTER VIEW --- */
+.semester-toggle-bar {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+  margin-bottom: 4px;
+}
+.semester-toggle-bar.semester-visible {
+  display: flex;
+}
+.semester-view-wrap {
+  padding: 0;
+  overflow: hidden;
+}
+.semester-view-container {
+  display: flex;
+  overflow-x: hidden;
+  padding: 0 0 8px;
+}
+.semester-week-col {
+  flex: 1;
+  min-width: 0;
+  border-right: 1px solid var(--gray-100);
+  display: flex;
+  flex-direction: column;
+}
+.semester-week-col:last-child {
+  border-right: none;
+}
+.semester-week-header {
+  text-align: center;
+  padding: 6px 2px 4px;
+  border-bottom: 1px solid var(--gray-100);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.semester-week-header.semester-current-week {
+  color: var(--primary);
+  background: var(--primary-light);
+}
+.semester-day-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 2px;
+  flex: 1;
+}
+.semester-day {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 2px;
+  min-height: 14px;
+  border-radius: 2px;
+}
+.semester-day.semester-today {
+  background: var(--primary-light);
+  outline: 1.5px solid var(--primary);
+  border-radius: 3px;
+}
+.semester-day-label {
+  font-size: 7px;
+  font-weight: 700;
+  color: var(--gray-400);
+  min-width: 12px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.semester-bar {
+  height: 5px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Dark mode semester */
+[data-theme="dark"] .semester-week-header { color: #94A3B8; border-color: #334155; }
+[data-theme="dark"] .semester-week-col { border-color: #334155; }
+[data-theme="dark"] .semester-week-header.semester-current-week { background: #1a0810; color: #C4506A; }
+[data-theme="dark"] .semester-day-label { color: #64748B; }
+[data-theme="dark"] .semester-day.semester-today { background: #1a0810; outline-color: #C4506A; }
+
 /* Legacy week/month classes kept for backward compat */
 .week-view { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .week-day-col { border: 1px solid var(--gray-100); border-radius: 8px; padding: 8px 6px; min-height: 100px; }

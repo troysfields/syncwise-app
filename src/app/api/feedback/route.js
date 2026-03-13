@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { saveFeedback, getAllFeedback } from '@/lib/db';
+import { notifyFeedbackSubmission } from '@/lib/email';
 
 export async function POST(req) {
   // No auth required — feedback should work for everyone, including unauthenticated users.
@@ -49,6 +50,13 @@ export async function POST(req) {
     };
 
     await saveFeedback(entry);
+
+    // Fire-and-forget email notification to admin
+    notifyFeedbackSubmission({
+      userEmail: entry.userEmail,
+      userRole: entry.userRole,
+      feedback: entry,
+    }).catch(() => {});
 
     return NextResponse.json({ success: true, message: 'Feedback received — thank you!' });
   } catch (err) {

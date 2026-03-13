@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import { requireAuth, sanitizeString, sanitizeUrl, sanitizeEmail } from '@/lib/auth';
 import { getUser, saveUser, deleteUser, updateUserSettings } from '@/lib/db';
+import { trackFeatureUsage } from '@/lib/analytics';
 
 export async function GET(request) {
   const session = requireAuth(request);
@@ -64,11 +65,13 @@ export async function PUT(request) {
       if (!profile) {
         return NextResponse.json({ error: 'Profile not found.' }, { status: 404 });
       }
+      trackFeatureUsage({ userEmail: session.email, feature: 'settings_update', metadata: { changedKeys: Object.keys(settings) } }).catch(() => {});
       return NextResponse.json({ success: true, profile });
     }
 
     // General profile update
     const profile = await saveUser(session.email, updates);
+    trackFeatureUsage({ userEmail: session.email, feature: 'profile_update', metadata: { changedFields: Object.keys(updates) } }).catch(() => {});
     return NextResponse.json({ success: true, profile });
   } catch (error) {
     console.error('Profile update error:', error);

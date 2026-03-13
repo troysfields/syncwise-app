@@ -357,7 +357,7 @@ export async function saveChatHistory(email, messages) {
   const db = await getKV();
   const key = `chat:${email.toLowerCase()}`;
   await db.set(key, {
-    messages: messages.slice(-50), // Keep last 50 messages
+    messages: messages.slice(-200), // Keep last 200 messages (matches 90-day analytics retention)
     updatedAt: new Date().toISOString(),
   });
 }

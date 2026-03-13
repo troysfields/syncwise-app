@@ -105,8 +105,11 @@ export function middleware(request) {
   // ─── Rate Limiting (all API routes) ───
   if (pathname.startsWith('/api/')) {
     if (!checkRateLimit(ip, pathname)) {
+      // Track rate limit hit (fire-and-forget, can't use async imports in middleware edge runtime
+      // so we log to console — analytics tracking happens at the API layer)
+      console.warn(`[RATE_LIMIT] 429 for ${ip} on ${pathname}`);
       return NextResponse.json(
-        { error: 'Too many requests. Please try again later.' },
+        { error: 'Too many requests. Please try again later.', rateLimited: true },
         { status: 429 }
       );
     }

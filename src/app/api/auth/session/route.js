@@ -87,6 +87,7 @@ export async function POST(request) {
     // Instructor email verification — must be @mavs.coloradomesa.edu
     if (userRole === 'instructor') {
       if (!cleanEmail.endsWith('@mavs.coloradomesa.edu')) {
+        trackAuth({ userEmail: cleanEmail, action: 'signup_failed', success: false, method: 'password', userRole: 'instructor' }).catch(() => {});
         return NextResponse.json(
           { error: 'Instructor accounts require a @mavs.coloradomesa.edu email address.' },
           { status: 403 }
@@ -97,6 +98,7 @@ export async function POST(request) {
     // Check if account already exists
     const existingUser = await getUser(cleanEmail);
     if (existingUser && await hasPassword(cleanEmail)) {
+      trackAuth({ userEmail: cleanEmail, action: 'signup_failed', success: false, method: 'password', userRole }).catch(() => {});
       return NextResponse.json(
         { error: 'An account with this email already exists. Please log in instead.' },
         { status: 409 }
@@ -175,6 +177,12 @@ export async function POST(request) {
 }
 
 export async function DELETE(request) {
+  // Track logout before destroying session
+  const session = getSession(request);
+  if (session?.email) {
+    trackAuth({ userEmail: session.email, action: 'logout', success: true, method: 'manual', userRole: session.role }).catch(() => {});
+  }
+
   const response = NextResponse.json({ success: true, message: 'Session destroyed.' });
   response.headers.set('Set-Cookie', clearSessionCookieHeader());
   return response;

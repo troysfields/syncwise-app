@@ -343,6 +343,114 @@ export async function notifyInstructorSignup(request, { name, email }) {
   });
 }
 
+/**
+ * Send an email notification when a user submits feedback.
+ * Includes all feedback fields so the admin can review without opening the dashboard.
+ */
+export async function notifyFeedbackSubmission({ userEmail, userRole, feedback }) {
+  const errorCode = generateErrorCode('General Error'); // reuse GERR for feedback events
+  const timestamp = new Date().toISOString();
+
+  // Log to Redis
+  logSecurityEvent(errorCode, {
+    event: 'Feedback Submitted',
+    details: `${userEmail} (${userRole}) submitted feedback.`,
+    severity: 'info',
+    timestamp,
+  }).catch(() => {});
+
+  // Build checklist items from the boolean fields
+  const checks = [
+    feedback.easyToNavigate && 'Easy to navigate',
+    feedback.aiSuggestionsHelpful && 'AI suggestions helpful',
+    feedback.emailScanningUseful && 'Email scanning useful',
+    feedback.calendarViewsWork && 'Calendar views work well',
+    feedback.ranIntoBugs && 'Ran into bugs',
+    feedback.somethingConfusing && 'Something confusing',
+    feedback.wouldRecommend && 'Would recommend',
+  ].filter(Boolean);
+
+  const checksHtml = checks.length > 0
+    ? checks.map(c => `<span style="display:inline-block;background:#ECFDF5;color:#065F46;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;margin:2px 4px;">${c}</span>`).join('')
+    : '<span style="color:#6B7280;font-size:13px;">No checkboxes selected</span>';
+
+  const openResponses = [
+    feedback.mostUsefulThing && { label: 'Most useful thing', value: feedback.mostUsefulThing },
+    feedback.wishDifferently && { label: 'Wish was different', value: feedback.wishDifferently },
+    feedback.additionalFeedback && { label: 'Additional feedback', value: feedback.additionalFeedback },
+  ].filter(Boolean);
+
+  const openResponsesHtml = openResponses.length > 0
+    ? openResponses.map(r => `
+        <tr>
+          <td style="padding:8px 0;color:#6B7280;border-top:1px solid #E5E7EB;width:140px;vertical-align:top;">${r.label}</td>
+          <td style="padding:8px 0;color:#111827;font-weight:500;border-top:1px solid #E5E7EB;">${r.value}</td>
+        </tr>
+      `).join('')
+    : '<tr><td style="padding:8px 0;color:#6B7280;" colspan="2">No open-ended responses</td></tr>';
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <div style="width: 48px; height: 48px; background: #5D0022; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; color: white; font-size: 20px; font-weight: 800;">C</div>
+      </div>
+
+      <div style="background: #3B82F615; border-left: 4px solid #3B82F6; padding: 16px 20px; border-radius: 0 8px 8px 0; margin-bottom: 24px;">
+        <h2 style="margin: 0 0 4px 0; font-size: 18px; color: #111827;">New Feedback Submitted</h2>
+        <span style="display: inline-block; background: #3B82F6; color: white; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">FEEDBACK</span>
+      </div>
+
+      <div style="background: #F9FAFB; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr>
+            <td style="padding: 8px 0; color: #6B7280; width: 140px;">From</td>
+            <td style="padding: 8px 0; color: #111827; font-weight: 500;">${userEmail}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #6B7280; border-top: 1px solid #E5E7EB;">Role</td>
+            <td style="padding: 8px 0; color: #111827; font-weight: 500; border-top: 1px solid #E5E7EB;">${userRole}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #6B7280; border-top: 1px solid #E5E7EB;">Usage</td>
+            <td style="padding: 8px 0; color: #111827; font-weight: 500; border-top: 1px solid #E5E7EB;">${feedback.usageFrequency || 'not specified'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #6B7280; border-top: 1px solid #E5E7EB;">Timestamp</td>
+            <td style="padding: 8px 0; color: #111827; font-weight: 500; border-top: 1px solid #E5E7EB;">${timestamp}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <p style="font-size: 13px; font-weight: 600; color: #374151; margin: 0 0 8px 0;">Quick Ratings</p>
+        <div style="line-height: 2;">${checksHtml}</div>
+      </div>
+
+      <div style="background: #F9FAFB; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+        <p style="font-size: 13px; font-weight: 600; color: #374151; margin: 0 0 12px 0;">Open Responses</p>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          ${openResponsesHtml}
+        </table>
+      </div>
+
+      <p style="color: #6B7280; font-size: 13px; line-height: 1.6;">
+        View all feedback on the <a href="https://syncwise-app.vercel.app/admin/feedback" style="color: #3B82F6;">admin dashboard</a>.
+      </p>
+
+      <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;" />
+      <p style="color: #9CA3AF; font-size: 12px; text-align: center;">
+        ${APP_NAME} by SyncWise AI — Feedback Notifications
+      </p>
+    </div>
+  `;
+
+  return await sendEmail({
+    to: ADMIN_EMAIL,
+    subject: `[FEEDBACK] ${APP_NAME}: New feedback from ${userEmail}`,
+    html,
+  });
+}
+
 // ─── Error Report Email Notifications ───
 
 // In-memory cooldown to avoid spamming the same error repeatedly.

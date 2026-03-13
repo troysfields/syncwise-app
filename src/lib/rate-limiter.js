@@ -5,6 +5,8 @@
 // Models: Sonnet 4.6 (default) → Haiku 4.5 (lite mode)
 // Thresholds are per-student unless marked global.
 
+import { trackEvent } from '@/lib/analytics';
+
 // --- Configuration ---
 const RATE_LIMITS = {
   prioritization: {
@@ -49,6 +51,17 @@ export function getModelForRequest(studentId, feature) {
   // Check global daily budget first
   resetGlobalIfNewDay();
   if (globalUsage.tokensToday >= RATE_LIMITS.global.maxTokensPerDay) {
+    // Track global rate limit hit
+    trackEvent({
+      type: 'rate_limit_hit',
+      endpoint: feature,
+      feature: 'rate_limiter',
+      userEmail: studentId,
+      limitType: 'global_token_budget',
+      tokensUsed: globalUsage.tokensToday,
+      tokenBudget: RATE_LIMITS.global.maxTokensPerDay,
+    }).catch(() => {});
+
     return {
       model: MODELS.lite,
       isLiteMode: true,
@@ -77,6 +90,17 @@ export function getModelForRequest(studentId, feature) {
   studentRequests.set(key, recentRequests);
 
   if (recentRequests.length >= limit.maxPerWindow) {
+    // Track rate limit hit
+    trackEvent({
+      type: 'rate_limit_hit',
+      endpoint: feature,
+      feature: 'rate_limiter',
+      userEmail: studentId,
+      limitType: 'per_student',
+      requestCount: recentRequests.length,
+      maxAllowed: limit.maxPerWindow,
+    }).catch(() => {});
+
     return {
       model: MODELS.lite,
       isLiteMode: true,

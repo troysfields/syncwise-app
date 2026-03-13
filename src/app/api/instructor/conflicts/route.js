@@ -87,8 +87,8 @@ export async function GET(request) {
   // Get overrides
   if (!type || type === 'overrides') {
     const overrides = course
-      ? getOverridesForCourse(course)
-      : getActiveOverrides();
+      ? await getOverridesForCourse(course)
+      : await getActiveOverrides();
 
     response.overrides = overrides;
     response.totalOverrides = overrides.length;
@@ -146,7 +146,7 @@ export async function POST(request) {
       }
 
       // Resolve the conflict and create the override
-      const { override, notification } = resolveConflict(conflictId, {
+      const { override, notification } = await resolveConflict(conflictId, {
         instructorId,
         correctDate,
         correctSource: correctSource || 'custom',
@@ -203,7 +203,7 @@ export async function POST(request) {
         );
       }
 
-      const { override, notification } = instructorOverrideDate({
+      const { override, notification } = await instructorOverrideDate({
         instructorId,
         itemId,
         itemName,
@@ -255,7 +255,7 @@ export async function POST(request) {
 
       for (const [id, conflict] of conflictMap) {
         if (conflict.courseName === course && !conflict.resolved) {
-          const { override, notification } = resolveConflict(id, {
+          const { override, notification } = await resolveConflict(id, {
             instructorId,
             correctDate: conflict.d2lDate,
             correctSource: 'ical',

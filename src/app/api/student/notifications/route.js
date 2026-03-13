@@ -1,13 +1,12 @@
 // API Route: /api/student/notifications
 // Returns date change notifications for a student
 // These are generated when an instructor resolves a conflict or overrides a date
-import { requireAuth } from '@/lib/auth';
-import { NextResponse as NR } from 'next/server';
 //
-// GET: Fetch notifications (optionally filter by course)
-// POST: Mark as read or dismiss
+// GET: Fetch notifications (requires ?courses=COURSE1,COURSE2 query param)
+// POST: Mark as read or dismiss (requires courseId + notificationId)
 
 import { NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth';
 import {
   getStudentDateNotifications,
   markStudentNotificationRead,
@@ -16,68 +15,91 @@ import {
 
 export async function GET(request) {
   const session = requireAuth(request);
-  if (session instanceof NR) return session;
+  if (session instanceof NextResponse) return session;
 
   const { searchParams } = new URL(request.url);
   const coursesParam = searchParams.get('courses'); // comma-separated course names
   const unreadOnly = searchParams.get('unreadOnly') === 'true';
 
   const courses = coursesParam ? coursesParam.split(',').map(c => c.trim()) : [];
-  let notifications = getStudentDateNotifications(courses);
 
-  if (unreadOnly) {
-    notifications = notifications.filter(n => !n.read);
+  if (courses.length === 0) {
+    return NextResponse.json({
+      notifications: [],
+      totalCount: 0,
+      unreadCount: 0,
+      hasDateChanges: false,
+      message: 'No courses specified. Pass ?courses=COURSE1,COURSE2 to see notifications.',
+    });
   }
 
-  // Sort: unread first, then by date (newest first)
-  notifications.sort((a, b) => {
-    if (a.read !== b.read) return a.read ? 1 : -1;
-    return new Date(b.createdAt) - new Date(a.createdAt);
-  });
+  // All functions are now async (Redis-backed)
+  const notifications = await getStudentDateNotifications(courses);
+
+  // Filter for unread if requested (already sorted by getDateChangeNotifications)
+  const filtered = unreadOnly ? notifications.filter(n => !n.read) : notifications;
 
   return NextResponse.json({
-    notifications,
-    totalCount: notifications.length,
-    unreadCount: notifications.filter(n => !n.read).length,
-    hasDateChanges: notifications.some(n => n.type === 'date_change' && !n.read),
+    notifications: filtered,
+    totalCount: filtered.length,
+    unreadCount: filtered.filter(n => !n.read).length,
+    hasDateChanges: filtered.some(n => n.type === 'date_change' && !n.read),
   });
 }
 
 export async function POST(request) {
-  const session2 = requireAuth(request);
-  if (session2 instanceof NR) return session2;
+  const session = requireAuth(request);
+  if (session instanceof NextResponse) return session;
 
   try {
     const body = await request.json();
-    const { action, notificationId, notificationIds } = body;
+    const { action, courseId, notificationId, items } = body;
+    // items: [{ courseId, notificationId }] for batch operations
 
     if (action === 'read') {
-      if (notificationId) {
-        const success = markStudentNotificationRead(notificationId);
+      // Single read
+      if (courseId && notificationId) {
+        const success = await markStudentNotificationRead(courseId, notificationId);
         return NextResponse.json({ success });
       }
       // Batch read
-      if (notificationIds && Array.isArray(notificationIds)) {
+      if (items && Array.isArray(items)) {
         let marked = 0;
-        for (const id of notificationIds) {
-          if (markStudentNotificationRead(id)) marked++;
+        for (const item of items) {
+          if (item.courseId && item.notificationId) {
+            const ok = await markStudentNotificationRead(item.courseId, item.notificationId);
+            if (ok) marked++;
+          }
         }
         return NextResponse.json({ success: true, marked });
       }
+      return NextResponse.json(
+        { error: 'Missing courseId + notificationId, or items array' },
+        { status: 400 }
+      );
     }
 
     if (action === 'dismiss') {
-      if (notificationId) {
-        const success = dismissStudentNotification(notificationId);
+      // Single dismiss
+      if (courseId && notificationId) {
+        const success = await dismissStudentNotification(courseId, notificationId);
         return NextResponse.json({ success });
       }
-      if (notificationIds && Array.isArray(notificationIds)) {
+      // Batch dismiss
+      if (items && Array.isArray(items)) {
         let dismissed = 0;
-        for (const id of notificationIds) {
-          if (dismissStudentNotification(id)) dismissed++;
+        for (const item of items) {
+          if (item.courseId && item.notificationId) {
+            const ok = await dismissStudentNotification(item.courseId, item.notificationId);
+            if (ok) dismissed++;
+          }
         }
         return NextResponse.json({ success: true, dismissed });
       }
+      return NextResponse.json(
+        { error: 'Missing courseId + notificationId, or items array' },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json(

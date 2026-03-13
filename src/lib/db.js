@@ -322,6 +322,99 @@ export async function dismissNotifications(email, notificationIds) {
   return before - data.items.length;
 }
 
+// ─── Course-Based Date Change Notifications ───
+// These are notifications generated when an instructor overrides a date.
+// Stored per-course so any student enrolled in that course can see them.
+
+/**
+ * Add a date change notification for a course.
+ * All students enrolled in this course will see it.
+ */
+export async function addDateChangeNotification(courseId, notification) {
+  const db = await getKV();
+  const key = `date-changes:${courseId}`;
+  const existing = await db.get(key) || { items: [] };
+
+  existing.items.unshift({
+    ...notification,
+    id: notification.id || `dcn_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    createdAt: notification.createdAt || new Date().toISOString(),
+  });
+
+  // Keep max 200 date change notifications per course
+  if (existing.items.length > 200) {
+    existing.items = existing.items.slice(0, 200);
+  }
+
+  existing.updatedAt = new Date().toISOString();
+  await db.set(key, existing);
+  return existing.items[0];
+}
+
+/**
+ * Get date change notifications across multiple courses.
+ * Used by students to see all date changes for their enrolled courses.
+ */
+export async function getDateChangeNotifications(courseIds, { unreadOnly = false } = {}) {
+  const db = await getKV();
+  const all = [];
+
+  for (const courseId of courseIds) {
+    const data = await db.get(`date-changes:${courseId}`);
+    if (data?.items) {
+      all.push(...data.items);
+    }
+  }
+
+  let items = all.filter(n => !n.dismissed);
+  if (unreadOnly) {
+    items = items.filter(n => !n.read);
+  }
+
+  // Sort: unread first, then by date (newest first)
+  items.sort((a, b) => {
+    if (a.read !== b.read) return a.read ? 1 : -1;
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+
+  return items;
+}
+
+/**
+ * Mark a date change notification as read.
+ */
+export async function markDateChangeRead(courseId, notificationId) {
+  const db = await getKV();
+  const key = `date-changes:${courseId}`;
+  const data = await db.get(key);
+  if (!data?.items) return false;
+
+  const notif = data.items.find(n => n.id === notificationId);
+  if (!notif) return false;
+
+  notif.read = true;
+  notif.readAt = new Date().toISOString();
+  await db.set(key, data);
+  return true;
+}
+
+/**
+ * Dismiss a date change notification.
+ */
+export async function dismissDateChange(courseId, notificationId) {
+  const db = await getKV();
+  const key = `date-changes:${courseId}`;
+  const data = await db.get(key);
+  if (!data?.items) return false;
+
+  const notif = data.items.find(n => n.id === notificationId);
+  if (!notif) return false;
+
+  notif.dismissed = true;
+  await db.set(key, data);
+  return true;
+}
+
 // ─── Feedback (persistent) ───
 
 /**

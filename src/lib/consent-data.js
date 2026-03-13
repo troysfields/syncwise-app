@@ -89,7 +89,7 @@ export async function getStudentDashboardData(settings) {
   // DEDUPLICATION — Remove duplicates, flag conflicts for teacher
   // Passes in any instructor overrides so resolved items get the correct date
   // ============================================================
-  const activeOverrides = getActiveOverrides();
+  const activeOverrides = await getActiveOverrides();
   const dedupResult = deduplicateItems(result.events, activeOverrides);
   result.events = dedupResult.items;
   result.duplicatesRemoved = dedupResult.duplicatesRemoved;

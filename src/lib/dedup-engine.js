@@ -13,6 +13,16 @@
 // 3. Microsoft Outlook calendar (future — meeting invites, class times)
 // 4. Instructor manual overrides (teacher sets a date from their dashboard)
 
+import {
+  saveOverride,
+  getOverrides,
+  getAllOverrides,
+  addDateChangeNotification,
+  getDateChangeNotifications,
+  markDateChangeRead,
+  dismissDateChange,
+} from '@/lib/db';
+
 // ============================================================
 // TEXT SIMILARITY — Fuzzy matching for item names
 // ============================================================
@@ -256,15 +266,16 @@ function generateConflictMessage(itemA, itemB, hoursDiff) {
 
 // ============================================================
 // INSTRUCTOR DATE OVERRIDE SYSTEM
+// Persistent via Redis (db.js) — survives deploys and cold starts
 // ============================================================
 
-// In-memory store for overrides (swap for DB in production)
-const dateOverrides = new Map();
-// In-memory store for student notifications (swap for DB in production)
-const studentNotifications = [];
+// Helper: generate a courseId from course name (used as Redis key)
+function courseNameToId(courseName) {
+  return (courseName || 'unknown').replace(/\s+/g, '-').toLowerCase();
+}
 
 // Instructor resolves a conflict by picking or entering a date
-export function resolveConflict(conflictId, resolution) {
+export async function resolveConflict(conflictId, resolution) {
   const {
     instructorId,
     correctDate,       // ISO date string — the date the teacher picks
@@ -284,24 +295,23 @@ export function resolveConflict(conflictId, resolution) {
     correctSource,
     note,
     resolvedAt: new Date().toISOString(),
-    // Track what students need to be notified
-    studentNotificationSent: false,
+    studentNotificationSent: true,
   };
 
-  // Store the override
-  const key = `${normalize(itemName)}::${normalize(courseName)}`;
-  dateOverrides.set(key, override);
+  // Persist override to Redis
+  const courseId = courseNameToId(courseName);
+  await saveOverride(courseId, override);
 
-  // Generate student notification
+  // Generate and persist student notification to Redis
   const notification = generateStudentDateChangeNotification(override);
-  studentNotifications.push(notification);
+  await addDateChangeNotification(courseId, notification);
 
   return { override, notification };
 }
 
 // Instructor overrides a date from the student view on their dashboard
 // (not necessarily a conflict — just changing any date they see)
-export function instructorOverrideDate(overrideRequest) {
+export async function instructorOverrideDate(overrideRequest) {
   const {
     instructorId,
     itemId,
@@ -324,36 +334,37 @@ export function instructorOverrideDate(overrideRequest) {
     correctSource: 'instructor_override',
     note: reason,
     resolvedAt: new Date().toISOString(),
-    studentNotificationSent: false,
+    studentNotificationSent: true,
   };
 
-  const key = `${normalize(itemName)}::${normalize(courseName)}`;
-  dateOverrides.set(key, override);
+  // Persist override to Redis
+  const courseId = courseNameToId(courseName);
+  await saveOverride(courseId, override);
 
-  // Generate student notification
+  // Generate and persist student notification to Redis
   const notification = generateStudentDateChangeNotification(override);
-  studentNotifications.push(notification);
+  await addDateChangeNotification(courseId, notification);
 
   return { override, notification };
 }
 
 // Get all active overrides (for applying to dashboard data)
-export function getActiveOverrides() {
-  return Array.from(dateOverrides.values());
+export async function getActiveOverrides() {
+  return await getAllOverrides();
 }
 
 // Get overrides for a specific course
-export function getOverridesForCourse(courseName) {
-  return Array.from(dateOverrides.values()).filter(
-    o => normalize(o.courseName) === normalize(courseName)
-  );
+export async function getOverridesForCourse(courseName) {
+  const courseId = courseNameToId(courseName);
+  return await getOverrides(courseId);
 }
 
 // ============================================================
 // STUDENT NOTIFICATIONS — Alert students when dates change
+// Persistent via Redis — stored per-course so all enrolled students see them
 // ============================================================
 
-// Generate a notification for students when an instructor changes a date
+// Generate a notification object for students when an instructor changes a date
 function generateStudentDateChangeNotification(override) {
   const originalDate = override.originalDate
     ? new Date(override.originalDate).toLocaleDateString('en-US', {
@@ -398,40 +409,25 @@ function generateStudentDateChangeNotification(override) {
   };
 }
 
-// Get unread date change notifications for a student
-// In production, filter by student's enrolled courses
-export function getStudentDateNotifications(studentCourses = []) {
-  if (studentCourses.length === 0) {
-    return studentNotifications.filter(n => !n.dismissed);
-  }
+// Get date change notifications for a student's enrolled courses
+// Now reads from Redis instead of in-memory array
+export async function getStudentDateNotifications(studentCourses = []) {
+  if (studentCourses.length === 0) return [];
 
-  const normalizedCourses = studentCourses.map(c => normalize(c));
-  return studentNotifications.filter(n =>
-    !n.dismissed &&
-    normalizedCourses.some(c =>
-      normalize(n.targetCourse).includes(c) || c.includes(normalize(n.targetCourse))
-    )
-  );
+  const courseIds = studentCourses.map(c => courseNameToId(c));
+  return await getDateChangeNotifications(courseIds);
 }
 
-// Mark a student notification as read
-export function markStudentNotificationRead(notificationId) {
-  const notif = studentNotifications.find(n => n.id === notificationId);
-  if (notif) {
-    notif.read = true;
-    return true;
-  }
-  return false;
+// Mark a student notification as read (persists to Redis)
+export async function markStudentNotificationRead(courseNameOrId, notificationId) {
+  const courseId = courseNameOrId.includes('-') ? courseNameOrId : courseNameToId(courseNameOrId);
+  return await markDateChangeRead(courseId, notificationId);
 }
 
-// Dismiss a student notification
-export function dismissStudentNotification(notificationId) {
-  const notif = studentNotifications.find(n => n.id === notificationId);
-  if (notif) {
-    notif.dismissed = true;
-    return true;
-  }
-  return false;
+// Dismiss a student notification (persists to Redis)
+export async function dismissStudentNotification(courseNameOrId, notificationId) {
+  const courseId = courseNameOrId.includes('-') ? courseNameOrId : courseNameToId(courseNameOrId);
+  return await dismissDateChange(courseId, notificationId);
 }
 
 // ============================================================

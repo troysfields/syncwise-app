@@ -1,16 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 // ============================================================
 // Feedback Panel — Always-available slide-out feedback form
 // Persistent tab on the right side of the dashboard
 // ============================================================
 
-export function FeedbackPanel({ user }) {
+export function FeedbackPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [userEmail, setUserEmail] = useState('anonymous');
 
   // Checkbox states
   const [easyToNavigate, setEasyToNavigate] = useState(false);
@@ -26,6 +28,17 @@ export function FeedbackPanel({ user }) {
   const [mostUsefulThing, setMostUsefulThing] = useState('');
   const [wishDifferently, setWishDifferently] = useState('');
   const [additionalFeedback, setAdditionalFeedback] = useState('');
+
+  // Grab user email from localStorage settings
+  useEffect(() => {
+    try {
+      const settings = localStorage.getItem('syncwise_settings');
+      if (settings) {
+        const parsed = JSON.parse(settings);
+        if (parsed.studentEmail) setUserEmail(parsed.studentEmail);
+      }
+    } catch {}
+  }, []);
 
   function resetForm() {
     setEasyToNavigate(false);
@@ -45,13 +58,14 @@ export function FeedbackPanel({ user }) {
   async function handleSubmit(e) {
     e.preventDefault();
     setSubmitting(true);
+    setError(null);
 
     try {
-      await fetch('/api/feedback', {
+      const res = await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user: user || 'anonymous',
+          user: userEmail,
           easyToNavigate,
           aiSuggestionsHelpful,
           emailScanningUseful,
@@ -67,9 +81,16 @@ export function FeedbackPanel({ user }) {
           userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
         }),
       });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Failed (${res.status})`);
+      }
+
       setSubmitted(true);
     } catch (err) {
       console.error('Feedback submission failed:', err);
+      setError(err.message || 'Something went wrong. Please try again.');
     }
     setSubmitting(false);
   }
@@ -223,6 +244,12 @@ export function FeedbackPanel({ user }) {
                 rows={3}
               />
             </div>
+
+            {error && (
+              <div style={{ background: '#FEF2F2', color: '#DC2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '8px' }}>
+                {error}
+              </div>
+            )}
 
             <button
               type="submit"

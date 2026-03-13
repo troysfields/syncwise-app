@@ -359,7 +359,7 @@ export default function StudentDashboard() {
   const [showAllItems, setShowAllItems] = useState(false); // All Items list collapse
 
   // New feature state variables
-  const [activeSection, setActiveSection] = useState('dashboard');
+  const [activeSection, setActiveSection] = useState('calendar');
   const [focusMode, setFocusMode] = useState(false);
   const [focusTimeframe, setFocusTimeframe] = useState('today'); // 'today' or 'week'
   const [showManualEventModal, setShowManualEventModal] = useState(false);
@@ -1154,9 +1154,9 @@ export default function StudentDashboard() {
           )}
 
         {/* ============================================================ */}
-        {/* NEEDS ATTENTION SECTION — Hidden in focus mode */}
+        {/* NEEDS ATTENTION SECTION — Dashboard view only, hidden in focus mode */}
         {/* ============================================================ */}
-        {!focusMode && attentionItems.length > 0 && (
+        {!focusMode && activeSection === 'dashboard' && attentionItems.length > 0 && (
           <div className="card" style={{ margin: '20px 0 0', borderLeft: '4px solid #EF4444' }}>
             <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '20px' }}>&#128680;</span> Needs Attention
@@ -1193,9 +1193,9 @@ export default function StudentDashboard() {
         )}
 
         {/* ============================================================ */}
-        {/* ITEMS WITHOUT DUE DATES — Confirm/Deny */}
+        {/* ITEMS WITHOUT DUE DATES — Dashboard view only */}
         {/* ============================================================ */}
-        {needsConfirmation.length > 0 && (
+        {activeSection === 'dashboard' && needsConfirmation.length > 0 && (
           <div className="card" style={{ margin: '16px 0 0', borderLeft: '4px solid #F59E0B' }}>
             <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '18px' }}>&#128197;</span> Add to Calendar?
@@ -1248,9 +1248,9 @@ export default function StudentDashboard() {
         )}
 
         {/* ============================================================ */}
-        {/* GRADE ALERTS — Hidden in focus mode */}
+        {/* GRADE ALERTS — Dashboard view only, hidden in focus mode */}
         {/* ============================================================ */}
-        {!focusMode && gradeAlerts.filter(g => !dismissedGrades.includes(g.id)).length > 0 && (
+        {!focusMode && activeSection === 'dashboard' && gradeAlerts.filter(g => !dismissedGrades.includes(g.id)).length > 0 && (
           <div className="card" style={{ margin: '16px 0 0', borderLeft: '4px solid #059669' }}>
             <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '18px' }}>&#127942;</span> New Grades
@@ -1277,11 +1277,15 @@ export default function StudentDashboard() {
         )}
 
         {/* ============================================================ */}
-        {/* MAIN SECTIONS — Hidden in focus mode */}
+        {/* VIEW-BASED SECTIONS — Each sidebar tab renders its own view */}
         {/* ============================================================ */}
         {!focusMode && (
         <div className="dash-sections" style={{ marginTop: '4px', padding: '0 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Calendar — Primary view, shown first */}
+
+          {/* ============================================================ */}
+          {/* CALENDAR VIEW */}
+          {/* ============================================================ */}
+          {activeSection === 'calendar' && (
           <div id="calendar" className="card">
             <div className="calendar-header">
               <h2 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
@@ -1452,8 +1456,12 @@ export default function StudentDashboard() {
               </div>
             )}
           </div>
+          )}
 
-          {/* AI Suggestions + Course Progress */}
+          {/* ============================================================ */}
+          {/* DASHBOARD VIEW — AI Suggestions + Course Progress */}
+          {/* ============================================================ */}
+          {activeSection === 'dashboard' && (
           <div className="card">
             <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '20px' }}>&#129302;</span> AI Priority Suggestions
@@ -1488,10 +1496,12 @@ export default function StudentDashboard() {
               })}
             </div>
           </div>
+          )}
 
           {/* ============================================================ */}
-          {/* FULL WIDTH: All Items (Assignment Queue) */}
+          {/* GRADES VIEW — All Items (Assignment Queue) */}
           {/* ============================================================ */}
+          {activeSection === 'grades' && (
           <div id="grades" className="card">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
@@ -1623,6 +1633,8 @@ export default function StudentDashboard() {
               </button>
             )}
           </div>
+          )}
+
         </div>
         )}
       </div>

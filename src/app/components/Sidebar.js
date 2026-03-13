@@ -10,19 +10,19 @@ import { useState, useEffect } from 'react';
 // ============================================================
 
 const STUDENT_NAV = [
-  { id: 'dashboard', label: 'Dashboard', icon: '📊', href: '/dashboard' },
-  { id: 'calendar', label: 'Calendar', icon: '📅', href: '/dashboard#calendar' },
-  { id: 'grades', label: 'Grades', icon: '📝', href: '/dashboard#grades' },
-  { id: 'focus', label: 'Focus Mode', icon: '🎯', href: '/dashboard#focus', action: 'toggle-focus' },
+  { id: 'calendar', label: 'Calendar', icon: '📅', href: '/dashboard', view: 'calendar' },
+  { id: 'dashboard', label: 'Dashboard', icon: '📊', href: '/dashboard', view: 'dashboard' },
+  { id: 'grades', label: 'All Items', icon: '📝', href: '/dashboard', view: 'grades' },
+  { id: 'focus', label: 'Focus Mode', icon: '🎯', href: '/dashboard', action: 'toggle-focus' },
   { id: 'settings', label: 'Settings', icon: '⚙️', href: '/settings' },
   { id: 'future-updates', label: 'Future Updates', icon: '🚀', href: '/future-updates' },
 ];
 
 const INSTRUCTOR_NAV = [
-  { id: 'dashboard', label: 'Dashboard', icon: '📊', href: '/instructor' },
-  { id: 'calendar', label: 'Calendar', icon: '📅', href: '/instructor#calendar' },
-  { id: 'assignments', label: 'Assignments', icon: '📋', href: '/instructor#assignments' },
-  { id: 'students', label: 'Student View', icon: '👥', href: '/instructor#student-view' },
+  { id: 'calendar', label: 'Calendar', icon: '📅', href: '/instructor', view: 'calendar' },
+  { id: 'dashboard', label: 'Dashboard', icon: '📊', href: '/instructor', view: 'dashboard' },
+  { id: 'assignments', label: 'Assignments', icon: '📋', href: '/instructor', view: 'assignments' },
+  { id: 'students', label: 'Student View', icon: '👥', href: '/instructor', view: 'students' },
   { id: 'settings', label: 'Settings', icon: '⚙️', href: '/settings' },
   { id: 'future-updates', label: 'Future Updates', icon: '🚀', href: '/future-updates' },
 ];
@@ -56,38 +56,28 @@ export function Sidebar({ role = 'student', activeSection = 'dashboard', onNavig
       return;
     }
 
-    // Update active section highlight if callback provided
-    if (onNavigate) {
+    // View-based navigation — switch the active view within the dashboard
+    if (item.view && onNavigate) {
       onNavigate(item.id);
+      // Scroll to top when switching views
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setMobileOpen(false);
+      return;
     }
 
-    // Always handle actual navigation / scrolling
-    const hashIndex = item.href.indexOf('#');
-    if (hashIndex !== -1) {
-      // Hash link — scroll smoothly if already on the target page
-      const basePath = item.href.slice(0, hashIndex);
-      const hash = item.href.slice(hashIndex + 1);
-      const currentPath = window.location.pathname;
-      if (currentPath === basePath || currentPath === basePath + '/') {
-        const el = document.getElementById(hash);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          window.history.replaceState(null, '', item.href);
-        }
-      } else {
-        window.location.href = item.href;
-      }
-    } else {
-      // Non-hash link — check if it's a different page
-      const currentPath = window.location.pathname;
+    // External page navigation (Settings, Future Updates, etc.)
+    if (item.href) {
+      const currentPath = window.location.pathname.replace(/\/$/, '');
       const targetPath = item.href.replace(/\/$/, '');
-      const currentClean = currentPath.replace(/\/$/, '');
-      if (targetPath !== currentClean) {
+      if (targetPath !== currentPath) {
         window.location.href = item.href;
       } else {
-        // Same page, scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
+    }
+
+    if (onNavigate) {
+      onNavigate(item.id);
     }
 
     setMobileOpen(false);

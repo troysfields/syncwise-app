@@ -1041,14 +1041,27 @@ export default function StudentDashboard() {
       {/* Sidebar */}
       <Sidebar
         role="student"
-        activeSection={activeSection}
-        onNavigate={setActiveSection}
+        activeSection={focusMode ? 'focus' : activeSection}
+        onNavigate={(section) => {
+          setActiveSection(section);
+          // Sync focus mode with sidebar navigation
+          if (section === 'focus' && !focusMode) {
+            setFocusMode(true);
+            trackFocusMode('enabled');
+          } else if (section !== 'focus' && focusMode) {
+            setFocusMode(false);
+            trackFocusMode('disabled');
+          }
+        }}
         unreadCount={unreadNotificationCount}
         focusMode={focusMode}
-        onFocusToggle={() => {
-          setFocusMode(!focusMode);
-          trackFocusMode(focusMode ? 'disabled' : 'enabled');
-          // Scroll to focus content area
+        onFocusToggle={(e) => {
+          // Prevent double-click from toggling twice
+          if (e?.detail > 1) return;
+          const newMode = !focusMode;
+          setFocusMode(newMode);
+          setActiveSection(newMode ? 'focus' : 'dashboard');
+          trackFocusMode(newMode ? 'enabled' : 'disabled');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />

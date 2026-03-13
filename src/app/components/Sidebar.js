@@ -51,7 +51,7 @@ export function Sidebar({ role = 'student', activeSection = 'dashboard', onNavig
 
     // Special action: Focus Mode toggle
     if (item.action === 'toggle-focus' && onFocusToggle) {
-      onFocusToggle();
+      onFocusToggle(e);
       setMobileOpen(false);
       return;
     }

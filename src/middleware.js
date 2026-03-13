@@ -115,13 +115,20 @@ export function middleware(request) {
   // ─── Admin Route Protection (FAIL CLOSED) ───
   // Protect both /api/admin/* AND /admin/* page routes in middleware.
   if (pathname.startsWith('/admin') && !pathname.startsWith('/api/admin')) {
-    // Admin page routes — require secret via cookie or redirect to login
-    if (!ADMIN_SECRET) {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-    const adminCookie = request.cookies.get('admin_authenticated')?.value;
-    if (adminCookie !== ADMIN_SECRET) {
-      return NextResponse.redirect(new URL('/login', request.url));
+    // /admin/tr0y-health has its own in-page password gate — let it through.
+    // It sets the admin_authenticated cookie on success so other admin pages work.
+    if (pathname.startsWith('/admin/tr0y-health')) {
+      // Allow — page handles its own auth
+    } else {
+      // All other admin pages require the admin_authenticated cookie
+      if (!ADMIN_SECRET) {
+        return NextResponse.redirect(new URL('/login', request.url));
+      }
+      const adminCookie = request.cookies.get('admin_authenticated')?.value;
+      if (adminCookie !== ADMIN_SECRET) {
+        // Redirect to the admin login page (tr0y-health) instead of /login
+        return NextResponse.redirect(new URL('/admin/tr0y-health', request.url));
+      }
     }
   }
 

@@ -31,6 +31,8 @@ export default function AdminHealthDashboard() {
         setHealth(data);
         setAuthenticated(true);
         setLastRefresh(new Date());
+        // Set admin cookie so other admin pages (/admin/feedback, /admin/health) work too
+        document.cookie = `admin_authenticated=${encodeURIComponent(secret.trim())}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`;
         // Also fetch security logs
         fetchSecurityLogs(secret.trim());
       } else {

@@ -224,7 +224,7 @@ function generateSmartSuggestions(tasks) {
   }
 
   // 6. Quiet day encouragement
-  if (dueToday.length === 0 && overdue.length === 0 && suggestions.length < 2) {
+  if (dueToday.length === 0 && recentOverdue.length === 0 && suggestions.length < 2) {
     const nextUp = sorted.find(t => t.hoursLeft > 0);
     if (nextUp) {
       suggestions.push({

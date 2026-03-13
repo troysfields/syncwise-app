@@ -787,17 +787,23 @@ export default function StudentDashboard() {
     setDismissedGrades(prev => [...prev, gradeId]);
   }
 
-  // Calendar navigation
+  // Calendar navigation with visual feedback
+  const [calendarNavKey, setCalendarNavKey] = useState(0);
+
   function navigateCalendar(direction) {
     const d = new Date(calendarDate);
     if (calendarView === 'week') d.setDate(d.getDate() + (direction * 7));
     else if (calendarView === 'month') d.setMonth(d.getMonth() + direction);
     else d.setDate(d.getDate() + direction);
     setCalendarDate(d);
+    setCalendarNavKey(k => k + 1); // trigger fade-in animation
     trackCalendarView(calendarView);
   }
 
-  function goToToday() { setCalendarDate(new Date()); }
+  function goToToday() {
+    setCalendarDate(new Date());
+    setCalendarNavKey(k => k + 1);
+  }
 
   // Calendar data (uses course-filtered versions)
   const todayDate = calendarView === 'today' ? calendarDate : new Date();
@@ -1306,6 +1312,12 @@ export default function StudentDashboard() {
               <button className="cal-nav-btn" onClick={() => navigateCalendar(-1)}>&lsaquo;</button>
               <button className="cal-nav-today" onClick={goToToday}>Today</button>
               <button className="cal-nav-btn" onClick={() => navigateCalendar(1)}>&rsaquo;</button>
+              <span key={calendarNavKey} className="cal-nav-date-label" style={{
+                fontSize: '13px', fontWeight: '600', color: '#475569', marginLeft: '8px',
+                animation: 'calFadeIn 0.3s ease-out',
+              }}>
+                {getCalendarLabel()}
+              </span>
             </div>
 
             {/* Course Filter */}

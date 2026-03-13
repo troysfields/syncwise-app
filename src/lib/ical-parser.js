@@ -281,6 +281,18 @@ function cleanItemName(summary, courseName) {
     }
   }
 
+  // Convert ALL CAPS names to Title Case (D2L often stores names in uppercase)
+  // Only convert if more than 60% of letters are uppercase and name is longer than 4 chars
+  if (name.length > 4) {
+    const letters = name.replace(/[^a-zA-Z]/g, '');
+    const upperCount = (name.match(/[A-Z]/g) || []).length;
+    if (letters.length > 0 && upperCount / letters.length > 0.6) {
+      name = name
+        .toLowerCase()
+        .replace(/(?:^|\s|[-/:(])\w/g, match => match.toUpperCase());
+    }
+  }
+
   return name || summary;
 }
 

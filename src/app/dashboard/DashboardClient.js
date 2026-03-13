@@ -1348,7 +1348,13 @@ export default function StudentDashboard() {
 
                   {/* Date */}
                   <div className="task-time" style={{ minWidth: '80px', textAlign: 'right' }}>
-                    {submittable && dateToShow ? <span style={{ fontWeight: '600' }}>Due {formatDate(dateToShow)}</span> : dateToShow ? formatDate(dateToShow) : <span style={{ color: '#94A3B8' }}>No date</span>}
+                    {submittable && dateToShow ? (
+                      <span style={{ fontWeight: '600' }}>Due {formatDate(dateToShow)}</span>
+                    ) : !submittable && dateToShow ? (
+                      <span style={{ color: '#94A3B8', fontSize: '12px' }}>{new Date(dateToShow).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                    ) : (
+                      <span style={{ color: '#94A3B8' }}>No date</span>
+                    )}
                   </div>
 
                   {/* Action buttons */}

@@ -973,7 +973,7 @@ export default function StudentDashboard() {
               </button>
               {focusMode && (
                 <span style={{ fontSize: '12px', color: '#5D0022', fontWeight: '500' }}>
-                  Showing today's tasks only
+                  {effectiveFocusTimeframe === 'week' ? "Showing this week's tasks" : "Showing today's tasks only"}
                 </span>
               )}
             </div>

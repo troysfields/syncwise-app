@@ -459,26 +459,40 @@ export default function StudentDashboard() {
         const res = await fetch('/api/auth/session');
         if (res.ok) {
           const data = await res.json();
-          if (data.authenticated && data.user?.icalUrl) {
+          if (data.authenticated) {
             // Sync to localStorage as cache
             localStorage.setItem('syncwise_settings', JSON.stringify({
               studentName: data.user.name,
               studentEmail: data.user.email,
-              icalUrl: data.user.icalUrl,
+              role: data.user.role,
+              icalUrl: data.user.icalUrl || '',
               courses: data.user.courses || {},
-              setupCompleted: true,
+              setupCompleted: data.user.setupCompleted || false,
             }));
-            fetchLiveData({
-              icalUrl: data.user.icalUrl,
-              studentEmail: data.user.email,
-              studentName: data.user.name,
-            });
+
+            if (data.user.icalUrl) {
+              fetchLiveData({
+                icalUrl: data.user.icalUrl,
+                studentEmail: data.user.email,
+                studentName: data.user.name,
+              });
+            } else {
+              // Logged in but no calendar connected — show empty state, NOT demo data
+              setIsDemo(false);
+              setTasks([]);
+              setEvents([]);
+              setSuggestions([]);
+              setGradeAlerts([]);
+              setCourseProgress([]);
+              setIsLoading(false);
+              setLoadError('no_calendar');
+            }
             return;
           }
         }
       } catch { /* server not available — try localStorage */ }
 
-      // 2. Fall back to localStorage
+      // 2. Fall back to localStorage (not logged in or server unavailable)
       let settings = null;
       try {
         const raw = localStorage.getItem('syncwise_settings');
@@ -488,8 +502,8 @@ export default function StudentDashboard() {
       if (settings && settings.icalUrl) {
         fetchLiveData(settings);
       } else {
-        setIsDemo(true);
-        setIsLoading(false);
+        // Not logged in at all — redirect to login
+        window.location.href = '/login';
       }
     }
 
@@ -1100,7 +1114,7 @@ export default function StudentDashboard() {
                 {isRefreshing ? 'Refreshing...' : lastRefreshTime ? lastRefreshTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Refresh'}
               </button>
             )}
-            {isDemo && <span className="badge badge-medium">Demo Mode</span>}
+            {loadError === 'no_calendar' && <span className="badge badge-medium">No Calendar</span>}
             {!isDemo && pendingConflicts > 0 && (
               <span className="badge badge-high" title={`${pendingConflicts} date conflicts need instructor review`}>
                 {pendingConflicts} Conflicts
@@ -1124,25 +1138,25 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          {/* Error Banner */}
-          {loadError && !isLoading && (
+          {/* Error Banner — connection issue */}
+          {loadError && loadError !== 'no_calendar' && !isLoading && (
             <div style={{
               background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px',
               padding: '12px 20px', margin: '20px 0 0', fontSize: '14px', color: '#991B1B',
             }}>
-              <strong>Connection Issue</strong> — Could not load live data: {loadError}. Showing demo data instead.
+              <strong>Connection Issue</strong> — Could not load live data: {loadError}.
               <button onClick={refreshData} style={{ marginLeft: '12px', padding: '4px 12px', background: '#DC2626', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>Retry</button>
             </div>
           )}
 
-          {/* Demo Banner */}
-          {isDemo && !isLoading && (
+          {/* No Calendar Connected Banner */}
+          {loadError === 'no_calendar' && !isLoading && (
             <div style={{
               background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '10px',
               padding: '12px 20px', margin: '20px 0 0', fontSize: '14px', color: '#92400E',
             }}>
-              <strong>Demo Mode</strong> — Showing sample data.{' '}
-              <a href="/setup" style={{ color: '#92400E', fontWeight: '600' }}>Complete setup</a> to see your real D2L assignments.
+              <strong>No calendar connected yet.</strong>{' '}
+              <a href="/setup" style={{ color: '#92400E', fontWeight: '600' }}>Connect your D2L calendar</a> to see your assignments, due dates, and AI suggestions.
             </div>
           )}
 

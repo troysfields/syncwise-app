@@ -82,6 +82,7 @@ export default function InstructorDashboard() {
   const [conflicts, setConflicts] = useState([]);
   const [isDemo, setIsDemo] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [lastRefreshTime, setLastRefreshTime] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [courseFilter, setCourseFilter] = useState('all');
@@ -115,17 +116,25 @@ export default function InstructorDashboard() {
         const res = await fetch('/api/auth/session');
         if (res.ok) {
           const data = await res.json();
-          if (data.authenticated && data.user?.icalUrl) {
-            fetchInstructorData({
-              icalUrl: data.user.icalUrl,
-              studentEmail: data.user.email,
-            });
+          if (data.authenticated) {
+            if (data.user?.icalUrl) {
+              fetchInstructorData({
+                icalUrl: data.user.icalUrl,
+                studentEmail: data.user.email,
+              });
+            } else {
+              // Logged in but no calendar connected — empty state, NOT demo
+              setIsDemo(false);
+              setItems([]);
+              setIsLoading(false);
+              setLoadError('no_calendar');
+            }
             return;
           }
         }
       } catch { /* server not available */ }
 
-      // 2. Fall back to localStorage
+      // 2. Fall back to localStorage (not logged in or server unavailable)
       let settings = null;
       try {
         const raw = typeof window !== 'undefined' && localStorage.getItem('syncwise_settings');
@@ -135,8 +144,8 @@ export default function InstructorDashboard() {
       if (settings && settings.icalUrl) {
         fetchInstructorData(settings);
       } else {
-        setIsDemo(true);
-        setIsLoading(false);
+        // Not logged in — redirect to login
+        window.location.href = '/login';
       }
     }
     loadData();
@@ -456,7 +465,7 @@ export default function InstructorDashboard() {
                 {isRefreshing ? 'Refreshing...' : lastRefreshTime ? lastRefreshTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Refresh'}
               </button>
             )}
-            {isDemo && <span className="badge badge-medium">Demo Mode</span>}
+            {loadError === 'no_calendar' && <span className="badge badge-medium">No Calendar</span>}
             {!isDemo && conflicts.length > 0 && (
               <span className="badge badge-high">{conflicts.length} Conflicts</span>
             )}
@@ -473,9 +482,10 @@ export default function InstructorDashboard() {
               Loading instructor dashboard...
             </div>
           )}
-          {isDemo && !isLoading && (
+          {loadError === 'no_calendar' && !isLoading && (
             <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '10px', padding: '12px 20px', marginBottom: '16px', fontSize: '14px', color: '#92400E' }}>
-              <strong>Demo Mode</strong> — Showing sample data. <a href="/setup" style={{ color: '#92400E', fontWeight: '600' }}>Complete setup</a> to connect live D2L data.
+              <strong>No calendar connected yet.</strong>{' '}
+              <a href="/setup" style={{ color: '#92400E', fontWeight: '600' }}>Connect your D2L calendar</a> to see your course data and manage assignments.
             </div>
           )}
           {!isDemo && !isLoading && (

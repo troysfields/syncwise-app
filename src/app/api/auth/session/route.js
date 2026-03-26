@@ -84,21 +84,12 @@ export async function POST(request) {
     const cleanName = sanitizeString(name, 100);
     const userRole = role === 'instructor' ? 'instructor' : 'student';
 
-    // Email domain verification — instructors: @coloradomesa.edu, students: @mavs.coloradomesa.edu
+    // Email domain verification — instructors only: must be @coloradomesa.edu (not @mavs)
     if (userRole === 'instructor') {
       if (!cleanEmail.endsWith('@coloradomesa.edu') || cleanEmail.endsWith('@mavs.coloradomesa.edu')) {
         trackAuth({ userEmail: cleanEmail, action: 'signup_failed', success: false, method: 'password', userRole: 'instructor' }).catch(() => {});
         return NextResponse.json(
           { error: 'Instructor accounts require a @coloradomesa.edu email address (not @mavs — that\'s for students).' },
-          { status: 403 }
-        );
-      }
-    }
-    if (userRole === 'student') {
-      if (!cleanEmail.endsWith('@mavs.coloradomesa.edu')) {
-        trackAuth({ userEmail: cleanEmail, action: 'signup_failed', success: false, method: 'password', userRole: 'student' }).catch(() => {});
-        return NextResponse.json(
-          { error: 'Student accounts require a @mavs.coloradomesa.edu email address.' },
           { status: 403 }
         );
       }

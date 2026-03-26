@@ -34,10 +34,6 @@ export default function SetupPage() {
       setError('Instructor accounts require a @coloradomesa.edu email address (not @mavs — that\'s for students).');
       return false;
     }
-    if (role === 'student' && !email.trim().toLowerCase().endsWith('@mavs.coloradomesa.edu')) {
-      setError('Student accounts require a @mavs.coloradomesa.edu email address.');
-      return false;
-    }
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return false; }
     if (password !== confirmPassword) { setError('Passwords don\'t match.'); return false; }
     return true;

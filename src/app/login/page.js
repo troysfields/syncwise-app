@@ -49,11 +49,6 @@ function LoginForm() {
       setLoading(false);
       return;
     }
-    if (role === 'student' && !email.trim().toLowerCase().endsWith('@mavs.coloradomesa.edu')) {
-      setError('Student accounts require a @mavs.coloradomesa.edu email address.');
-      setLoading(false);
-      return;
-    }
 
     try {
       const res = await fetch('/api/auth/session', {

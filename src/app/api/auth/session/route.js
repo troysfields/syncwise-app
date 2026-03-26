@@ -170,9 +170,9 @@ export async function POST(request) {
     trackAuth({ userEmail: cleanEmail, action: 'signup', success: true, method: 'password', userRole: userRole }).catch(() => {});
     return response;
   } catch (error) {
-    console.error('Session error:', error);
+    console.error('Session error:', error?.message, error?.stack);
     trackError({ endpoint: '/api/auth/session', errorType: 'session_error', errorMessage: error.message, statusCode: 500 }).catch(() => {});
-    return NextResponse.json({ error: 'Failed to process request.' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to process request.', debug: error?.message }, { status: 500 });
   }
 }
 

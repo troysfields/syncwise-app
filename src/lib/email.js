@@ -66,8 +66,8 @@ async function logSecurityEvent(errorCode, eventData) {
   try {
     // Dynamic import to avoid circular deps with db.js
     const { Redis } = await import('@upstash/redis');
-    const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-    const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+    const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 
     if (!url || !token) {
       console.warn('[SECLOG] No Redis config — logging to console only');
@@ -102,8 +102,8 @@ async function logSecurityEvent(errorCode, eventData) {
 export async function lookupSecurityEvent(errorCode) {
   try {
     const { Redis } = await import('@upstash/redis');
-    const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-    const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+    const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 
     if (!url || !token) return null;
 
@@ -121,8 +121,8 @@ export async function lookupSecurityEvent(errorCode) {
 export async function listSecurityEvents(limit = 50) {
   try {
     const { Redis } = await import('@upstash/redis');
-    const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-    const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+    const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 
     if (!url || !token) return [];
 

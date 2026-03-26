@@ -23,8 +23,8 @@ let _redis = null;
 async function getRedis() {
   if (_redis) return _redis;
   try {
-    const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-    const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+    const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
     if (!url || !token) return null;
     const { Redis } = await import('@upstash/redis');
     _redis = new Redis({ url, token });

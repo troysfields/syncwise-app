@@ -7,7 +7,16 @@ import { notifyErrorReport } from '@/lib/email';
 
 export async function POST(req) {
   try {
+    // Reject oversized payloads to prevent Redis abuse
+    const contentLength = parseInt(req.headers.get('content-length') || '0', 10);
+    if (contentLength > 10000) {
+      return NextResponse.json({ success: false, error: 'Payload too large' }, { status: 413 });
+    }
+
     const body = await req.json();
+
+    // Truncate all string fields to prevent storing huge payloads in Redis
+    const cap = (val, max = 500) => typeof val === 'string' ? val.slice(0, max) : val;
 
     const {
       errorCode,
@@ -24,15 +33,15 @@ export async function POST(req) {
 
     // Log the error server-side with full detail
     const errorEntry = logError({
-      errorCode: errorCode || 'unknown_error',
+      errorCode: cap(errorCode || 'unknown_error', 100),
       severity: severity || SEVERITY.MEDIUM,
-      platform: platform || 'client',
-      endpoint: endpoint || '',
+      platform: cap(platform || 'client', 50),
+      endpoint: cap(endpoint || '', 200),
       httpStatus,
-      errorMessage: errorMessage || 'No message provided',
-      user: user || 'unknown',
-      userAgent: userAgent || '',
-      stackTrace: stackTrace || '',
+      errorMessage: cap(errorMessage || 'No message provided', 500),
+      user: cap(user || 'unknown', 100),
+      userAgent: cap(userAgent || '', 300),
+      stackTrace: cap(stackTrace || '', 2000),
       context: context || {},
     });
 

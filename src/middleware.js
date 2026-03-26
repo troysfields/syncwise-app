@@ -24,6 +24,10 @@ const RATE_LIMITS_BY_ROUTE = {
   '/api/auth/session': 10,    // 10 auth attempts per minute (brute force protection)
   '/api/auth/forgot-password': 3, // 3 password resets per minute
   '/api/feeds/ical': 15,      // 15 iCal refreshes per minute
+  '/api/feeds/upload': 10,    // 10 file uploads per minute
+  '/api/errors/report': 15,   // 15 error reports per minute (public endpoint)
+  '/api/feedback': 5,         // 5 feedback submissions per minute
+  '/api/email/scan': 5,       // 5 email scans per minute (triggers AI)
   '/api/admin/': 30,          // 30 admin requests per minute
   _default: 60,               // 60 requests per minute for everything else
 };

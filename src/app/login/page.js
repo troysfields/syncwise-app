@@ -44,8 +44,13 @@ function LoginForm() {
     }
 
     // Instructor email check
-    if (role === 'instructor' && !email.trim().toLowerCase().endsWith('@mavs.coloradomesa.edu')) {
-      setError('Instructor accounts require a @mavs.coloradomesa.edu email address.');
+    if (role === 'instructor' && (!email.trim().toLowerCase().endsWith('@coloradomesa.edu') || email.trim().toLowerCase().endsWith('@mavs.coloradomesa.edu'))) {
+      setError('Instructor accounts require a @coloradomesa.edu email address (not @mavs — that\'s for students).');
+      setLoading(false);
+      return;
+    }
+    if (role === 'student' && !email.trim().toLowerCase().endsWith('@mavs.coloradomesa.edu')) {
+      setError('Student accounts require a @mavs.coloradomesa.edu email address.');
       setLoading(false);
       return;
     }
@@ -155,7 +160,7 @@ function LoginForm() {
 
   // ─── Forgot Password View ───
   if (view === 'forgot') {
-    const returnView = email.trim().toLowerCase().endsWith('@mavs.coloradomesa.edu') ? 'login-instructor' : 'login-student';
+    const returnView = (email.trim().toLowerCase().endsWith('@coloradomesa.edu') && !email.trim().toLowerCase().endsWith('@mavs.coloradomesa.edu')) ? 'login-instructor' : 'login-student';
     return (
       <div style={styles.container}>
         <div style={styles.card}>
@@ -219,7 +224,7 @@ function LoginForm() {
 
         {isInstructor && (
           <p style={styles.instructorNote}>
-            Instructor accounts require a <strong>@mavs.coloradomesa.edu</strong> email address.
+            Instructor accounts require a <strong>@coloradomesa.edu</strong> email address (not @mavs).
           </p>
         )}
 
@@ -231,7 +236,7 @@ function LoginForm() {
             type="email"
             value={email}
             onChange={e => { setEmail(e.target.value); setError(''); }}
-            placeholder={isInstructor ? 'you@mavs.coloradomesa.edu' : 'you@email.com'}
+            placeholder={isInstructor ? 'you@coloradomesa.edu' : 'you@email.com'}
             style={styles.input}
             autoComplete="email"
           />

@@ -337,7 +337,7 @@ export async function notifyMultipleFailedLogins(request, email, attempts) {
 export async function notifyInstructorSignup(request, { name, email }) {
   return notifyAdmin({
     event: 'Instructor Account Created',
-    details: `${name} (${email}) registered as an instructor. Email verified as @mavs.coloradomesa.edu domain. This account has elevated permissions for course management.`,
+    details: `${name} (${email}) registered as an instructor. Email verified as @coloradomesa.edu domain (faculty/staff). This account has elevated permissions for course management.`,
     severity: 'warning',
     request,
   });

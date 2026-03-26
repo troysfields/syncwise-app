@@ -30,8 +30,12 @@ export default function SetupPage() {
   const validateStep2 = () => {
     if (!name.trim()) { setError('Please enter your name.'); return false; }
     if (!email.trim() || !isValidEmail(email)) { setError('Please enter a valid email address.'); return false; }
-    if (role === 'instructor' && !email.trim().toLowerCase().endsWith('@mavs.coloradomesa.edu')) {
-      setError('Instructor accounts require a @mavs.coloradomesa.edu email address.');
+    if (role === 'instructor' && (!email.trim().toLowerCase().endsWith('@coloradomesa.edu') || email.trim().toLowerCase().endsWith('@mavs.coloradomesa.edu'))) {
+      setError('Instructor accounts require a @coloradomesa.edu email address (not @mavs — that\'s for students).');
+      return false;
+    }
+    if (role === 'student' && !email.trim().toLowerCase().endsWith('@mavs.coloradomesa.edu')) {
+      setError('Student accounts require a @mavs.coloradomesa.edu email address.');
       return false;
     }
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return false; }
@@ -225,13 +229,13 @@ export default function SetupPage() {
             <div style={styles.field}>
               <label style={styles.fieldLabel}>
                 Email
-                {role === 'instructor' && <span style={styles.required}> (must be @mavs.coloradomesa.edu)</span>}
+                {role === 'instructor' && <span style={styles.required}> (must be @coloradomesa.edu)</span>}
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={e => { setEmail(e.target.value); setError(''); }}
-                placeholder={role === 'instructor' ? 'you@mavs.coloradomesa.edu' : 'you@email.com'}
+                placeholder={role === 'instructor' ? 'you@coloradomesa.edu' : 'you@email.com'}
                 style={styles.input}
                 autoComplete="email"
               />

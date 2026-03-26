@@ -30,21 +30,39 @@ async function getKV() {
       const { Redis } = await import('@upstash/redis');
       const redis = new Redis({ url: config.url, token: config.token });
 
+      // Wrap Upstash Redis with rate-limit detection
+      // If Redis hits the free tier limit, throw a clear error instead of crashing silently
+      function wrapRedisCall(fn) {
+        return async (...args) => {
+          try {
+            return await fn(...args);
+          } catch (err) {
+            if (err?.message?.includes('max requests limit exceeded')) {
+              console.error('[DB] Upstash Redis FREE TIER LIMIT REACHED (500K requests/month).');
+              const limitErr = new Error('Redis request limit exceeded. Upgrade Upstash plan or wait for monthly reset.');
+              limitErr.code = 'REDIS_LIMIT';
+              throw limitErr;
+            }
+            throw err;
+          }
+        };
+      }
+
       // Wrap Upstash Redis to match our interface (get/set store JSON automatically)
       kv = {
-        async get(key) {
+        get: wrapRedisCall(async (key) => {
           const val = await redis.get(key);
           return val ?? null;
-        },
-        async set(key, value) {
+        }),
+        set: wrapRedisCall(async (key, value) => {
           // Upstash auto-serializes objects to JSON
           await redis.set(key, value);
           return 'OK';
-        },
-        async del(key) {
+        }),
+        del: wrapRedisCall(async (key) => {
           return await redis.del(key);
-        },
-        async keys(pattern) {
+        }),
+        keys: wrapRedisCall(async (pattern) => {
           // Upstash supports SCAN-based keys
           const results = [];
           let cursor = 0;
@@ -54,7 +72,7 @@ async function getKV() {
             results.push(...keys);
           } while (cursor !== 0);
           return results;
-        },
+        }),
         _redis: redis,
         _isMemory: false,
       };

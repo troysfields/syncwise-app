@@ -170,9 +170,14 @@ export async function POST(request) {
     trackAuth({ userEmail: cleanEmail, action: 'signup', success: true, method: 'password', userRole: userRole }).catch(() => {});
     return response;
   } catch (error) {
-    console.error('Session error:', error?.message, error?.stack);
+    console.error('Session error:', error?.message);
+    // Detect Redis limit exceeded — tell user instead of generic error
+    const isRedisLimit = error?.message?.includes('max requests limit exceeded');
+    if (isRedisLimit) {
+      return NextResponse.json({ error: 'Service temporarily unavailable — database request limit reached. Please try again later or contact support.' }, { status: 503 });
+    }
     trackError({ endpoint: '/api/auth/session', errorType: 'session_error', errorMessage: error.message, statusCode: 500 }).catch(() => {});
-    return NextResponse.json({ error: 'Failed to process request.', debug: error?.message }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to process request.' }, { status: 500 });
   }
 }
 

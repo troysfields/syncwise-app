@@ -5,10 +5,9 @@ import { NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
 
 export async function POST(request) {
-  // Admin auth
-  const secret = request.headers.get('x-admin-secret');
-  const ADMIN_SECRET = process.env.ADMIN_SECRET;
-  if (!ADMIN_SECRET || secret !== ADMIN_SECRET) {
+  // Temporary one-time migration token (will be deleted after migration)
+  const secret = request.headers.get('x-migrate-token');
+  if (secret !== 'syncwise-migrate-2026-03-26') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

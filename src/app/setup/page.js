@@ -6,11 +6,27 @@
 // 2. Basic info + password
 // 3. D2L Calendar Feed (iCal URL)
 // 4. Review & complete
+//
+// Also supports ?connect=d2l mode for existing logged-in users
+// who just want to connect their D2L calendar without re-doing signup.
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 export default function SetupPage() {
-  const [step, setStep] = useState(1);
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><p>Loading...</p></div>}>
+      <SetupForm />
+    </Suspense>
+  );
+}
+
+function SetupForm() {
+  const searchParams = useSearchParams();
+  const connectMode = searchParams.get('connect') === 'd2l';
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [connectLoading, setConnectLoading] = useState(connectMode);
+  const [step, setStep] = useState(connectMode ? 3 : 1);
   const [role, setRole] = useState(''); // 'student' or 'instructor'
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -23,6 +39,66 @@ export default function SetupPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // ─── Connect mode: check if user is logged in ───
+  useEffect(() => {
+    if (!connectMode) return;
+    fetch('/api/auth/session')
+      .then(r => r.json())
+      .then(data => {
+        if (data.authenticated && data.user) {
+          setIsLoggedIn(true);
+          setEmail(data.user.email || '');
+          setName(data.user.name || '');
+          setRole(data.user.role || 'student');
+          // Pre-fill existing icalUrl if any
+          if (data.user.icalUrl) setIcalUrl(data.user.icalUrl);
+        } else {
+          // Not logged in — fall back to normal signup flow
+          setStep(1);
+        }
+        setConnectLoading(false);
+      })
+      .catch(() => {
+        setStep(1);
+        setConnectLoading(false);
+      });
+  }, [connectMode]);
+
+  // ─── Save D2L connection for existing user (connect mode) ───
+  const saveD2LConnection = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/feeds/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          icalUrl: icalUrl.trim(),
+          courses: icalData?.courseMap || {},
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Update localStorage too
+        try {
+          const existing = JSON.parse(localStorage.getItem('syncwise_settings') || '{}');
+          localStorage.setItem('syncwise_settings', JSON.stringify({
+            ...existing,
+            icalUrl: icalUrl.trim(),
+            courses: icalData?.courseMap || {},
+          }));
+        } catch (e) { /* ignore localStorage errors */ }
+        window.location.href = '/dashboard';
+      } else {
+        setError(data.error || 'Failed to save calendar connection.');
+        setLoading(false);
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+      setLoading(false);
+    }
+  };
 
   // ─── Validation helpers ───
   const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
@@ -129,17 +205,33 @@ export default function SetupPage() {
   const totalSteps = 4;
   const stepLabels = ['Role', 'Your Info', 'D2L Calendar', 'Review'];
 
+  // Show loading spinner while checking session in connect mode
+  if (connectLoading) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <div style={styles.header}>
+            <div style={styles.logoBox}>C</div>
+            <h1 style={styles.title}>Connecting...</h1>
+            <p style={styles.brandSub}>Checking your session</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.container}>
       <div style={styles.card}>
         {/* Header */}
         <div style={styles.header}>
           <div style={styles.logoBox}>C</div>
-          <h1 style={styles.title}>Create Your Account</h1>
+          <h1 style={styles.title}>{connectMode && isLoggedIn ? 'Connect Your Calendar' : 'Create Your Account'}</h1>
           <p style={styles.brandSub}>CMU AI Calendar by SyncWise AI</p>
         </div>
 
-        {/* Progress Steps */}
+        {/* Progress Steps — hide in connect mode */}
+        {!(connectMode && isLoggedIn) && (
         <div style={styles.progressBar}>
           {stepLabels.map((label, i) => {
             const s = i + 1;
@@ -162,6 +254,7 @@ export default function SetupPage() {
             );
           })}
         </div>
+        )}
 
         {error && <div style={styles.errorBox}>{error}</div>}
 
@@ -346,7 +439,11 @@ export default function SetupPage() {
             )}
 
             <div style={styles.buttonRow}>
-              <button onClick={() => { setStep(2); setError(''); }} style={styles.backButton}>Back</button>
+              {connectMode && isLoggedIn ? (
+                <button onClick={() => { window.location.href = '/dashboard'; }} style={styles.backButton}>Cancel</button>
+              ) : (
+                <button onClick={() => { setStep(2); setError(''); }} style={styles.backButton}>Back</button>
+              )}
 
               {icalStatus !== 'success' ? (
                 <button
@@ -359,6 +456,14 @@ export default function SetupPage() {
                 >
                   {icalStatus === 'loading' ? 'Testing...' : 'Test Connection'}
                 </button>
+              ) : connectMode && isLoggedIn ? (
+                <button
+                  onClick={saveD2LConnection}
+                  disabled={loading}
+                  style={{ ...styles.primaryButton, opacity: loading ? 0.5 : 1 }}
+                >
+                  {loading ? 'Saving...' : 'Save & Go to Dashboard'}
+                </button>
               ) : (
                 <button onClick={() => { setStep(4); setError(''); }} style={styles.primaryButton}>
                   Continue
@@ -366,12 +471,23 @@ export default function SetupPage() {
               )}
             </div>
 
+            {!(connectMode && isLoggedIn) && (
             <button
               onClick={() => { setStep(4); setError(''); }}
               style={styles.skipButton}
             >
               Skip for now — I&apos;ll add this later
             </button>
+            )}
+
+            {connectMode && isLoggedIn && (
+            <button
+              onClick={() => { window.location.href = '/dashboard'; }}
+              style={styles.skipButton}
+            >
+              Skip — go back to dashboard
+            </button>
+            )}
           </div>
         )}
 

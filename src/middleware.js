@@ -24,6 +24,7 @@ const RATE_LIMITS_BY_ROUTE = {
   '/api/auth/session': 10,    // 10 auth attempts per minute (brute force protection)
   '/api/auth/forgot-password': 3, // 3 password resets per minute
   '/api/feeds/ical': 15,      // 15 iCal refreshes per minute
+  '/api/feeds/connect': 5,    // 5 calendar connect attempts per minute
   '/api/feeds/upload': 10,    // 10 file uploads per minute
   '/api/errors/report': 15,   // 15 error reports per minute (public endpoint)
   '/api/feedback': 5,         // 5 feedback submissions per minute
@@ -159,13 +160,15 @@ export function middleware(request) {
 
   // ─── Protected Page Routes — require session cookie ───
   // If the user hits /dashboard, /settings, /instructor, /future-updates
-  // without a valid session cookie, send them to the landing page.
-  // They've never logged in on this browser — show them what the product is first.
+  // without a valid session cookie, redirect to login with a return URL
+  // so they land back where they wanted after signing in.
   const isProtectedPage = PROTECTED_PAGE_ROUTES.some(route => pathname.startsWith(route));
   if (isProtectedPage) {
     const sessionCookie = request.cookies.get('syncwise_session')?.value;
     if (!sessionCookie) {
-      return NextResponse.redirect(new URL('https://syncwise-landing.vercel.app'));
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
     }
   }
 

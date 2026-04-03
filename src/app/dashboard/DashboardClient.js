@@ -1114,7 +1114,7 @@ export default function StudentDashboard() {
                 {isRefreshing ? 'Refreshing...' : lastRefreshTime ? lastRefreshTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Refresh'}
               </button>
             )}
-            {loadError === 'no_calendar' && <span className="badge badge-medium">No Calendar</span>}
+            {loadError === 'no_calendar' && <a href="/setup?connect=d2l" style={{ textDecoration: 'none' }}><span className="badge badge-medium" style={{ cursor: 'pointer' }}>No Calendar</span></a>}
             {!isDemo && pendingConflicts > 0 && (
               <span className="badge badge-high" title={`${pendingConflicts} date conflicts need instructor review`}>
                 {pendingConflicts} Conflicts
@@ -1156,7 +1156,7 @@ export default function StudentDashboard() {
               padding: '12px 20px', margin: '20px 0 0', fontSize: '14px', color: '#92400E',
             }}>
               <strong>No calendar connected yet.</strong>{' '}
-              <a href="/setup" style={{ color: '#92400E', fontWeight: '600' }}>Connect your D2L calendar</a> to see your assignments, due dates, and AI suggestions.
+              <a href="/setup?connect=d2l" style={{ color: '#92400E', fontWeight: '600' }}>Connect your D2L calendar</a> to see your assignments, due dates, and AI suggestions.
             </div>
           )}
 

@@ -367,12 +367,12 @@ function getNeedsAttention(tasks, gradeAlerts) {
 // ============================================================
 
 export default function StudentDashboard() {
-  const [tasks, setTasks] = useState(DEMO_TASKS);
-  const [events, setEvents] = useState(DEMO_EVENTS);
-  const [suggestions, setSuggestions] = useState(DEMO_SUGGESTIONS);
-  const [gradeAlerts, setGradeAlerts] = useState(DEMO_GRADE_ALERTS);
-  const [courseProgress, setCourseProgress] = useState(DEMO_COURSE_PROGRESS);
-  const [isDemo, setIsDemo] = useState(true);
+  const [tasks, setTasks] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [gradeAlerts, setGradeAlerts] = useState([]);
+  const [courseProgress, setCourseProgress] = useState([]);
+  const [isDemo, setIsDemo] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [itemFilter, setItemFilter] = useState('active'); // 'active', 'completed', 'all-types'
@@ -641,13 +641,18 @@ export default function StudentDashboard() {
         setGradeAlerts([]);
         setEvents([]);
       } else {
-        // API returned but no events
-        setIsDemo(true);
+        // API returned but no events — show empty state, never demo data
+        setIsDemo(false);
+        setTasks([]);
+        setEvents([]);
+        setSuggestions([{ type: 'action', text: 'No assignments found yet. If you just connected your D2L calendar, try refreshing in a few minutes — it can take time for events to sync.' }]);
+        setGradeAlerts([]);
+        setCourseProgress([]);
       }
     } catch (err) {
       console.error('Failed to fetch live data:', err);
       setLoadError(err.message);
-      setIsDemo(true); // Fall back to demo data
+      setIsDemo(false); // Never show demo data — show error state instead
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -1114,7 +1119,7 @@ export default function StudentDashboard() {
                 {isRefreshing ? 'Refreshing...' : lastRefreshTime ? lastRefreshTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Refresh'}
               </button>
             )}
-            {loadError === 'no_calendar' && <a href="/setup?connect=d2l" style={{ textDecoration: 'none' }}><span className="badge badge-medium" style={{ cursor: 'pointer' }}>No Calendar</span></a>}
+            {loadError === 'no_calendar' && !isLoading && <a href="/setup?connect=d2l" style={{ textDecoration: 'none' }}><span className="badge badge-medium" style={{ cursor: 'pointer' }}>Connect Calendar</span></a>}
             {!isDemo && pendingConflicts > 0 && (
               <span className="badge badge-high" title={`${pendingConflicts} date conflicts need instructor review`}>
                 {pendingConflicts} Conflicts
@@ -1176,17 +1181,7 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          {/* Live Data Banner */}
-          {!isDemo && !isLoading && loadError !== 'no_calendar' && (
-            <div style={{
-              background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '10px',
-              padding: '12px 20px', margin: '20px 0 0', fontSize: '14px', color: '#065F46',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            }}>
-              <span>Connected to D2L — showing {tasks.length} items across your courses</span>
-              <button onClick={refreshData} style={{ padding: '4px 12px', background: '#059669', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>Refresh</button>
-            </div>
-          )}
+          {/* Live Data Info — subtle last-updated indicator, no banner */}
 
           {/* Date Change Notifications */}
           {dateNotifications.length > 0 && !isLoading && (

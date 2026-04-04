@@ -13,6 +13,30 @@ import { logApiCall } from './logger';
 import { deduplicateItems, detectDateConflicts, generateConflictNotifications, getActiveOverrides } from './dedup-engine';
 
 // ============================================================
+// IN-MEMORY CACHE — Avoid re-fetching iCal on every page load
+// Cache lasts 3 minutes per user to keep data fresh but fast
+// ============================================================
+const icalCache = new Map();
+const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
+
+function getCachedICalResult(icalUrl) {
+  const cached = icalCache.get(icalUrl);
+  if (cached && (Date.now() - cached.timestamp) < CACHE_TTL_MS) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setCachedICalResult(icalUrl, data) {
+  icalCache.set(icalUrl, { data, timestamp: Date.now() });
+  // Clean old entries (keep cache from growing indefinitely)
+  if (icalCache.size > 100) {
+    const oldest = [...icalCache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
+    for (let i = 0; i < 20; i++) icalCache.delete(oldest[i][0]);
+  }
+}
+
+// ============================================================
 // MAIN DATA FETCH — Pull everything for a student
 // ============================================================
 
@@ -31,10 +55,19 @@ export async function getStudentDashboardData(settings) {
     fetchedAt: new Date().toISOString(),
   };
 
-  // Source 1: D2L iCal Calendar Feed
+  // Source 1: D2L iCal Calendar Feed (with caching)
   if (icalUrl) {
     try {
-      const icalResult = await fetchAndParseICalFeed(icalUrl, studentEmail);
+      // Check cache first for fast page loads
+      let icalResult = getCachedICalResult(icalUrl);
+      if (icalResult) {
+        icalResult._cached = true;
+      } else {
+        icalResult = await fetchAndParseICalFeed(icalUrl, studentEmail);
+        if (icalResult.success) {
+          setCachedICalResult(icalUrl, icalResult);
+        }
+      }
 
       if (icalResult.success) {
         result.events.push(...icalResult.events);
@@ -43,6 +76,7 @@ export async function getStudentDashboardData(settings) {
           status: 'connected',
           count: icalResult.count,
           fetchedAt: icalResult.fetchedAt,
+          cached: !!icalResult._cached,
         });
       } else {
         result.errors.push({

@@ -320,12 +320,19 @@ function detectItemType(summary, description, categories) {
 // Fetch and parse an iCal feed URL
 export async function fetchAndParseICalFeed(feedUrl, user = '') {
   try {
+    // 10-second timeout for the external D2L fetch
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
     const res = await fetch(feedUrl, {
       headers: {
         'Accept': 'text/calendar',
         'User-Agent': 'SyncWise-AI/1.0',
       },
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!res.ok) {
       throw new Error(`iCal fetch failed: HTTP ${res.status}`);

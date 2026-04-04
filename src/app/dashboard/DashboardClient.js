@@ -545,6 +545,10 @@ export default function StudentDashboard() {
     else setIsLoading(true);
     setLoadError(null);
     try {
+      // Add 15-second timeout so the page doesn't hang forever
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       const res = await fetch('/api/dashboard/data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -552,7 +556,10 @@ export default function StudentDashboard() {
           icalUrl: settings.icalUrl,
           studentEmail: settings.studentEmail || 'anonymous',
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!res.ok) throw new Error(`Dashboard API returned ${res.status}`);
 
@@ -651,7 +658,10 @@ export default function StudentDashboard() {
       }
     } catch (err) {
       console.error('Failed to fetch live data:', err);
-      setLoadError(err.message);
+      const errorMsg = err.name === 'AbortError'
+        ? 'Loading took too long. D2L may be slow right now — try refreshing in a minute.'
+        : err.message;
+      setLoadError(errorMsg);
       setIsDemo(false); // Never show demo data — show error state instead
     } finally {
       setIsLoading(false);

@@ -1,6 +1,6 @@
 
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { reportError, showToast } from '../components/ToastNotifications';
 import { Sidebar } from '../components/Sidebar';
 import { ThemeToggle } from '../components/ThemeProvider';
@@ -397,6 +397,7 @@ export default function StudentDashboard() {
   const [manualEvents, setManualEvents] = useState([]);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [lastRefreshTime, setLastRefreshTime] = useState(null);
+  const [fetchId, setFetchId] = useState(0); // Track fetch requests to prevent stale data
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [semesterView, setSemesterView] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -544,6 +545,11 @@ export default function StudentDashboard() {
     if (isManualRefresh) setIsRefreshing(true);
     else setIsLoading(true);
     setLoadError(null);
+
+    // Track this request ID to discard stale responses
+    const thisRequestId = Date.now();
+    setFetchId(thisRequestId);
+
     try {
       // Add 15-second timeout so the page doesn't hang forever
       const controller = new AbortController();
@@ -592,6 +598,7 @@ export default function StudentDashboard() {
 
         setTasks(liveTasks);
         setIsDemo(false);
+        setLastRefreshTime(new Date());
 
         // Cache tasks for chatbot workload checks
         try {
@@ -666,7 +673,6 @@ export default function StudentDashboard() {
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
-      setLastRefreshTime(new Date());
     }
   }
 
@@ -762,39 +768,44 @@ export default function StudentDashboard() {
   // ============================================================
 
   // Merge manual events with demo events
-  const allEvents = [...events, ...manualEvents];
+  const allEvents = useMemo(() => [...events, ...manualEvents], [events, manualEvents]);
 
   // Active tasks (visible on calendar and assignment list)
-  const visibleTasks = tasks.filter(t => {
+  const visibleTasks = useMemo(() => tasks.filter(t => {
     if (t.status === 'hidden' || t.status === 'completed' || t.status === 'denied') return false;
     return true;
-  });
+  }), [tasks]);
 
   // Items needing date confirmation (no due date, not yet confirmed or denied)
-  const needsConfirmation = tasks.filter(t =>
+  const needsConfirmation = useMemo(() => tasks.filter(t =>
     t.status === 'active' && !t.hasDueDate && !t.confirmedNoDate && !t.manualDate
-  );
+  ), [tasks]);
 
   // Needs attention list
-  const attentionItems = getNeedsAttention(visibleTasks, gradeAlerts.filter(g => !dismissedGrades.includes(g.id)));
+  const attentionItems = useMemo(() =>
+    getNeedsAttention(visibleTasks, gradeAlerts.filter(g => !dismissedGrades.includes(g.id))),
+    [visibleTasks, gradeAlerts, dismissedGrades]
+  );
 
   // Focus mode filtering
   const today = new Date();
-  const todayTodayTasks = visibleTasks.filter(t => {
+  const todayTodayTasks = useMemo(() => visibleTasks.filter(t => {
     const d = t.manualDate || t.dueDate;
     return d && isSameDay(new Date(d), today) && !t.submitted && t.status !== 'completed';
-  });
+  }), [visibleTasks]);
 
   // Week tasks — next 7 days (including today), uncompleted only
-  const weekEnd = new Date(today);
-  weekEnd.setDate(weekEnd.getDate() + 7);
-  weekEnd.setHours(23, 59, 59, 999);
-  const weekTasks = visibleTasks.filter(t => {
-    const d = t.manualDate || t.dueDate;
-    if (!d || t.submitted || t.status === 'completed') return false;
-    const taskDate = new Date(d);
-    return taskDate >= new Date(today.getFullYear(), today.getMonth(), today.getDate()) && taskDate <= weekEnd;
-  });
+  const weekTasks = useMemo(() => {
+    const weekEnd = new Date(today);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+    weekEnd.setHours(23, 59, 59, 999);
+    return visibleTasks.filter(t => {
+      const d = t.manualDate || t.dueDate;
+      if (!d || t.submitted || t.status === 'completed') return false;
+      const taskDate = new Date(d);
+      return taskDate >= new Date(today.getFullYear(), today.getMonth(), today.getDate()) && taskDate <= weekEnd;
+    });
+  }, [visibleTasks]);
 
   // Auto-switch: if no uncompleted tasks due today, show week view
   const effectiveFocusTimeframe = todayTodayTasks.length === 0 ? 'week' : focusTimeframe;
@@ -802,35 +813,35 @@ export default function StudentDashboard() {
   const focusModeTasks = focusMode ? (effectiveFocusTimeframe === 'week' ? weekTasks : todayTodayTasks) : null;
 
   // Filter assignment list
-  const filteredTasks = visibleTasks.filter(t => {
+  const filteredTasks = useMemo(() => visibleTasks.filter(t => {
     if (itemFilter === 'completed') return t.submitted || t.status === 'completed';
     if (itemFilter === 'active') return t.status === 'active' && !t.submitted;
     return true;
   }).filter(t => {
     if (typeFilter === 'all') return true;
     return t.type === typeFilter;
-  });
+  }), [visibleTasks, itemFilter, typeFilter]);
 
   // Sort tasks by priority
-  const sortedTasks = [...filteredTasks].sort((a, b) => {
+  const sortedTasks = useMemo(() => [...filteredTasks].sort((a, b) => {
     const priorityOrder = { high: 0, medium: 1, low: 2 };
     return (priorityOrder[getPriorityLevel(a)] - priorityOrder[getPriorityLevel(b)]) ||
       (new Date(a.manualDate || a.dueDate || '2099-01-01') - new Date(b.manualDate || b.dueDate || '2099-01-01'));
-  });
+  }), [filteredTasks]);
 
   // Unique item types for filter
-  const uniqueTypes = [...new Set(tasks.map(t => t.type))];
+  const uniqueTypes = useMemo(() => [...new Set(tasks.map(t => t.type))], [tasks]);
 
   // Unique course names for calendar course filter
-  const uniqueCourses = [...new Set(tasks.map(t => t.courseName).filter(Boolean))].sort();
+  const uniqueCourses = useMemo(() => [...new Set(tasks.map(t => t.courseName).filter(Boolean))].sort(), [tasks]);
 
   // Apply course filter to calendar data
-  const calendarFilteredTasks = courseFilter === 'all'
+  const calendarFilteredTasks = useMemo(() => courseFilter === 'all'
     ? visibleTasks
-    : visibleTasks.filter(t => t.courseName === courseFilter);
-  const calendarFilteredEvents = courseFilter === 'all'
+    : visibleTasks.filter(t => t.courseName === courseFilter), [visibleTasks, courseFilter]);
+  const calendarFilteredEvents = useMemo(() => courseFilter === 'all'
     ? allEvents
-    : allEvents.filter(e => e.courseName === courseFilter);
+    : allEvents.filter(e => e.courseName === courseFilter), [allEvents, courseFilter]);
 
   // ============================================================
   // HANDLERS — Item actions

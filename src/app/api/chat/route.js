@@ -111,10 +111,11 @@ export async function POST(request) {
       console.error('Claude API error:', response.status, errorData);
 
       return NextResponse.json({
-        success: true,
+        success: false,
         response: getFallbackResponse(sanitizedMessage),
         model: 'fallback',
         isLiteMode: false,
+        error: 'AI service temporarily unavailable',
       });
     }
 

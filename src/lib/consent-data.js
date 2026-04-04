@@ -123,7 +123,12 @@ export async function getStudentDashboardData(settings) {
   // DEDUPLICATION — Remove duplicates, flag conflicts for teacher
   // Passes in any instructor overrides so resolved items get the correct date
   // ============================================================
-  const activeOverrides = await getActiveOverrides();
+  let activeOverrides = [];
+  try {
+    activeOverrides = await getActiveOverrides();
+  } catch (e) {
+    console.error('Failed to load overrides, continuing without:', e.message);
+  }
   const dedupResult = deduplicateItems(result.events, activeOverrides);
   result.events = dedupResult.items;
   result.duplicatesRemoved = dedupResult.duplicatesRemoved;
@@ -196,7 +201,12 @@ export async function getStudentDashboardData(settings) {
 // ============================================================
 
 export async function handleDashboardDataRequest(request) {
-  const body = await request.json();
+  let body;
+  try {
+    body = await request.json();
+  } catch (e) {
+    return { error: 'Invalid request body. Expected JSON.' };
+  }
   const { icalUrl, studentEmail, uploadedDocs } = body;
 
   if (!icalUrl) {

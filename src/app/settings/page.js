@@ -165,7 +165,13 @@ export default function SettingsPage() {
                   <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>Sign out of your CMU AI Calendar account.</p>
                 </div>
                 <button
-                  onClick={() => { window.location.href = '/login'; }}
+                  onClick={async () => {
+                    try {
+                      await fetch('/api/auth/session', { method: 'DELETE' });
+                    } catch (e) { /* ignore network errors */ }
+                    try { localStorage.removeItem('syncwise_settings'); } catch (e) { /* ignore */ }
+                    window.location.href = '/login';
+                  }}
                   style={{
                     padding: '8px 20px', background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA',
                     borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',

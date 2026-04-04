@@ -50,6 +50,13 @@ function LoginForm() {
       return;
     }
 
+    // Student email check
+    if (role === 'student' && !email.trim().toLowerCase().endsWith('@mavs.coloradomesa.edu')) {
+      setError('Student accounts require your @mavs.coloradomesa.edu email address.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/auth/session', {
         method: 'POST',
@@ -217,9 +224,13 @@ function LoginForm() {
           {isInstructor ? '📚 Instructor Login' : '🎓 Student Login'}
         </div>
 
-        {isInstructor && (
+        {isInstructor ? (
           <p style={styles.instructorNote}>
             Instructor accounts require a <strong>@coloradomesa.edu</strong> email address (not @mavs).
+          </p>
+        ) : (
+          <p style={styles.instructorNote}>
+            Use your <strong>@mavs.coloradomesa.edu</strong> student email to sign in.
           </p>
         )}
 
@@ -231,7 +242,7 @@ function LoginForm() {
             type="email"
             value={email}
             onChange={e => { setEmail(e.target.value); setError(''); }}
-            placeholder={isInstructor ? 'you@coloradomesa.edu' : 'you@email.com'}
+            placeholder={isInstructor ? 'you@coloradomesa.edu' : 'you@mavs.coloradomesa.edu'}
             style={styles.input}
             autoComplete="email"
           />

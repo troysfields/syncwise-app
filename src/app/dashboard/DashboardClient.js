@@ -7,7 +7,7 @@ import { ThemeToggle } from '../components/ThemeProvider';
 import { NotificationCenter } from '../components/NotificationCenter';
 import { ManualEventModal } from '../components/ManualEventModal';
 import { scheduleNotifications, cancelItemNotifications, getUnreadCount } from '../../lib/notifications';
-import { trackPageView, trackFeatureUsage, trackCalendarView, trackFocusMode, trackExport, trackManualEvent, initSession } from '../../lib/analytics';
+import { trackPageView, trackFeatureUsage, trackFocusMode, trackExport, trackManualEvent, initSession } from '../../lib/analytics';
 
 // ============================================================
 // COURSE COLORS — dynamically assigned when using live data
@@ -1149,19 +1149,35 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          {/* No Calendar Connected Banner */}
+          {/* No Calendar Connected — Onboarding Card */}
           {loadError === 'no_calendar' && !isLoading && (
             <div style={{
-              background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '10px',
-              padding: '12px 20px', margin: '20px 0 0', fontSize: '14px', color: '#92400E',
+              background: 'linear-gradient(135deg, #FEF3C7, #FFF8E1)', border: '1px solid #FDE68A', borderRadius: '14px',
+              padding: '24px 28px', margin: '20px 0 0', fontSize: '14px', color: '#92400E',
             }}>
-              <strong>No calendar connected yet.</strong>{' '}
-              <a href="/setup?connect=d2l" style={{ color: '#92400E', fontWeight: '600' }}>Connect your D2L calendar</a> to see your assignments, due dates, and AI suggestions.
+              <div style={{ fontSize: '18px', fontWeight: '700', marginBottom: '8px', color: '#78350F' }}>
+                Get started in 2 minutes
+              </div>
+              <p style={{ marginBottom: '16px', lineHeight: '1.6', color: '#92400E' }}>
+                Connect your D2L calendar feed and we'll automatically pull in all your assignments, quizzes, and due dates. You'll get AI-powered priority suggestions, deadline reminders, and a clear weekly view of everything across your courses.
+              </p>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <a href="/setup?connect=d2l" style={{
+                  display: 'inline-block', background: '#5D0022', color: '#fff', padding: '10px 24px',
+                  borderRadius: '8px', fontWeight: '600', fontSize: '14px', textDecoration: 'none',
+                  transition: 'background 0.2s',
+                }}>
+                  Connect D2L Calendar
+                </a>
+                <span style={{ fontSize: '12px', color: '#A16207' }}>
+                  Takes about 2 min — you just need your iCal URL from Brightspace
+                </span>
+              </div>
             </div>
           )}
 
           {/* Live Data Banner */}
-          {!isDemo && !isLoading && (
+          {!isDemo && !isLoading && loadError !== 'no_calendar' && (
             <div style={{
               background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '10px',
               padding: '12px 20px', margin: '20px 0 0', fontSize: '14px', color: '#065F46',
@@ -1525,8 +1541,8 @@ export default function StudentDashboard() {
                       )}
                     </div>
                     <div className={`scroll-cal-day-body ${totalItems >= 3 ? 'scroll-cal-compact' : ''}`}>
-                      {totalItems === 0 && (
-                        <div className="scroll-cal-empty">—</div>
+                      {totalItems === 0 && !loadError && (
+                        <div className="scroll-cal-empty" style={{ fontSize: '11px', color: '#CBD5E1', fontStyle: 'italic' }}>No events</div>
                       )}
                       {dayEvents.map(e => (
                         <div key={e.id} className={`scroll-cal-chip scroll-cal-chip-event ${totalItems >= 3 ? 'scroll-cal-chip-sm' : ''}`} title={`${e.name}\n${formatTime(e.start)} – ${formatTime(e.end)}`}

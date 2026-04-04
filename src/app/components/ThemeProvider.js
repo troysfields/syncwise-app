@@ -5,7 +5,7 @@ import { useState, useEffect, createContext, useContext, useCallback } from 'rea
 // ============================================================
 // Theme Provider — Dark Mode Toggle
 // Wraps the entire app, toggles CSS variables for light/dark
-// Persists preference in memory (no localStorage in this env)
+// Persists preference to localStorage across sessions
 // ============================================================
 
 const ThemeContext = createContext({ theme: 'light', toggleTheme: () => {}, mounted: false });
@@ -18,11 +18,22 @@ export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState('light');
   const [mounted, setMounted] = useState(false);
 
-  // Check system preference on mount, then mark mounted
+  // Check saved preference, then system preference, then mark mounted
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.matchMedia) {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) setTheme('dark');
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('syncwise-theme');
+        if (saved === 'dark' || saved === 'light') {
+          setTheme(saved);
+        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          setTheme('dark');
+        }
+      } catch (e) {
+        // localStorage not available — fall back to system preference
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          setTheme('dark');
+        }
+      }
     }
     setMounted(true);
   }, []);
@@ -35,7 +46,11 @@ export function ThemeProvider({ children }) {
   }, [theme, mounted]);
 
   const toggleTheme = useCallback(() => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+    setTheme(prev => {
+      const next = prev === 'light' ? 'dark' : 'light';
+      try { localStorage.setItem('syncwise-theme', next); } catch (e) { /* ignore */ }
+      return next;
+    });
   }, []);
 
   return (

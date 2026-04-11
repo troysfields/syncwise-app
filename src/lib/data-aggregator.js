@@ -68,20 +68,31 @@ function setCachedICalResult(icalUrl, data) {
 /**
  * Stage 1: Fetch iCal feed (with cache + timeout)
  * Populates result.events with parsed iCal items.
+ *
+ * If prefetchedIcalResult is provided (e.g., from shadow mode), uses that
+ * instead of fetching. This avoids duplicate D2L requests when running
+ * two pipelines in the same API call.
  */
-async function fetchICalSource(result, icalUrl, studentEmail) {
+async function fetchICalSource(result, icalUrl, studentEmail, prefetchedIcalResult) {
   if (!icalUrl) return;
 
   try {
-    // Cache-first: return cached data if fresh
-    let icalResult = getCachedICalResult(icalUrl);
-    if (icalResult) {
-      icalResult._cached = true;
+    let icalResult;
+
+    if (prefetchedIcalResult) {
+      // Use pre-fetched data — no external request
+      icalResult = prefetchedIcalResult;
     } else {
-      // fetchAndParseICalFeed handles its own 10s timeout + validation + audit logging
-      icalResult = await fetchAndParseICalFeed(icalUrl, studentEmail);
-      if (icalResult.success) {
-        setCachedICalResult(icalUrl, icalResult);
+      // Normal path: cache-first, then fetch
+      icalResult = getCachedICalResult(icalUrl);
+      if (icalResult) {
+        icalResult._cached = true;
+      } else {
+        // fetchAndParseICalFeed handles its own 10s timeout + validation + audit logging
+        icalResult = await fetchAndParseICalFeed(icalUrl, studentEmail);
+        if (icalResult.success) {
+          setCachedICalResult(icalUrl, icalResult);
+        }
       }
     }
 
@@ -232,7 +243,12 @@ function calculateStats(result) {
 // ============================================================
 
 export async function getStudentDashboardData(settings) {
-  const { icalUrl, studentEmail = 'anonymous', uploadedDocs = [] } = settings;
+  const {
+    icalUrl,
+    studentEmail = 'anonymous',
+    uploadedDocs = [],
+    _prefetchedIcalResult = null, // Optional: skip D2L fetch if provided (used by shadow mode)
+  } = settings;
 
   // Initialize result with the full shape the dashboard expects
   const result = {
@@ -248,7 +264,7 @@ export async function getStudentDashboardData(settings) {
   };
 
   // Run the pipeline
-  await fetchICalSource(result, icalUrl, studentEmail);   // Stage 1: Fetch iCal
+  await fetchICalSource(result, icalUrl, studentEmail, _prefetchedIcalResult); // Stage 1: Fetch iCal
   mergeUploadedDocs(result, uploadedDocs);                 // Stage 2: Merge uploads
 
   // Placeholder for future Outlook integration

@@ -4,13 +4,15 @@
 // AUTH: Requires valid session
 //
 // SHADOW MODE (temporary): Runs both consent-data (old) and data-aggregator (new)
-// in parallel. Logs structured diff. Returns ONLY the old result to the client.
+// using a SINGLE D2L fetch shared between them. Logs structured diff.
+// Returns ONLY the old result to the client.
 // Search Vercel logs for "[SHADOW DIFF]" to review comparison output.
 // Remove shadow mode once outputs are confirmed identical.
 
 import { NextResponse } from 'next/server';
-import { getStudentDashboardData as oldPipeline } from '@/lib/consent-data';
+import { getStudentDashboardData as oldPipeline, setCachedICalResult as seedOldCache } from '@/lib/consent-data';
 import { getStudentDashboardData as newPipeline } from '@/lib/data-aggregator';
+import { fetchAndParseICalFeed } from '@/lib/ical-parser';
 import { requireAuth } from '@/lib/auth';
 
 // ─── Shadow Diff Utilities ───
@@ -18,7 +20,7 @@ import { requireAuth } from '@/lib/auth';
 /**
  * Recursively compare two objects and return an array of differences.
  * Each diff has: { path, type, old?, new? }
- * Types: missing_in_old, missing_in_new, value_mismatch, type_mismatch, array_length
+ * Types: extra_in_new, missing_in_new, value_mismatch, type_mismatch, array_length
  */
 function deepDiff(oldObj, newObj, path = '') {
   const diffs = [];
@@ -174,18 +176,27 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
+    // ── SHARED FETCH: Hit D2L exactly once ──
+    // Both pipelines will use this same iCal result.
+    // - Old pipeline: we seed its module-level cache so its internal fetch is a cache hit
+    // - New pipeline: we pass the result directly via _prefetchedIcalResult
+    const icalResult = await fetchAndParseICalFeed(icalUrl, studentEmail || 'anonymous');
+
+    // Seed the old pipeline's cache so it won't fetch again
+    if (icalResult.success) {
+      seedOldCache(icalUrl, icalResult);
+    }
+
     const settings = { icalUrl, studentEmail, uploadedDocs };
 
-    // Run both pipelines in parallel — old result goes to client, new is shadow-only.
-    // NOTE: Each pipeline has its own in-memory iCal cache, so during shadow mode
-    // D2L gets hit twice per uncached request. Acceptable for short-term validation.
+    // Run both pipelines in parallel — same input data, zero extra D2L requests
     const oldStart = Date.now();
     const oldPromise = oldPipeline(settings)
       .then(r => ({ result: r, ms: Date.now() - oldStart }))
       .catch(err => ({ result: { _pipelineError: 'old', error: err.message }, ms: Date.now() - oldStart }));
 
     const newStart = Date.now();
-    const newPromise = newPipeline(settings)
+    const newPromise = newPipeline({ ...settings, _prefetchedIcalResult: icalResult })
       .then(r => ({ result: r, ms: Date.now() - newStart }))
       .catch(err => ({ result: { _pipelineError: 'new', error: err.message }, ms: Date.now() - newStart }));
 

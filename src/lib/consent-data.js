@@ -27,7 +27,7 @@ function getCachedICalResult(icalUrl) {
   return null;
 }
 
-function setCachedICalResult(icalUrl, data) {
+export function setCachedICalResult(icalUrl, data) {
   icalCache.set(icalUrl, { data, timestamp: Date.now() });
   // Clean old entries (keep cache from growing indefinitely)
   if (icalCache.size > 100) {

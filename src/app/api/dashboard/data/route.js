@@ -16,9 +16,9 @@ import { fetchAndParseICalFeed } from '@/lib/ical-parser';
 import { requireAuth } from '@/lib/auth';
 
 // Vercel Hobby default is 5s — not enough for D2L fetch + two pipelines.
-// 15s covers: ~3s D2L fetch + ~5s pipeline work + margin.
+// 30s covers: ~3-8s D2L fetch + ~5-10s pipeline work (Redis calls, dedup).
 // Remove or reduce once shadow mode is removed.
-export const maxDuration = 15;
+export const maxDuration = 30;
 
 // ─── Shadow Diff Utilities ───
 

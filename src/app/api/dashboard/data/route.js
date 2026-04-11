@@ -182,30 +182,42 @@ export async function POST(request) {
     }
 
     // ── SHARED FETCH: Hit D2L exactly once ──
-    // Both pipelines will use this same iCal result.
-    // - Old pipeline: we seed its module-level cache so its internal fetch is a cache hit
-    // - New pipeline: we pass the result directly via _prefetchedIcalResult
+    const fetchStart = Date.now();
     const icalResult = await fetchAndParseICalFeed(icalUrl, studentEmail || 'anonymous');
+    console.log(`[SHADOW TIMING] D2L fetch: ${Date.now() - fetchStart}ms (success=${icalResult.success})`);
 
-    // Seed the old pipeline's cache so it won't fetch again
-    if (icalResult.success) {
-      seedOldCache(icalUrl, icalResult);
-    }
+    // Seed the old pipeline's cache ALWAYS — even on failure — so it won't re-fetch
+    seedOldCache(icalUrl, icalResult);
 
     const settings = { icalUrl, studentEmail, uploadedDocs };
 
-    // Run both pipelines in parallel — same input data, zero extra D2L requests
+    // Run both pipelines in parallel with a safety timeout
+    const PIPELINE_TIMEOUT_MS = 20_000; // kill pipelines if they hang
+
+    function withTimeout(promise, label) {
+      return Promise.race([
+        promise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`${label} timed out after ${PIPELINE_TIMEOUT_MS}ms`)), PIPELINE_TIMEOUT_MS)
+        ),
+      ]);
+    }
+
     const oldStart = Date.now();
-    const oldPromise = oldPipeline(settings)
-      .then(r => ({ result: r, ms: Date.now() - oldStart }))
-      .catch(err => ({ result: { _pipelineError: 'old', error: err.message }, ms: Date.now() - oldStart }));
+    const oldPromise = withTimeout(
+      oldPipeline(settings).then(r => ({ result: r, ms: Date.now() - oldStart })),
+      'Old pipeline'
+    ).catch(err => ({ result: { _pipelineError: 'old', error: err.message }, ms: Date.now() - oldStart }));
 
     const newStart = Date.now();
-    const newPromise = newPipeline({ ...settings, _prefetchedIcalResult: icalResult })
-      .then(r => ({ result: r, ms: Date.now() - newStart }))
-      .catch(err => ({ result: { _pipelineError: 'new', error: err.message }, ms: Date.now() - newStart }));
+    const newPromise = withTimeout(
+      newPipeline({ ...settings, _prefetchedIcalResult: icalResult }).then(r => ({ result: r, ms: Date.now() - newStart })),
+      'New pipeline'
+    ).catch(err => ({ result: { _pipelineError: 'new', error: err.message }, ms: Date.now() - newStart }));
 
     const [oldOut, newOut] = await Promise.all([oldPromise, newPromise]);
+
+    console.log(`[SHADOW TIMING] Total route: ${Date.now() - fetchStart}ms | Old: ${oldOut.ms}ms | New: ${newOut.ms}ms`);
 
     // Shadow comparison — fire and forget, never affects response
     logShadowComparison(oldOut.result, newOut.result, oldOut.ms, newOut.ms);

@@ -148,7 +148,7 @@ async function deduplicateEvents(result) {
   try {
     activeOverrides = await getActiveOverrides();
   } catch (e) {
-    console.error('Failed to load overrides, continuing without:', e.message);
+    console.error(`[REDIS TIMEOUT] data-aggregator pipeline — overrides unavailable (${e.message}). Continuing with empty overrides.`);
   }
 
   const dedupResult = deduplicateItems(result.events, activeOverrides);

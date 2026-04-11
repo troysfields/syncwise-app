@@ -127,7 +127,7 @@ export async function getStudentDashboardData(settings) {
   try {
     activeOverrides = await getActiveOverrides();
   } catch (e) {
-    console.error('Failed to load overrides, continuing without:', e.message);
+    console.error(`[REDIS TIMEOUT] consent-data pipeline — overrides unavailable (${e.message}). Continuing with empty overrides.`);
   }
   const dedupResult = deduplicateItems(result.events, activeOverrides);
   result.events = dedupResult.items;

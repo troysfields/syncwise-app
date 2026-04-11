@@ -351,12 +351,24 @@ export async function instructorOverrideDate(overrideRequest) {
 // Get all active overrides (for applying to dashboard data)
 // Includes a 5s timeout — if Redis hangs, return empty rather than blocking the pipeline
 export async function getActiveOverrides() {
-  return Promise.race([
-    getAllOverrides(),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('getActiveOverrides timed out after 5s')), 5000)
-    ),
-  ]);
+  const start = Date.now();
+  try {
+    const result = await Promise.race([
+      getAllOverrides(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Redis timeout')), 5000)
+      ),
+    ]);
+    return result;
+  } catch (err) {
+    const elapsed = Date.now() - start;
+    if (err.message === 'Redis timeout') {
+      console.error(`[REDIS TIMEOUT] getActiveOverrides — timed out after ${elapsed}ms. Overrides will be empty for this request.`);
+    } else {
+      console.error(`[REDIS TIMEOUT] getActiveOverrides — failed after ${elapsed}ms: ${err.message}`);
+    }
+    throw err; // Re-throw so callers' try/catch handles it (consent-data, data-aggregator both catch and default to [])
+  }
 }
 
 // Get overrides for a specific course

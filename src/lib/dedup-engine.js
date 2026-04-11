@@ -349,8 +349,14 @@ export async function instructorOverrideDate(overrideRequest) {
 }
 
 // Get all active overrides (for applying to dashboard data)
+// Includes a 5s timeout — if Redis hangs, return empty rather than blocking the pipeline
 export async function getActiveOverrides() {
-  return await getAllOverrides();
+  return Promise.race([
+    getAllOverrides(),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('getActiveOverrides timed out after 5s')), 5000)
+    ),
+  ]);
 }
 
 // Get overrides for a specific course

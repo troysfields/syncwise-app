@@ -162,7 +162,7 @@ export function middleware(request) {
   // If the user hits /dashboard, /settings, /instructor, /future-updates
   // without a valid session cookie, redirect to login with a return URL
   // so they land back where they wanted after signing in.
-  const isProtectedPage = PROTECTED_PAGE_ROUTES.some(route => pathname.startsWith(route));
+  const isProtectedPage = pathname === '/' || PROTECTED_PAGE_ROUTES.some(route => pathname.startsWith(route));
   if (isProtectedPage) {
     const sessionCookie = request.cookies.get('syncwise_session')?.value;
     if (!sessionCookie) {
